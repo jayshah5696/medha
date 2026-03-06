@@ -22,3 +22,7 @@ frontend/dist/
 
 # Tauri
 src-tauri/target/
+# uv venv
+backend/.venv/
+*.venv/
+uv.lock
