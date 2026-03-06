@@ -2,8 +2,12 @@
 
 All query execution goes through the same safety checks (path traversal,
 blocked SQL keywords) that the public /api/db/query endpoint uses.
+
+Thread safety: DuckDB queries are run via asyncio.to_thread through the
+db module lock, so agent tool calls never race the public query endpoint.
 """
 
+import asyncio
 from langchain_core.tools import tool
 
 from app.workspace import get_schema as _get_schema
@@ -11,10 +15,10 @@ from app import db
 
 
 @tool
-def get_schema(filename: str) -> str:
+async def get_schema(filename: str) -> str:
     """Get column names and types for a file in the workspace."""
     try:
-        cols = _get_schema(filename)
+        cols = await asyncio.to_thread(_get_schema, filename)
         lines = [f"  {c['name']}: {c['type']}" for c in cols]
         return f"Schema for {filename}:\n" + "\n".join(lines)
     except Exception as e:
@@ -22,7 +26,7 @@ def get_schema(filename: str) -> str:
 
 
 @tool
-def sample_data(filename: str, n: int = 5) -> str:
+async def sample_data(filename: str, n: int = 5) -> str:
     """Get sample rows from a file. Returns a markdown table."""
     try:
         if db.workspace_root is None:
@@ -34,9 +38,14 @@ def sample_data(filename: str, n: int = 5) -> str:
         db._check_sql_safety(query)
         db._check_path_safety(query)
 
-        result = db.conn.execute(query)
-        columns = [desc[0] for desc in result.description]
-        rows = result.fetchall()
+        def _run():
+            result = db.conn.execute(query)
+            columns = [desc[0] for desc in result.description]
+            rows = result.fetchall()
+            return columns, rows
+
+        async with db._db_lock:
+            columns, rows = await asyncio.to_thread(_run)
 
         # Build markdown table
         header = "| " + " | ".join(columns) + " |"
@@ -51,7 +60,7 @@ def sample_data(filename: str, n: int = 5) -> str:
 
 
 @tool
-def execute_query(sql: str) -> str:
+async def execute_query(sql: str) -> str:
     """Run a DuckDB SQL query. Returns first 20 rows as markdown table plus row count.
 
     The query is validated against the same path-safety and SQL-safety
@@ -66,17 +75,21 @@ def execute_query(sql: str) -> str:
         db._check_sql_safety(sql)
         db._check_path_safety(sql)
 
-        result = db.conn.execute(sql)
-        columns = [desc[0] for desc in result.description] if result.description else []
-        rows = result.fetchmany(20)
-        total = len(rows)
+        def _run():
+            result = db.conn.execute(sql)
+            columns = [desc[0] for desc in result.description] if result.description else []
+            rows = result.fetchmany(20)
+            total = len(rows)
+            # Try to get full count
+            try:
+                remaining = result.fetchall()
+                total += len(remaining)
+            except Exception:
+                pass
+            return columns, rows, total
 
-        # Try to get full count
-        try:
-            remaining = result.fetchall()
-            total += len(remaining)
-        except Exception:
-            pass
+        async with db._db_lock:
+            columns, rows, total = await asyncio.to_thread(_run)
 
         # Build markdown table
         header = "| " + " | ".join(columns) + " |"

@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import { useStore } from "../store";
 
 interface ContextPillProps {
@@ -7,21 +8,25 @@ interface ContextPillProps {
 export default function ContextPill({ inputText }: ContextPillProps) {
   const { activeFiles, files, addActiveFile, removeActiveFile } = useStore();
 
-  // Parse @mentions from input text and add matching files
-  if (inputText) {
+  // Priority-4: Move addActiveFile side-effect into useEffect
+  const prevInput = useRef(inputText);
+  useEffect(() => {
+    if (!inputText || inputText === prevInput.current) return;
+    prevInput.current = inputText;
+
     const mentions = inputText.match(/@(\S+)/g);
-    if (mentions) {
-      for (const mention of mentions) {
-        const name = mention.slice(1); // strip @
-        const match = files.find(
-          (f) => f.name === name || f.name.startsWith(name)
-        );
-        if (match && !activeFiles.includes(match.name)) {
-          addActiveFile(match.name);
-        }
+    if (!mentions) return;
+
+    for (const mention of mentions) {
+      const name = mention.slice(1); // strip @
+      const match = files.find(
+        (f) => f.name === name || f.name.startsWith(name)
+      );
+      if (match && !activeFiles.includes(match.name)) {
+        addActiveFile(match.name);
       }
     }
-  }
+  }, [inputText, files, activeFiles, addActiveFile]);
 
   if (activeFiles.length === 0) return null;
 

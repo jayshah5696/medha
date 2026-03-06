@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import {
   useReactTable,
   getCoreRowModel,
@@ -87,19 +88,22 @@ export default function ResultGrid({ result, isQuerying }: ResultGridProps) {
     );
   }
 
-  const columnHelper = createColumnHelper<unknown[]>();
-
-  const columns = result.columns.map((col, idx) =>
-    columnHelper.accessor((row) => row[idx], {
-      id: col,
-      header: col,
-      cell: (info) => {
-        const val = info.getValue();
-        if (val === null) return <span style={{ color: "var(--text-dimmed)", fontStyle: "italic" }}>null</span>;
-        return String(val);
-      },
-    })
-  );
+  // BUG-13: Memoize column definitions so TanStack Table doesn't
+  // rebuild the entire table model on every render.
+  const columns = useMemo(() => {
+    const helper = createColumnHelper<unknown[]>();
+    return result.columns.map((col, idx) =>
+      helper.accessor((row) => row[idx], {
+        id: col,
+        header: col,
+        cell: (info) => {
+          const val = info.getValue();
+          if (val === null) return <span style={{ color: "var(--text-dimmed)", fontStyle: "italic" }}>null</span>;
+          return String(val);
+        },
+      })
+    );
+  }, [result.columns]);
 
   return <ResultTable result={result} columns={columns} />;
 }

@@ -1,5 +1,9 @@
 """Medha backend: FastAPI + DuckDB + LangGraph."""
 
+# Load .env BEFORE any imports that read os.environ (litellm, langchain, etc.)
+from dotenv import load_dotenv
+load_dotenv()  # looks for .env in cwd and parent dirs
+
 import re
 from contextlib import asynccontextmanager
 
@@ -12,6 +16,7 @@ from app.routers import ai as ai_router
 from app.routers import history as history_router
 from app.routers import chats as chats_router
 from app.routers import events as events_router
+from app.routers import models as models_router
 
 
 @asynccontextmanager
@@ -45,6 +50,7 @@ app.include_router(ai_router.router)
 app.include_router(history_router.router)
 app.include_router(chats_router.router)
 app.include_router(events_router.router)
+app.include_router(models_router.router)
 
 
 @app.get("/health")

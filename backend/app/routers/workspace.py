@@ -17,21 +17,34 @@ SETTINGS_FILE = Path.home() / ".medha" / "settings.json"
 
 
 class Settings(BaseModel):
+    # Provider-first (SPEC §13)
+    provider_inline: str = "openai"
+    provider_chat: str = "openai"
     model_inline: str = "openai/gpt-4o-mini"
     model_chat: str = "openai/gpt-4o-mini"
     agent_profile: str = "default"
+    # API keys (stored on disk, never returned unmasked)
     openai_api_key: str = ""
     openrouter_api_key: str = ""
+    anthropic_api_key: str = ""
+    gemini_api_key: str = ""
+    # Local provider URLs
     lm_studio_url: str = "http://localhost:1234/v1"
+    ollama_url: str = "http://localhost:11434"
 
 
 class MaskedSettings(BaseModel):
+    provider_inline: str = "openai"
+    provider_chat: str = "openai"
     model_inline: str = "openai/gpt-4o-mini"
     model_chat: str = "openai/gpt-4o-mini"
     agent_profile: str = "default"
     openai_api_key: str = ""
     openrouter_api_key: str = ""
+    anthropic_api_key: str = ""
+    gemini_api_key: str = ""
     lm_studio_url: str = "http://localhost:1234/v1"
+    ollama_url: str = "http://localhost:11434"
 
 
 def mask_key(key: str) -> str:
@@ -97,12 +110,17 @@ async def file_schema(filename: str):
 async def get_settings():
     s = load_settings()
     return MaskedSettings(
+        provider_inline=s.provider_inline,
+        provider_chat=s.provider_chat,
         model_inline=s.model_inline,
         model_chat=s.model_chat,
         agent_profile=s.agent_profile,
         openai_api_key=mask_key(s.openai_api_key),
         openrouter_api_key=mask_key(s.openrouter_api_key),
+        anthropic_api_key=mask_key(s.anthropic_api_key),
+        gemini_api_key=mask_key(s.gemini_api_key),
         lm_studio_url=s.lm_studio_url,
+        ollama_url=s.ollama_url,
     )
 
 
@@ -111,29 +129,35 @@ async def update_settings(req: Settings):
     # Load existing settings so masked values do not overwrite real keys
     existing = load_settings()
 
-    # Only update API keys if the incoming value is not a masked placeholder
-    openai_key = req.openai_api_key
-    if _is_masked(openai_key):
-        openai_key = existing.openai_api_key
-
-    openrouter_key = req.openrouter_api_key
-    if _is_masked(openrouter_key):
-        openrouter_key = existing.openrouter_api_key
+    def _resolve_key(new_val: str, existing_val: str) -> str:
+        return existing_val if _is_masked(new_val) else new_val
 
     updated = Settings(
+        provider_inline=req.provider_inline,
+        provider_chat=req.provider_chat,
         model_inline=req.model_inline,
         model_chat=req.model_chat,
         agent_profile=req.agent_profile,
-        openai_api_key=openai_key,
-        openrouter_api_key=openrouter_key,
+        openai_api_key=_resolve_key(req.openai_api_key, existing.openai_api_key),
+        openrouter_api_key=_resolve_key(req.openrouter_api_key, existing.openrouter_api_key),
+        anthropic_api_key=_resolve_key(req.anthropic_api_key, existing.anthropic_api_key),
+        gemini_api_key=_resolve_key(req.gemini_api_key, existing.gemini_api_key),
         lm_studio_url=req.lm_studio_url,
+        ollama_url=req.ollama_url,
     )
 
     save_settings(updated)
 
     # Apply API keys to environment so litellm picks them up immediately
-    if updated.openai_api_key:
-        os.environ["OPENAI_API_KEY"] = updated.openai_api_key
-    if updated.openrouter_api_key:
-        os.environ["OPENROUTER_API_KEY"] = updated.openrouter_api_key
+    key_env_map = {
+        updated.openai_api_key: "OPENAI_API_KEY",
+        updated.openrouter_api_key: "OPENROUTER_API_KEY",
+        updated.anthropic_api_key: "ANTHROPIC_API_KEY",
+        updated.gemini_api_key: "GEMINI_API_KEY",
+    }
+    for key, env_var in key_env_map.items():
+        if key:
+            import os
+            os.environ[env_var] = key
+
     return {"ok": True}

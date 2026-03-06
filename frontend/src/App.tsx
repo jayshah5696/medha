@@ -12,6 +12,7 @@ import "./index.css";
 
 const BANNER_DISMISSED_KEY = "medha_key_banner_dismissed";
 const DEFAULT_LM_STUDIO_URL = "http://localhost:1234/v1";
+const THEME_KEY = "medha_theme";
 
 function App() {
   const {
@@ -32,6 +33,19 @@ function App() {
 
   const [showSettings, setShowSettings] = useState(false);
   const [showKeyBanner, setShowKeyBanner] = useState(false);
+
+  // Theme toggle
+  const [theme, setTheme] = useState<"dark" | "light">(() => {
+    return (localStorage.getItem(THEME_KEY) as "dark" | "light") || "dark";
+  });
+
+  useEffect(() => {
+    document.documentElement.setAttribute("data-theme", theme);
+    localStorage.setItem(THEME_KEY, theme);
+  }, [theme]);
+
+  const toggleTheme = () =>
+    setTheme((t) => (t === "dark" ? "light" : "dark"));
 
   // First-run check: if no LLM is configured, show onboarding banner
   useEffect(() => {
@@ -103,31 +117,40 @@ function App() {
           borderBottom: "1px solid var(--border)",
           display: "flex",
           alignItems: "center",
-          padding: "0 12px",
+          padding: "0 14px",
           gap: 12,
         }}
       >
+        <img
+          src={theme === "dark" ? "/logo-dark.png" : "/logo-light.png"}
+          alt="medha"
+          style={{ height: 20 }}
+        />
         <span
           style={{
-            fontFamily: "var(--font-ui)",
-            fontWeight: 500,
-            fontSize: 14,
-            color: "var(--accent)",
-            letterSpacing: "0.02em",
-          }}
-        >
-          medha
-        </span>
-        <span
-          style={{
-            fontSize: 10,
+            fontSize: 12,
             color: "var(--text-dimmed)",
             fontFamily: "var(--font-ui)",
           }}
         >
           sql ide for flat files
         </span>
-        <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 8 }}>
+        <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 10 }}>
+          <button
+            onClick={toggleTheme}
+            title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+            style={{
+              background: "none",
+              border: "none",
+              color: "var(--text-secondary)",
+              cursor: "pointer",
+              fontSize: 16,
+              padding: "2px 6px",
+              lineHeight: 1,
+            }}
+          >
+            {theme === "dark" ? "☀" : "☾"}
+          </button>
           <button
             onClick={() => setShowSettings(true)}
             title="Settings"
@@ -146,7 +169,7 @@ function App() {
           </button>
           <span
             style={{
-              fontSize: 10,
+              fontSize: 12,
               color: "var(--text-dimmed)",
               fontFamily: "var(--font-ui)",
             }}
@@ -277,7 +300,7 @@ function App() {
           }}
         />
         <span>{workspacePath || "no workspace"}</span>
-        <span style={{ marginLeft: "auto" }}>medha v0.1</span>
+        <span style={{ marginLeft: "auto", fontSize: 11 }}>medha v0.1</span>
       </div>
 
       {/* Cmd+K Diff Overlay */}

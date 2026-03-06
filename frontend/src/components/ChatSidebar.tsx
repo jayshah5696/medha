@@ -6,6 +6,11 @@ import { getChats, getChat } from "../lib/api";
 import type { ChatMessage as ApiChatMessage } from "../lib/api";
 import ContextPill from "./ContextPill";
 
+interface ChatSettings {
+  model_chat: string;
+  agent_profile: string;
+}
+
 interface ChatMessage {
   role: "user" | "assistant";
   content: string;
@@ -17,13 +22,30 @@ interface ToolStatus {
 }
 
 export default function ChatSidebar() {
-  const { activeFiles, currentThreadId, setThreadId, chatHistory, setChatHistory } = useStore();
+  const { activeFiles, currentThreadId, setThreadId, chatHistory, setChatHistory, setEditorContent } = useStore();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [isStreaming, setIsStreaming] = useState(false);
   const [toolStatuses, setToolStatuses] = useState<ToolStatus[]>([]);
   const [threadsOpen, setThreadsOpen] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [chatSettings, setChatSettings] = useState<ChatSettings>({
+    model_chat: "openai/gpt-4o-mini",
+    agent_profile: "default",
+  });
+
+  // Priority-8: fetch settings so we send model/profile with each chat request
+  useEffect(() => {
+    fetch("/api/settings")
+      .then((r) => r.json())
+      .then((data) => {
+        setChatSettings({
+          model_chat: data.model_chat || "openai/gpt-4o-mini",
+          agent_profile: data.agent_profile || "default",
+        });
+      })
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -85,6 +107,8 @@ export default function ChatSidebar() {
           message: trimmed,
           active_files: activeFiles,
           thread_id: currentThreadId || "",
+          model: chatSettings.model_chat,
+          profile: chatSettings.agent_profile,
         }),
       });
 
@@ -361,7 +385,49 @@ export default function ChatSidebar() {
               }}
             >
               {msg.role === "assistant" ? (
-                <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                <ReactMarkdown
+                  remarkPlugins={[remarkGfm]}
+                  components={{
+                    code({ className, children, ...props }) {
+                      const codeText = String(children).replace(/\n$/, "");
+                      const isBlock = className?.startsWith("language-");
+                      if (!isBlock) return <code {...props}>{children}</code>;
+                      return (
+                        <div style={{ position: "relative", marginTop: 4 }}>
+                          <pre style={{
+                            background: "var(--bg-tertiary)",
+                            padding: "8px 10px",
+                            fontSize: 11,
+                            overflow: "auto",
+                            border: "1px solid var(--border)",
+                          }}>
+                            <code>{codeText}</code>
+                          </pre>
+                          <button
+                            onClick={() => setEditorContent(codeText)}
+                            title="Copy to SQL Editor"
+                            style={{
+                              position: "absolute",
+                              top: 4,
+                              right: 4,
+                              fontSize: 8,
+                              padding: "2px 6px",
+                              background: "var(--bg-elevated)",
+                              border: "1px solid var(--border)",
+                              color: "var(--accent)",
+                              cursor: "pointer",
+                              fontFamily: "var(--font-mono)",
+                              textTransform: "uppercase" as const,
+                              letterSpacing: "0.08em",
+                            }}
+                          >
+                            → editor
+                          </button>
+                        </div>
+                      );
+                    },
+                  }}
+                >
                   {msg.content}
                 </ReactMarkdown>
               ) : (
@@ -413,15 +479,15 @@ export default function ChatSidebar() {
             width: "100%",
             padding: "6px 8px",
             fontSize: 12,
-            background: "#0f0f12",
-            border: "1px solid #1a1a1f",
+            background: "var(--bg-tertiary)",
+            border: "1px solid var(--border)",
             borderRadius: 0,
-            color: "#ccc",
+            color: "var(--text-primary)",
             outline: "none",
             fontFamily: "var(--font-mono)",
           }}
-          onFocus={(e) => { e.currentTarget.style.borderColor = "#00D8FF"; }}
-          onBlur={(e) => { e.currentTarget.style.borderColor = "#1a1a1f"; }}
+          onFocus={(e) => { e.currentTarget.style.borderColor = "var(--accent)"; }}
+          onBlur={(e) => { e.currentTarget.style.borderColor = "var(--border)"; }}
         />
       </div>
     </div>

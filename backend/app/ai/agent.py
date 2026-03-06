@@ -1,5 +1,6 @@
 """LangChain tool-calling agent loaded from YAML config."""
 
+import re
 from pathlib import Path
 from typing import AsyncGenerator
 
@@ -16,9 +17,19 @@ AGENTS_DIR = Path(__file__).parent.parent.parent / "agents"
 # rebuilt automatically when the YAML file changes on disk.
 _agent_cache: dict[str, tuple[object, float]] = {}
 
+_SAFE_PROFILE = re.compile(r"^[a-z0-9][a-z0-9_-]{0,63}$")
+
+
+def _validate_profile(profile: str) -> str:
+    """SEC-2: prevent path traversal in profile names."""
+    if not _SAFE_PROFILE.match(profile):
+        raise ValueError(f"Invalid profile name: {profile!r}")
+    return profile
+
 
 def load_agent_config(profile: str = "default") -> dict:
     """Load agent YAML config. Hot-reloadable."""
+    profile = _validate_profile(profile)
     path = AGENTS_DIR / f"{profile}.yaml"
     if not path.exists():
         path = AGENTS_DIR / "default.yaml"
@@ -27,7 +38,14 @@ def load_agent_config(profile: str = "default") -> dict:
 
 
 def _build_executor(profile: str = "default", model_override: str | None = None):
-    """Build a compiled agent graph from YAML config (uncached)."""
+    """Build a compiled agent graph from YAML config (uncached).
+
+    Uses LangGraph's create_agent which accepts system_prompt directly
+    and returns a compiled StateGraph with astream_events support.
+    We pass a ChatLiteLLM instance so LangGraph doesn't try to
+    resolve the model string via init_chat_model (which requires
+    provider-specific packages like langchain-openai).
+    """
     config = load_agent_config(profile)
     model_name = model_override or config["model"]
 
@@ -49,6 +67,7 @@ def build_agent(profile: str = "default", model_override: str | None = None):
     YAML file has been modified since the last build, the agent is
     rebuilt so config changes take effect without a server restart.
     """
+    profile = _validate_profile(profile)
     cache_key = f"{profile}:{model_override}"
     yaml_path = AGENTS_DIR / f"{profile}.yaml"
     if not yaml_path.exists():
@@ -71,8 +90,16 @@ async def stream_agent_response(
     chat_history: list,
     profile: str = "default",
     model_override: str | None = None,
-) -> AsyncGenerator[str, None]:
-    """Async generator yielding SSE-formatted chunks."""
+) -> AsyncGenerator[dict, None]:
+    """Async generator yielding typed dicts.
+
+    BUG-11 fix: SSE formatting now belongs to the router layer.
+    This function only yields raw dicts like {"type": "token", "content": ...}.
+
+    Uses agent.astream() which yields node-level updates. ChatLiteLLM
+    does not support per-token streaming via astream_events, so we
+    deliver the full response from each 'model' node output.
+    """
     agent = build_agent(profile, model_override)
 
     history = []
@@ -87,56 +114,25 @@ async def stream_agent_response(
     }
 
     try:
-        async for event in agent.astream_events(
-            input_data,
-            version="v2",
-        ):
-            kind = event["event"]
-            if kind == "on_chat_model_stream":
-                chunk = event["data"]["chunk"].content
-                if chunk:
-                    yield f'data: {{"type": "token", "content": {repr(chunk)}}}\n\n'
-            elif kind == "on_tool_start":
-                tool_name = event["name"]
-                yield f'data: {{"type": "tool_call", "tool": "{tool_name}", "status": "start"}}\n\n'
-            elif kind == "on_tool_end":
-                tool_name = event["name"]
-                yield f'data: {{"type": "tool_call", "tool": "{tool_name}", "status": "end"}}\n\n'
-        yield 'data: {"type": "done"}\n\n'
-    except Exception as e:
-        yield f'data: {{"type": "error", "message": "{str(e)}"}}\n\n'
-
-
-# Legacy function for backward compatibility with existing router/tests
-async def run_agent_stream(
-    user_message: str,
-    active_files: list[str],
-    workspace_root: str = "",
-    model_name: str = "openai/gpt-4o-mini",
-    history: list | None = None,
-) -> AsyncGenerator[dict, None]:
-    """Stream agent events as dicts for SSE. Legacy compatibility wrapper."""
-    agent = build_agent(model_override=model_name)
-
-    messages = list(history or [])
-    messages.append(HumanMessage(content=user_message))
-
-    input_data = {"messages": messages}
-
-    try:
-        async for event in agent.astream_events(input_data, version="v2"):
-            kind = event.get("event")
-            if kind == "on_chat_model_stream":
-                chunk = event.get("data", {}).get("chunk")
-                if chunk and hasattr(chunk, "content") and chunk.content:
-                    yield {"type": "token", "content": chunk.content}
-            elif kind == "on_tool_start":
-                tool_name = event.get("name", "unknown")
-                yield {"type": "tool_call", "tool": tool_name, "status": "start"}
-            elif kind == "on_tool_end":
-                tool_name = event.get("name", "unknown")
-                yield {"type": "tool_call", "tool": tool_name, "status": "end"}
-
+        async for chunk in agent.astream(input_data):
+            # Each chunk is a dict keyed by the node name that just finished.
+            # The 'model' node produces {"messages": [AIMessage(...)]}
+            # The 'tools' node produces {"messages": [ToolMessage(...)]}
+            for node_name, node_output in chunk.items():
+                if node_name == "model":
+                    msgs = node_output.get("messages", [])
+                    for msg in msgs:
+                        if hasattr(msg, "content") and msg.content:
+                            yield {"type": "token", "content": msg.content}
+                        # Report tool calls if the model decided to call tools
+                        if hasattr(msg, "tool_calls") and msg.tool_calls:
+                            for tc in msg.tool_calls:
+                                yield {"type": "tool_call", "tool": tc["name"], "status": "start"}
+                elif node_name == "tools":
+                    msgs = node_output.get("messages", [])
+                    for msg in msgs:
+                        tool_name = getattr(msg, "name", "unknown")
+                        yield {"type": "tool_call", "tool": tool_name, "status": "end"}
         yield {"type": "done"}
     except Exception as e:
         yield {"type": "error", "message": str(e)}

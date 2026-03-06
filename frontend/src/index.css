@@ -37,11 +37,39 @@
   --font-ui: 'DM Mono', monospace;
 
   /* Sizes */
-  --header-height: 36px;
+  --header-height: 40px;
   --status-height: 24px;
   --sidebar-left: 220px;
   --sidebar-right: 280px;
   --row-height: 28px;
+}
+
+/* Light theme override */
+[data-theme="light"] {
+  --bg-primary: #f8f9fa;
+  --bg-secondary: #eef0f2;
+  --bg-tertiary: #e4e7eb;
+  --bg-elevated: #ffffff;
+  --bg-row-alt: #f0f2f4;
+
+  --text-primary: #1a1a2e;
+  --text-secondary: #6b6b80;
+  --text-dimmed: #9a9ab0;
+
+  --accent: #0090a8;
+  --accent-dimmed: rgba(0, 144, 168, 0.12);
+
+  --border: #d4d6db;
+  --border-strong: #b8bcc2;
+
+  --success: #2d8a2d;
+  --error: #cc3333;
+  --warning: #c88417;
+
+  --diff-add-bg: #d4f5d4;
+  --diff-add-text: #1a6b1a;
+  --diff-remove-bg: #fdd;
+  --diff-remove-text: #a30000;
 }
 
 * {

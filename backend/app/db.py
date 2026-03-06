@@ -33,6 +33,12 @@ BLOCKED_PATTERNS = [
     r'\bATTACH\b',
     r'httpfs',
     r'sqlite_scan',
+    # SEC-4: prevent persistent state mutations
+    r'\bCREATE\s+TABLE\b',
+    r'\bCREATE\s+VIEW\b',
+    r'\bDROP\s+TABLE\b',
+    r'\bDROP\s+VIEW\b',
+    r'\bALTER\b',
 ]
 
 

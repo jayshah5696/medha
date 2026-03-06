@@ -70,15 +70,16 @@ def set_workspace(path: str) -> None:
 
 
 def scan_files() -> list[dict]:
-    """Scan workspace root for supported flat files."""
+    """Scan workspace root recursively for supported flat files."""
     if db.workspace_root is None:
         return []
     files = []
-    for f in sorted(db.workspace_root.iterdir()):
+    for f in sorted(db.workspace_root.rglob("*")):
         if f.is_file() and f.suffix.lower() in SUPPORTED_EXTENSIONS:
+            rel = f.relative_to(db.workspace_root)
             files.append(
                 {
-                    "name": f.name,
+                    "name": str(rel),
                     "path": str(f),
                     "size_bytes": f.stat().st_size,
                     "extension": f.suffix.lower(),
@@ -88,7 +89,11 @@ def scan_files() -> list[dict]:
 
 
 def get_schema(filename: str) -> list[dict]:
-    """Get column names and types for a file via DuckDB DESCRIBE."""
+    """Get column names and types for a file via DuckDB DESCRIBE.
+
+    NOTE: This is a sync function. When called from async context,
+    wrap it in asyncio.to_thread (Priority 3).
+    """
     if filename in schema_cache:
         return schema_cache[filename]
 
@@ -99,7 +104,8 @@ def get_schema(filename: str) -> list[dict]:
     if not filepath.exists():
         raise FileNotFoundError(f"File not found: {filename}")
 
-    # Use DuckDB's DESCRIBE to get schema
+    # Use DuckDB's DESCRIBE to get schema — sync, runs inside
+    # asyncio.to_thread when called from the agent tools.
     result = db.conn.execute(f"DESCRIBE SELECT * FROM '{filepath}'")
     columns = []
     for row in result.fetchall():

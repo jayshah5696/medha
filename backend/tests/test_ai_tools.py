@@ -17,9 +17,10 @@ def setup_workspace(tmp_workspace: Path):
     workspace.schema_cache.clear()
 
 
-def test_get_schema_tool(tmp_workspace):
+@pytest.mark.asyncio
+async def test_get_schema_tool(tmp_workspace):
     """get_schema tool returns column names for sample.csv."""
-    result = get_schema.invoke({"filename": "sample.csv"})
+    result = await get_schema.ainvoke({"filename": "sample.csv"})
     assert isinstance(result, str)
     assert "id" in result
     assert "name" in result
@@ -27,9 +28,10 @@ def test_get_schema_tool(tmp_workspace):
     assert "Schema for sample.csv" in result
 
 
-def test_sample_data_tool(tmp_workspace):
+@pytest.mark.asyncio
+async def test_sample_data_tool(tmp_workspace):
     """sample_data tool returns a markdown table with rows."""
-    result = sample_data.invoke({"filename": "sample.csv", "n": 3})
+    result = await sample_data.ainvoke({"filename": "sample.csv", "n": 3})
     assert isinstance(result, str)
     # Markdown table has pipe-delimited columns
     assert "|" in result
@@ -40,9 +42,10 @@ def test_sample_data_tool(tmp_workspace):
     assert "---" in result
 
 
-def test_execute_query_tool(tmp_workspace):
+@pytest.mark.asyncio
+async def test_execute_query_tool(tmp_workspace):
     """execute_query tool runs valid SQL and returns markdown rows."""
-    result = execute_query.invoke(
+    result = await execute_query.ainvoke(
         {"sql": f"SELECT id, name FROM '{tmp_workspace}/sample.csv' LIMIT 3"}
     )
     assert isinstance(result, str)
@@ -52,8 +55,9 @@ def test_execute_query_tool(tmp_workspace):
     assert "Total rows:" in result
 
 
-def test_execute_query_invalid_sql(tmp_workspace):
+@pytest.mark.asyncio
+async def test_execute_query_invalid_sql(tmp_workspace):
     """Invalid SQL returns error string, not an exception."""
-    result = execute_query.invoke({"sql": "SELECTTTT NOTHING FROM NOWHERE"})
+    result = await execute_query.ainvoke({"sql": "SELECTTTT NOTHING FROM NOWHERE"})
     assert isinstance(result, str)
     assert "Error" in result

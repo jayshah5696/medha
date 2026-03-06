@@ -1,5 +1,3 @@
-"""Chat thread persistence endpoints."""
-
 import json
 import re
 from datetime import datetime, timezone
@@ -12,6 +10,16 @@ from pydantic import BaseModel
 router = APIRouter()
 
 CHATS_DIR = Path.home() / ".medha" / "chats"
+
+# Priority-5: only allow safe slug characters
+_SAFE_SLUG = re.compile(r"^[a-z0-9][a-z0-9_-]{0,127}$")
+
+
+def _validate_slug(slug: str) -> str:
+    """Prevent path traversal via slug param."""
+    if not _SAFE_SLUG.match(slug):
+        raise HTTPException(status_code=400, detail=f"Invalid slug: {slug!r}")
+    return slug
 
 
 class ChatMessage(BaseModel):
@@ -72,6 +80,9 @@ async def generate_slug_from_message(message: str, model: str = "openai/gpt-4o-m
 def _load_thread(slug: str) -> Optional[dict]:
     """Load a thread from disk."""
     path = CHATS_DIR / f"{slug}.json"
+    resolved = path.resolve()
+    if not resolved.is_relative_to(CHATS_DIR.resolve()):
+        return None
     if not path.exists():
         return None
     return json.loads(path.read_text())
@@ -121,6 +132,7 @@ async def list_chats():
 @router.get("/api/chats/{slug}")
 async def get_chat(slug: str):
     """Get full thread content."""
+    _validate_slug(slug)
     thread = _load_thread(slug)
     if thread is None:
         raise HTTPException(status_code=404, detail="Chat thread not found")
@@ -130,6 +142,7 @@ async def get_chat(slug: str):
 @router.delete("/api/chats/{slug}")
 async def delete_chat(slug: str):
     """Delete a chat thread."""
+    _validate_slug(slug)
     path = CHATS_DIR / f"{slug}.json"
     if not path.exists():
         raise HTTPException(status_code=404, detail="Chat thread not found")
@@ -140,6 +153,7 @@ async def delete_chat(slug: str):
 @router.post("/api/chats/{slug}/save")
 async def save_chat(slug: str, req: SaveThreadRequest):
     """Save or update a chat thread."""
+    _validate_slug(slug)
     data = {
         "slug": slug,
         "created_at": req.created_at or datetime.now(timezone.utc).isoformat(),

@@ -1,14 +1,16 @@
 <div align="center">
 
+<img src="docs/logo.png" alt="Medha Logo" width="80" height="auto" />
+
 # मेधा · medha
 
 **Local-first SQL IDE for flat files. Zero setup. AI-native.**
-*Local web app (Tauri desktop packaging coming soon)*
+*Local web app with theming support (Tauri desktop packaging coming soon)*
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python](https://img.shields.io/badge/python-3.11+-blue.svg)](https://python.org)
 [![uv](https://img.shields.io/badge/uv-managed-8A2BE2)](https://astral.sh/uv)
-[![Tests](https://img.shields.io/badge/tests-59%20passing-brightgreen)]()
+[![Tests](https://img.shields.io/badge/tests-63%20passing-brightgreen)]()
 
 Query Parquet, CSV, and JSON with native DuckDB speed.
 `Cmd+K` to rewrite SQL inline. `Cmd+L` to explore conversationally.
@@ -18,7 +20,6 @@ Your data never leaves your machine.
 
 ---
 
-<!-- Screenshot placeholder: replace with actual screenshot -->
 ![Medha screenshot](docs/screenshot.png)
 
 </div>
@@ -48,6 +49,7 @@ Most data tools require a database server, a cloud account, or a browser extensi
 | **YAML agent profiles** | Swap model, temperature, prompt, and iteration limit without touching code. |
 | **SQL history** | Every query auto-saved to `~/.medha/history/` as a `.sql` file with metadata header. |
 | **Chat threads** | Conversations persist to `~/.medha/chats/`. LLM-generated slug names. |
+| **Themes & UI Polish** | Native Light and Dark mode toggle with a seamless CodeMirror integration. |
 | **Zero egress** | Schema only. No row data ever leaves unless you explicitly approve a sample. |
 | **LLM agnostic** | litellm routing. Plug in any OpenAI-compatible endpoint including LM Studio. |
 

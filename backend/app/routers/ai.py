@@ -4,7 +4,7 @@ import asyncio
 import json
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, BackgroundTasks
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
@@ -35,6 +35,43 @@ class ChatRequest(BaseModel):
     profile: str = "default"
 
 
+async def _save_thread_background(
+    thread_id: str,
+    req_message: str,
+    collected_content: str,
+    model: str,
+    profile: str,
+    active_files: list[str],
+) -> None:
+    """Background task: save the thread and generate slug if needed."""
+    try:
+        if not thread_id:
+            try:
+                thread_id = await generate_slug_from_message(req_message, model)
+            except Exception:
+                thread_id = generate_slug_fallback()
+
+        existing = _load_thread(thread_id)
+        messages = []
+        if existing:
+            messages = existing.get("messages", [])
+
+        messages.append({"role": "user", "content": req_message})
+        if collected_content:
+            messages.append({"role": "assistant", "content": collected_content})
+
+        _save_thread({
+            "slug": thread_id,
+            "created_at": existing.get("created_at", datetime.now(timezone.utc).isoformat()) if existing else datetime.now(timezone.utc).isoformat(),
+            "model": model,
+            "agent_profile": profile,
+            "active_files": active_files,
+            "messages": messages,
+        })
+    except Exception:
+        pass  # best-effort persistence
+
+
 @router.post("/api/ai/inline")
 async def ai_inline(req: InlineRequest):
     # inline_edit already raises HTTPException with proper codes
@@ -48,7 +85,7 @@ async def ai_inline(req: InlineRequest):
 
 
 @router.post("/api/ai/chat")
-async def ai_chat(req: ChatRequest):
+async def ai_chat(req: ChatRequest, background_tasks: BackgroundTasks):
     # Load chat history if thread_id provided
     chat_history = []
     thread_data = None
@@ -62,23 +99,19 @@ async def ai_chat(req: ChatRequest):
         thread_id = req.thread_id
 
         try:
-            async for chunk in stream_agent_response(
+            # stream_agent_response now yields typed dicts (BUG-11 fix)
+            async for event in stream_agent_response(
                 message=req.message,
                 chat_history=chat_history,
                 profile=req.profile,
                 model_override=req.model,
             ):
                 # Track assistant content for saving
-                if isinstance(chunk, str) and '"type": "token"' in chunk:
-                    try:
-                        for line in chunk.strip().split("\n"):
-                            if line.startswith("data: "):
-                                data = json.loads(line[6:])
-                                if data.get("type") == "token":
-                                    collected_content += data.get("content", "")
-                    except (json.JSONDecodeError, KeyError):
-                        pass
-                yield chunk
+                if event.get("type") == "token":
+                    collected_content += event.get("content", "")
+
+                # Format dict -> SSE at the transport layer
+                yield f"data: {json.dumps(event)}\n\n"
         except asyncio.CancelledError:
             # Client disconnected, clean up silently
             return
@@ -95,35 +128,22 @@ async def ai_chat(req: ChatRequest):
             yield f'data: {json.dumps({"type": "error", "message": error_msg})}\n\n'
             return
 
-        # Generate slug if no thread_id was provided
+        # Generate slug inline (fast) if needed, but save in background
         if not thread_id:
-            try:
-                thread_id = await generate_slug_from_message(req.message, req.model)
-            except Exception:
-                thread_id = generate_slug_fallback()
+            thread_id = generate_slug_fallback()
             yield f'data: {json.dumps({"type": "thread_id", "slug": thread_id})}\n\n'
 
-        # Save thread to disk
-        try:
-            existing = _load_thread(thread_id)
-            messages = []
-            if existing:
-                messages = existing.get("messages", [])
-
-            messages.append({"role": "user", "content": req.message})
-            if collected_content:
-                messages.append({"role": "assistant", "content": collected_content})
-
-            _save_thread({
-                "slug": thread_id,
-                "created_at": existing.get("created_at", datetime.now(timezone.utc).isoformat()) if existing else datetime.now(timezone.utc).isoformat(),
-                "model": req.model,
-                "agent_profile": req.profile,
-                "active_files": req.active_files,
-                "messages": messages,
-            })
-        except Exception:
-            pass
+        # Schedule thread persistence as a background task so the SSE
+        # connection closes immediately instead of hanging (BUG-10 fix).
+        background_tasks.add_task(
+            _save_thread_background,
+            thread_id,
+            req.message,
+            collected_content,
+            req.model,
+            req.profile,
+            req.active_files,
+        )
 
     return StreamingResponse(
         event_stream(),

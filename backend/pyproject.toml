@@ -20,6 +20,8 @@ dependencies = [
   "langchain-community>=0.4.1",
   "pyyaml>=6.0.3",
   "langchain-litellm>=0.6.1",
+  "python-dotenv>=1.2.2",
+  "httpx>=0.28.1",
 ]
 
 [dependency-groups]
