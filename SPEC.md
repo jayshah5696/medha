@@ -6,7 +6,7 @@
 
 ## 1. Product Goal
 
-A single-binary desktop app for querying Parquet, CSV, and JSON files with native DuckDB performance and AI-first UX. Zero data egress. Zero database server. Ships as a Tauri app wrapping a Vite frontend + PyInstaller Python sidecar.
+A local web app for querying Parquet, CSV, and JSON files with native DuckDB performance and AI-first UX. Zero data egress. Zero database server. Tauri desktop packaging coming soon.
 
 ---
 
@@ -17,6 +17,7 @@ A single-binary desktop app for querying Parquet, CSV, and JSON files with nativ
 - **Local file integrity:** All DuckDB queries scoped to the configured workspace root. Directory traversal rejected at the FastAPI layer.
 - **Query safety:** All DuckDB calls run in `asyncio.to_thread` — blocking calls never touch the FastAPI event loop.
 - **Result cap:** 10,000 rows max returned per query. DuckDB enforces via `LIMIT` injection before execution. UI shows truncation warning.
+- **SQL keyword blocklist:** The following DuckDB operations are blocked at the query layer to prevent file exfiltration and extension loading: `COPY`, `EXPORT`, `INSTALL`, `LOAD`, `ATTACH`, `httpfs`, `sqlite_scan`. Both the public query endpoint and the agent's `execute_query` tool enforce this check.
 
 ---
 

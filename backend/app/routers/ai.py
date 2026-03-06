@@ -36,16 +36,14 @@ class ChatRequest(BaseModel):
 
 @router.post("/api/ai/inline")
 async def ai_inline(req: InlineRequest):
-    try:
-        sql = await inline_edit(
-            instruction=req.instruction,
-            selected_sql=req.selected_sql,
-            active_files=req.active_files,
-            model=req.model,
-        )
-        return {"sql": sql}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    # inline_edit already raises HTTPException with proper codes
+    sql = await inline_edit(
+        instruction=req.instruction,
+        selected_sql=req.selected_sql,
+        active_files=req.active_files,
+        model=req.model,
+    )
+    return {"sql": sql}
 
 
 @router.post("/api/ai/chat")
@@ -62,24 +60,36 @@ async def ai_chat(req: ChatRequest):
         collected_content = ""
         thread_id = req.thread_id
 
-        async for chunk in stream_agent_response(
-            message=req.message,
-            chat_history=chat_history,
-            profile=req.profile,
-            model_override=req.model,
-        ):
-            # Track assistant content for saving
-            if isinstance(chunk, str) and '"type": "token"' in chunk:
-                try:
-                    # Parse the SSE data line
-                    for line in chunk.strip().split("\n"):
-                        if line.startswith("data: "):
-                            data = json.loads(line[6:])
-                            if data.get("type") == "token":
-                                collected_content += data.get("content", "")
-                except (json.JSONDecodeError, KeyError):
-                    pass
-            yield chunk
+        try:
+            async for chunk in stream_agent_response(
+                message=req.message,
+                chat_history=chat_history,
+                profile=req.profile,
+                model_override=req.model,
+            ):
+                # Track assistant content for saving
+                if isinstance(chunk, str) and '"type": "token"' in chunk:
+                    try:
+                        for line in chunk.strip().split("\n"):
+                            if line.startswith("data: "):
+                                data = json.loads(line[6:])
+                                if data.get("type") == "token":
+                                    collected_content += data.get("content", "")
+                    except (json.JSONDecodeError, KeyError):
+                        pass
+                yield chunk
+        except Exception as e:
+            error_msg = str(e)
+            # Detect common LLM errors and surface friendly messages
+            lower = error_msg.lower()
+            if "auth" in lower or "api key" in lower or "401" in lower:
+                error_msg = "Invalid API key. Check Settings."
+            elif "rate" in lower or "429" in lower:
+                error_msg = "Rate limit exceeded. Try again shortly."
+            elif "connection" in lower or "unreachable" in lower:
+                error_msg = "LLM provider unreachable. Check network or LM Studio URL."
+            yield f'data: {json.dumps({"type": "error", "message": error_msg})}\n\n'
+            return
 
         # Generate slug if no thread_id was provided
         if not thread_id:
@@ -87,7 +97,6 @@ async def ai_chat(req: ChatRequest):
                 thread_id = await generate_slug_from_message(req.message, req.model)
             except Exception:
                 thread_id = generate_slug_fallback()
-            # Send thread_id event to frontend
             yield f'data: {json.dumps({"type": "thread_id", "slug": thread_id})}\n\n'
 
         # Save thread to disk

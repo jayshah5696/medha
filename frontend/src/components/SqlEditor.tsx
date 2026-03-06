@@ -5,6 +5,7 @@ import { sql } from "@codemirror/lang-sql";
 import { basicSetup } from "codemirror";
 import { getHistory, getHistoryEntry } from "../lib/api";
 import type { HistoryEntry } from "../lib/api";
+import { useStore } from "../store";
 
 // Error line decoration effect and field
 const setErrorLine = StateEffect.define<number | null>();
@@ -52,6 +53,7 @@ export default function SqlEditor({
 }: SqlEditorProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<EditorView | null>(null);
+  const isQuerying = useStore((s) => s.isQuerying);
 
   const onExecuteRef = useRef(onExecute);
   onExecuteRef.current = onExecute;
@@ -59,6 +61,9 @@ export default function SqlEditor({
   onCmdKRef.current = onCmdK;
   const onChangeRef = useRef(onChange);
   onChangeRef.current = onChange;
+  // Keep a ref so the keymap closure sees the latest value
+  const isQueryingRef = useRef(isQuerying);
+  isQueryingRef.current = isQuerying;
 
   // History popover state
   const [historyOpen, setHistoryOpen] = useState(false);
@@ -261,6 +266,8 @@ export default function SqlEditor({
           {
             key: "Mod-Enter",
             run: (view) => {
+              // Guard: do not re-execute while a query is already running
+              if (isQueryingRef.current) return true;
               const content = view.state.doc.toString();
               onExecuteRef.current?.(content);
               return true;
@@ -343,9 +350,28 @@ export default function SqlEditor({
             ⌘H History
           </span>
           <span style={{ opacity: 0.5 }}>⌘K Edit</span>
-          <span style={{ opacity: 0.5 }}>⌘↵ Run</span>
+          {isQuerying ? (
+            <span
+              style={{
+                opacity: 0.5,
+                animation: "medha-pulse 1.2s ease-in-out infinite",
+              }}
+            >
+              ⌘↵ Running...
+            </span>
+          ) : (
+            <span style={{ opacity: 0.5 }}>⌘↵ Run</span>
+          )}
         </span>
       </div>
+
+      {/* Pulse animation for the running indicator */}
+      <style>{`
+        @keyframes medha-pulse {
+          0%, 100% { opacity: 0.5; }
+          50% { opacity: 1; }
+        }
+      `}</style>
 
       {/* Error banner below toolbar */}
       {queryError && (

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useStore } from "../store";
 import { configureWorkspace, getFiles, getHistory, getHistoryEntry, clearHistory } from "../lib/api";
 import type { HistoryEntry } from "../lib/api";
@@ -25,6 +25,16 @@ export default function FileExplorer() {
   const [loading, setLoading] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [historyEntries, setHistoryEntries] = useState<HistoryEntry[]>([]);
+  const [fileFilter, setFileFilter] = useState("");
+
+  // Only show the filter input when there are more than 10 files
+  const showFilter = files.length > 10;
+
+  const filteredFiles = useMemo(() => {
+    if (!fileFilter.trim()) return files;
+    const lower = fileFilter.toLowerCase();
+    return files.filter((f) => f.name.toLowerCase().includes(lower));
+  }, [files, fileFilter]);
 
   const loadHistory = async () => {
     try {
@@ -50,6 +60,7 @@ export default function FileExplorer() {
       const fileList = await getFiles();
       setFiles(fileList);
       setLastError(null);
+      setFileFilter("");
     } catch (e) {
       setLastError(e instanceof Error ? e.message : String(e));
     } finally {
@@ -170,6 +181,29 @@ export default function FileExplorer() {
           padding: "4px 0",
         }}
       >
+        {/* File filter input (only shown when >10 files) */}
+        {showFilter && (
+          <div style={{ padding: "4px 10px 4px" }}>
+            <input
+              type="text"
+              value={fileFilter}
+              onChange={(e) => setFileFilter(e.target.value)}
+              placeholder="filter files..."
+              style={{
+                width: "100%",
+                padding: "3px 6px",
+                fontSize: 11,
+                background: "var(--bg-tertiary)",
+                border: "1px solid var(--border)",
+                borderRadius: 0,
+                color: "var(--text-primary)",
+                outline: "none",
+                fontFamily: "var(--font-mono)",
+              }}
+            />
+          </div>
+        )}
+
         {files.length === 0 && (
           <div
             style={{
@@ -183,7 +217,7 @@ export default function FileExplorer() {
             no files loaded
           </div>
         )}
-        {files.map((f) => {
+        {filteredFiles.map((f) => {
           const isActive = activeFiles.includes(f.name);
           return (
             <div

@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useState, useEffect } from "react";
 import type { EditorView } from "@codemirror/view";
 import FileExplorer from "./components/FileExplorer";
 import SqlEditor from "./components/SqlEditor";
@@ -9,6 +9,9 @@ import SettingsModal from "./components/SettingsModal";
 import { useStore } from "./store";
 import { runQuery } from "./lib/api";
 import "./index.css";
+
+const BANNER_DISMISSED_KEY = "medha_key_banner_dismissed";
+const DEFAULT_LM_STUDIO_URL = "http://localhost:1234/v1";
 
 function App() {
   const {
@@ -27,6 +30,32 @@ function App() {
   } | null>(null);
 
   const [showSettings, setShowSettings] = useState(false);
+  const [showKeyBanner, setShowKeyBanner] = useState(false);
+
+  // First-run check: if no LLM is configured, show onboarding banner
+  useEffect(() => {
+    const dismissed = localStorage.getItem(BANNER_DISMISSED_KEY);
+    if (dismissed === "true") return;
+
+    fetch("/api/settings")
+      .then((r) => r.json())
+      .then((data) => {
+        const hasOpenAI = data.openai_api_key && data.openai_api_key.length > 0;
+        const hasOpenRouter = data.openrouter_api_key && data.openrouter_api_key.length > 0;
+        const customLmStudio = data.lm_studio_url && data.lm_studio_url !== DEFAULT_LM_STUDIO_URL;
+        if (!hasOpenAI && !hasOpenRouter && !customLmStudio) {
+          setShowKeyBanner(true);
+        }
+      })
+      .catch(() => {
+        // backend not ready yet, skip
+      });
+  }, []);
+
+  const dismissBanner = () => {
+    setShowKeyBanner(false);
+    localStorage.setItem(BANNER_DISMISSED_KEY, "true");
+  };
 
   const handleExecute = useCallback(
     async (query: string) => {
@@ -116,6 +145,64 @@ function App() {
           </span>
         </div>
       </div>
+
+      {/* Onboarding banner: no API key configured */}
+      {showKeyBanner && (
+        <div
+          style={{
+            padding: "6px 12px",
+            background: "rgba(255, 180, 0, 0.1)",
+            borderBottom: "1px solid var(--border)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: 10,
+            fontSize: 11,
+            fontFamily: "var(--font-ui)",
+            color: "var(--text-secondary)",
+          }}
+        >
+          <span>
+            No LLM configured. Open Settings to add an API key before using ⌘K or ⌘L.
+          </span>
+          <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
+            <button
+              onClick={() => {
+                setShowSettings(true);
+                dismissBanner();
+              }}
+              style={{
+                padding: "3px 10px",
+                fontSize: 10,
+                fontFamily: "var(--font-ui)",
+                fontWeight: 500,
+                textTransform: "uppercase",
+                letterSpacing: "0.06em",
+                background: "var(--accent)",
+                color: "var(--bg-primary)",
+                border: "none",
+                cursor: "pointer",
+              }}
+            >
+              Open Settings
+            </button>
+            <button
+              onClick={dismissBanner}
+              style={{
+                background: "none",
+                border: "none",
+                color: "var(--text-dimmed)",
+                cursor: "pointer",
+                fontSize: 12,
+                fontFamily: "var(--font-mono)",
+                padding: "0 4px",
+              }}
+            >
+              x
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Main content */}
       <div style={{ flex: 1, display: "flex", overflow: "hidden" }}>

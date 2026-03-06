@@ -1,6 +1,12 @@
 """Cmd+K inline SQL editing via litellm."""
 
+from fastapi import HTTPException
 from litellm import acompletion
+from litellm.exceptions import (
+    RateLimitError,
+    AuthenticationError,
+    APIConnectionError,
+)
 
 from app.workspace import get_schema
 
@@ -39,13 +45,34 @@ Current SQL:
 
 Instruction: {instruction}"""
 
-    response = await acompletion(
-        model=model,
-        messages=[
-            {"role": "system", "content": SYSTEM_PROMPT},
-            {"role": "user", "content": user_message},
-        ],
-        temperature=0.0,
-    )
+    try:
+        response = await acompletion(
+            model=model,
+            messages=[
+                {"role": "system", "content": SYSTEM_PROMPT},
+                {"role": "user", "content": user_message},
+            ],
+            temperature=0.0,
+        )
+    except AuthenticationError:
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid API key. Check Settings.",
+        )
+    except RateLimitError:
+        raise HTTPException(
+            status_code=429,
+            detail="Rate limit exceeded. Try again shortly.",
+        )
+    except APIConnectionError:
+        raise HTTPException(
+            status_code=503,
+            detail="LLM provider unreachable. Check network or LM Studio URL.",
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"LLM error: {str(e)}",
+        )
 
     return response.choices[0].message.content.strip()

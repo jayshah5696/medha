@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from app.routers.workspace import SETTINGS_FILE, Settings
+from app.routers.workspace import SETTINGS_FILE, Settings, load_settings, save_settings
 
 
 @pytest.fixture(autouse=True)
@@ -98,3 +98,72 @@ async def test_settings_env_var_injection(client):
         },
     )
     assert os.environ.get("OPENAI_API_KEY") == "sk-test-key-12345"
+
+
+@pytest.mark.asyncio
+async def test_settings_returns_masked_key(client):
+    """GET /api/settings returns masked API key values."""
+    # Set a real key
+    await client.post(
+        "/api/settings",
+        json={
+            "model_inline": "openai/gpt-4o-mini",
+            "model_chat": "openai/gpt-4o-mini",
+            "agent_profile": "default",
+            "openai_api_key": "sk-test-key-abcdef-12345678",
+            "openrouter_api_key": "",
+            "lm_studio_url": "http://localhost:1234/v1",
+        },
+    )
+    resp = await client.get("/api/settings")
+    assert resp.status_code == 200
+    data = resp.json()
+    masked = data["openai_api_key"]
+    # Should be masked with "..." in the middle
+    assert "..." in masked
+    # Should start with first 4 chars and end with last 4 chars
+    assert masked.startswith("sk-t")
+    assert masked.endswith("5678")
+    # Should NOT be the full original key
+    assert masked != "sk-test-key-abcdef-12345678"
+
+
+@pytest.mark.asyncio
+async def test_settings_post_with_mask_does_not_overwrite(client):
+    """POST with a masked value should not overwrite the real key."""
+    real_key = "sk-real-secret-key-99887766"
+
+    # Set the real key
+    await client.post(
+        "/api/settings",
+        json={
+            "model_inline": "openai/gpt-4o-mini",
+            "model_chat": "openai/gpt-4o-mini",
+            "agent_profile": "default",
+            "openai_api_key": real_key,
+            "openrouter_api_key": "",
+            "lm_studio_url": "http://localhost:1234/v1",
+        },
+    )
+
+    # GET the masked key
+    resp = await client.get("/api/settings")
+    masked = resp.json()["openai_api_key"]
+    assert "..." in masked
+
+    # POST back with the masked value (simulates frontend sending it back)
+    await client.post(
+        "/api/settings",
+        json={
+            "model_inline": "openai/gpt-4o-mini",
+            "model_chat": "openai/gpt-4o-mini",
+            "agent_profile": "default",
+            "openai_api_key": masked,
+            "openrouter_api_key": "",
+            "lm_studio_url": "http://localhost:1234/v1",
+        },
+    )
+
+    # Verify the real key is still intact on disk
+    stored = load_settings()
+    assert stored.openai_api_key == real_key

@@ -11,6 +11,11 @@ from app.ai.tools import get_schema, sample_data, execute_query
 
 AGENTS_DIR = Path(__file__).parent.parent.parent / "agents"
 
+# Module-level agent cache. Keyed by "profile:model_override".
+# Each entry stores (compiled_agent, yaml_mtime) so the agent is
+# rebuilt automatically when the YAML file changes on disk.
+_agent_cache: dict[str, tuple[object, float]] = {}
+
 
 def load_agent_config(profile: str = "default") -> dict:
     """Load agent YAML config. Hot-reloadable."""
@@ -21,8 +26,8 @@ def load_agent_config(profile: str = "default") -> dict:
         return yaml.safe_load(f)
 
 
-def build_agent(profile: str = "default", model_override: str | None = None):
-    """Build a compiled agent graph from YAML config."""
+def _build_executor(profile: str = "default", model_override: str | None = None):
+    """Build a compiled agent graph from YAML config (uncached)."""
     config = load_agent_config(profile)
     model_name = model_override or config["model"]
 
@@ -34,6 +39,30 @@ def build_agent(profile: str = "default", model_override: str | None = None):
         tools,
         system_prompt=config["system_prompt"],
     )
+    return agent
+
+
+def build_agent(profile: str = "default", model_override: str | None = None):
+    """Build or return a cached agent graph.
+
+    The cache is keyed by profile + model override. If the underlying
+    YAML file has been modified since the last build, the agent is
+    rebuilt so config changes take effect without a server restart.
+    """
+    cache_key = f"{profile}:{model_override}"
+    yaml_path = AGENTS_DIR / f"{profile}.yaml"
+    if not yaml_path.exists():
+        yaml_path = AGENTS_DIR / "default.yaml"
+
+    mtime = yaml_path.stat().st_mtime if yaml_path.exists() else 0
+
+    if cache_key in _agent_cache:
+        cached_agent, cached_mtime = _agent_cache[cache_key]
+        if cached_mtime == mtime:
+            return cached_agent
+
+    agent = _build_executor(profile, model_override)
+    _agent_cache[cache_key] = (agent, mtime)
     return agent
 
 

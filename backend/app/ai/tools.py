@@ -1,4 +1,8 @@
-"""LangGraph tools for the chat agent."""
+"""LangChain tools for the chat agent.
+
+All query execution goes through the same safety checks (path traversal,
+blocked SQL keywords) that the public /api/db/query endpoint uses.
+"""
 
 from langchain_core.tools import tool
 
@@ -24,7 +28,13 @@ def sample_data(filename: str, n: int = 5) -> str:
         if db.workspace_root is None:
             return "Error: workspace not configured."
         filepath = db.workspace_root / filename
-        result = db.conn.execute(f"SELECT * FROM '{filepath}' LIMIT {n}")
+        query = f"SELECT * FROM '{filepath}' LIMIT {n}"
+
+        # Enforce the same safety checks as the public query endpoint
+        db._check_sql_safety(query)
+        db._check_path_safety(query)
+
+        result = db.conn.execute(query)
         columns = [desc[0] for desc in result.description]
         rows = result.fetchall()
 
@@ -42,10 +52,19 @@ def sample_data(filename: str, n: int = 5) -> str:
 
 @tool
 def execute_query(sql: str) -> str:
-    """Run a DuckDB SQL query. Returns first 20 rows as markdown table plus row count."""
+    """Run a DuckDB SQL query. Returns first 20 rows as markdown table plus row count.
+
+    The query is validated against the same path-safety and SQL-safety
+    rules that protect the public query endpoint, so the agent cannot
+    escape the workspace sandbox or invoke dangerous DuckDB operations.
+    """
     try:
         if db.workspace_root is None:
             return "Error: workspace not configured."
+
+        # Enforce safety before touching DuckDB
+        db._check_sql_safety(sql)
+        db._check_path_safety(sql)
 
         result = db.conn.execute(sql)
         columns = [desc[0] for desc in result.description] if result.description else []

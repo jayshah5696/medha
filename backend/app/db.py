@@ -1,4 +1,4 @@
-"""DuckDB connection manager with path safety and auto-LIMIT."""
+"""DuckDB connection manager with path safety, SQL safety, and auto-LIMIT."""
 
 import asyncio
 import re
@@ -15,6 +15,35 @@ workspace_root: Path | None = None
 active_queries: dict[str, asyncio.Task] = {}
 
 MAX_ROWS = 10000
+
+# Serialize all DuckDB access through a single lock.
+# DuckDB's Python binding is not safe for concurrent access from multiple
+# threads against the same connection. Since Medha is a local single-user
+# tool, serializing queries is acceptable and prevents data corruption.
+_db_lock = asyncio.Lock()
+
+
+# --- SQL safety: block dangerous DuckDB operations ---
+
+BLOCKED_PATTERNS = [
+    r'\bCOPY\b',
+    r'\bEXPORT\b',
+    r'\bINSTALL\b',
+    r'\bLOAD\b',
+    r'\bATTACH\b',
+    r'httpfs',
+    r'sqlite_scan',
+]
+
+
+def _check_sql_safety(sql: str) -> None:
+    """Reject queries that contain dangerous DuckDB operations."""
+    for pattern in BLOCKED_PATTERNS:
+        if re.search(pattern, sql, re.IGNORECASE):
+            clean_name = pattern.replace(r'\b', '')
+            raise ValueError(
+                f"Operation not permitted: {clean_name} is blocked for security."
+            )
 
 
 def _check_path_safety(sql: str) -> None:
@@ -74,5 +103,11 @@ def _execute_sync(sql: str, params: list | None = None) -> dict[str, Any]:
 async def async_execute(
     sql: str, params: list | None = None
 ) -> dict[str, Any]:
-    """Run a DuckDB query off the event loop."""
-    return await asyncio.to_thread(_execute_sync, sql, params)
+    """Run a DuckDB query off the event loop.
+
+    SQL safety checks run before acquiring the lock so obviously bad
+    queries fail fast without blocking other work.
+    """
+    _check_sql_safety(sql)
+    async with _db_lock:
+        return await asyncio.to_thread(_execute_sync, sql, params)

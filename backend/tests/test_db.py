@@ -98,3 +98,61 @@ async def test_cancel_nonexistent_query(configured_client):
         "/api/db/query/fake-id",
     )
     assert resp.status_code == 404
+
+
+# --- SQL safety tests ---
+
+
+@pytest.mark.asyncio
+async def test_copy_blocked(configured_client, tmp_workspace):
+    """Query containing COPY should be rejected with 400."""
+    resp = await configured_client.post(
+        "/api/db/query",
+        json={"query": f"COPY (SELECT 1) TO '{tmp_workspace}/out.csv'"},
+    )
+    assert resp.status_code == 400
+    assert "COPY" in resp.json()["detail"]
+
+
+@pytest.mark.asyncio
+async def test_install_blocked(configured_client):
+    """Query containing INSTALL should be rejected with 400."""
+    resp = await configured_client.post(
+        "/api/db/query",
+        json={"query": "INSTALL httpfs"},
+    )
+    assert resp.status_code == 400
+    assert "INSTALL" in resp.json()["detail"]
+
+
+@pytest.mark.asyncio
+async def test_attach_blocked(configured_client):
+    """Query containing ATTACH should be rejected with 400."""
+    resp = await configured_client.post(
+        "/api/db/query",
+        json={"query": "ATTACH '/tmp/evil.db' AS evil"},
+    )
+    assert resp.status_code == 400
+    assert "ATTACH" in resp.json()["detail"]
+
+
+@pytest.mark.asyncio
+async def test_load_blocked(configured_client):
+    """Query containing LOAD should be rejected with 400."""
+    resp = await configured_client.post(
+        "/api/db/query",
+        json={"query": "LOAD httpfs"},
+    )
+    assert resp.status_code == 400
+    assert "LOAD" in resp.json()["detail"]
+
+
+@pytest.mark.asyncio
+async def test_export_blocked(configured_client):
+    """Query containing EXPORT should be rejected with 400."""
+    resp = await configured_client.post(
+        "/api/db/query",
+        json={"query": "EXPORT DATABASE '/tmp/dump'"},
+    )
+    assert resp.status_code == 400
+    assert "EXPORT" in resp.json()["detail"]

@@ -3,6 +3,7 @@
 # मेधा · medha
 
 **Local-first SQL IDE for flat files. Zero setup. AI-native.**
+*Local web app (Tauri desktop packaging coming soon)*
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python](https://img.shields.io/badge/python-3.11+-blue.svg)](https://python.org)
