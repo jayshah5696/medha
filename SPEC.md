@@ -592,7 +592,7 @@ The current Settings modal hardcodes a fixed list of model strings (e.g. "openai
 
 Settings UI should be **provider-aware** with **dynamic model fetching**:
 
-1. User selects a provider from a top-level dropdown: `OpenAI | Anthropic | OpenRouter | LM Studio | Ollama | Custom`
+1. User selects a provider from a top-level dropdown: `OpenAI | Anthropic | Google Gemini | OpenRouter | LM Studio | Ollama | Custom`
 2. After provider is selected (and API key/URL is set), a "Fetch Models" button queries the provider's model list endpoint
 3. The model dropdowns (Inline/Cmd+K and Chat/Cmd+L) are then populated from the fetched list
 4. Selected model is stored as the full litellm string (e.g. `openrouter/meta-llama/llama-3.1-70b-instruct`)
@@ -609,6 +609,7 @@ GET /api/models?provider=ollama          -> queries http://localhost:11434/api/t
 **Implementation per provider:**
 - **OpenAI:** call `https://api.openai.com/v1/models` with the stored API key, filter to chat-capable models (gpt-4*, gpt-3.5*)
 - **Anthropic:** static list (Anthropic has no public models endpoint) — return known claude-* strings
+- **Google Gemini:** call `https://generativelanguage.googleapis.com/v1beta/models?key={gemini_api_key}`, filter to `generateContent`-capable models, return `name` field prefixed with `gemini/` (litellm format: `gemini/gemini-2.0-flash`, `gemini/gemini-1.5-pro`, etc.)
 - **OpenRouter:** call `https://openrouter.ai/api/v1/models` (no auth required for model list), return `id` field prefixed with `openrouter/`
 - **LM Studio:** call `{lm_studio_url}/models` (OpenAI-compatible endpoint), return `id` field prefixed with `lm_studio/`
 - **Ollama:** call `{ollama_url}/api/tags`, return `name` field prefixed with `ollama/`
@@ -656,6 +657,7 @@ AGENT PROFILE
   "openai_api_key": "sk-...",
   "openrouter_api_key": "sk-or-...",
   "anthropic_api_key": "",
+  "gemini_api_key": "",
   "lm_studio_url": "http://localhost:1234/v1",
   "ollama_url": "http://localhost:11434"
 }
