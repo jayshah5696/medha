@@ -24,6 +24,10 @@ frontend:
 dev:
     #!/usr/bin/env bash
     set -euo pipefail
+    
+    # Kill any lingering processes holding our ports
+    lsof -ti:18900,5173 | xargs kill -9 2>/dev/null || true
+    
     trap 'kill 0' EXIT
     (cd backend && uv run uvicorn app.main:app --port 18900 --reload) &
     (cd frontend && NODE_ENV=development npm run dev) &
