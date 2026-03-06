@@ -1,43 +1,63 @@
-# Medha Audit Report
+# Medha Audit — Gemini 3.1 Pro
+Generated: 2026-03-05
 
-## 1. SPEC COMPLETENESS
-- **HIGH:** **Section 4C (File Watcher):** Completely missing. `workspace.py` does not use `watchfiles` to invalidate the schema cache, and the `GET /api/events` SSE endpoint does not exist.
-- **HIGH:** **Section 4D (Agent Cancel):** The `DELETE /api/ai/chat/{thread_id}` endpoint to cancel an in-flight LangGraph agent is missing. `chats.py` only implements thread deletion from disk, not active cancellation.
-- **MEDIUM:** **Section 4E (HITL):** Human-in-the-loop logic for large query confirmation is missing. The agent executes queries immediately without any SSE `hitl` pause/resume endpoints.
-- **MEDIUM:** **Section 5E (History Storage):** Spec says history is persisted to `localStorage` accessible via Cmd+H. Code actually persists to the backend file system (`~/.medha/history/`) and fetches via API.
-- **LOW:** **Arrow IPC:** The query endpoint accepts a `format` parameter but ignores it, unconditionally returning a JSON dictionary for the rows instead of Arrow IPC.
-- **HIGH:** **Section 6 & 7 (Tauri & PyInstaller):** The entire `src-tauri` directory and `medha.spec` files are completely missing from the repository.
+## Summary
+Medha establishes a strong foundation for a local-first DuckDB interface, successfully implementing core querying, local persistence, and LangChain tool integration. However, the current state critically fails on its sandbox isolation guarantees when unconfigured, entirely misses the Tauri/PyInstaller desktop wrapper, and lacks robust error handling for active LLM generation streams. The application is functional for web based MVP usage but falls significantly short of production safety and offline packaging requirements.
 
-## 2. CODE QUALITY
-- **HIGH:** **db.py Thread Safety & Mutability:** `conn` is a single module-level DuckDB connection. Since queries are run concurrently via `asyncio.to_thread`, this is not thread-safe and will cause crashes. `workspace_root` is also a mutable global accessed across threads without locks.
-- **HIGH:** **tools.py Security Bypass:** The `execute_query` LangChain tool directly calls `db.conn.execute(sql)`. It completely bypasses `_check_path_safety` and `_auto_limit`, allowing the LLM to execute arbitrary unrestricted SQL on the host.
-- **MEDIUM:** **Litellm Prefix:** `agent.py` passes standard Litellm prefix strings (e.g., `openai/gpt-4o-mini`) into LangChain's `ChatLiteLLM`.
-- **MEDIUM:** **SSE Cleanup:** `routers/ai.py` does not handle `asyncio.CancelledError` inside the generator, meaning agent runs keep executing in the background if the client disconnects mid-stream.
-- **LOW:** **Litellm Exceptions:** `inline.py` does not gracefully handle `RateLimitError` or `AuthenticationError`. It just catches `Exception` and returns a 500 error.
+## 1. Spec vs Implementation
+| Section | Status | Notes |
+|---------|--------|-------|
+| 4C: GET /api/events SSE | MISSING | No `watchfiles` background task in `workspace.py`, and no SSE event stream endpoint exists in `main.py`. |
+| 4D: DELETE /api/ai/chat/{id} | MISSING | Endpoint to actively cancel an in-flight LangGraph agent stream is entirely absent. |
+| 4E: HITL interrupt | MISSING | `agent.py` does not implement LangGraph human-in-the-loop interrupts or the `/resume` endpoint. |
+| 5E: Cmd+H localStorage | PARTIAL | Cmd+H opens history, but it fetches from a backend API (`~/.medha/history/`) instead of the spec'd `localStorage`. |
+| 5F: @filename parsing | DONE | `ContextPill.tsx` correctly parses `@filename` mentions via regex and adds them to active files. |
+| 6: src-tauri/ directory | MISSING | The Rust Tauri shell and sidecar code is not in the repository. |
+| 7: medha.spec PyInstaller | MISSING | The `medha.spec` build script is absent. |
+| Arrow IPC | MISSING | `format="arrow"` parameter is accepted by `/api/db/query` but ignored; JSON rows are always returned. |
 
-## 3. TEST COVERAGE
-- **HIGH:** **0% Coverage on AI Endpoints:** The SSE streaming endpoints (`/api/ai/chat`), inline edit (`/api/ai/inline`), and all Litellm error paths are completely untested. No `test_ai.py` exists.
-- **HIGH:** **0% Coverage on Frontend AI/Editor UI:** `ContextPill.tsx` (@filename parsing), `SqlEditor.tsx` (CodeMirror decorations and keyboard shortcuts), `DiffOverlay.tsx` (diff rendering), and `ChatSidebar.tsx` (thread continuation) have no test coverage.
-- **MEDIUM:** **Query Cancellation:** There is no end-to-end test for actual query cancellation (`DELETE /api/db/query/{id}`) while a long-running query is in-flight.
-- **LOW:** **File Watcher:** No tests (and the feature itself is missing).
+## 2. Code Quality
+1. **db.py:48 (MEDIUM)**: `workspace_root` is a global variable accessed and modified across threads without locking, which could cause race conditions during workspace switch. `asyncio.Lock` correctly protects DuckDB execution.
+2. **routers/ai.py:65 (HIGH)**: SSE streaming inside `/api/ai/chat` does not catch `asyncio.CancelledError`. If a client disconnects mid-stream, the LangChain agent continues burning tokens in the background.
+3. **ai/agent.py:40 (LOW)**: The mtime-based YAML cache is correctly implemented, and `ChatLiteLLM` correctly uses the Litellm standard strings (e.g. `openai/gpt-4o-mini`).
+4. **ai/inline.py:53 (DONE)**: Litellm exceptions (`AuthenticationError`, `RateLimitError`, `APIConnectionError`) are explicitly caught and surfaced as HTTPExceptions.
+5. **routers/chats.py:46 (DONE)**: If API key is missing during slug generation, the exception is caught and it gracefully falls back to a timestamped slug.
+6. **history.py:27 (DONE)**: Filename sanitization uses `re.sub(r"[^a-zA-Z0-9_\s]", "", sql)`, preventing path injection.
+7. **ai/tools.py:45 (DONE)**: `execute_query` correctly invokes both `_check_sql_safety` and `_check_path_safety` before executing the agent's SQL.
+8. **routers/workspace.py:80 (DONE)**: `GET /api/settings` successfully returns masked keys, and POST skips updates if the masked placeholder is passed back.
 
-## 4. README ACCURACY
-- **MEDIUM:** **Test Badge:** Badge claims 59 tests passing, but there are only 58 (40 backend + 18 frontend).
-- **HIGH:** **Roadmap:** The roadmap correctly lists Tauri, PyInstaller, File Watcher, HITL, and Arrow IPC as unchecked (which matches the code's missing features).
-- **MEDIUM:** **Cmd+L Binding:** README says Cmd+L opens the chat sidebar, but `SqlEditor.tsx` only maps `Mod-Enter`, `Mod-k`, and `Mod-h`. `Mod-l` is not mapped anywhere.
-- **LOW:** **Architecture Diagram:** Broadly accurate, though the query flow simplifies the backend execution. Profiles list matches the provided YAMLs.
+## 3. Test Coverage Gaps
+1. **AI Endpoints**: `routers/ai.py` (`/api/ai/chat` and `/api/ai/inline`) has zero test coverage.
+2. **Frontend AI UI**: `ChatSidebar.tsx`, `DiffOverlay.tsx`, and `ContextPill.tsx` (@filename parsing) have zero component tests.
+3. **SSE Streaming**: No backend tests verify SSE payload chunking, event types, or connection cleanup.
+4. **Query Cancellation E2E**: While a unit test covers deleting a non-existent query, there is no E2E test verifying successful interruption of a long-running DuckDB operation.
+5. **Chat Continuation**: Providing an existing `thread_id` to `/api/ai/chat` is untested.
 
-## 5. SECURITY
-- **CRITICAL:** **Workspace Sandbox Bypass:** In `db.py` `_check_path_safety`, if `workspace_root` is `None` (not yet configured), the function immediately returns without checking paths, allowing any absolute or relative path to be queried.
-- **CRITICAL:** **LLM Arbitrary File Access:** As mentioned in Code Quality, `tools.py` bypasses all path validation. The agent can read or write any file on the machine.
-- **HIGH:** **API Key Storage:** `settings.json` stores API keys in plaintext in `~/.medha/settings.json` with default OS permissions, exposing them to any process running as the user.
-- **HIGH:** **DuckDB Extensions / Shell Execution:** DuckDB allows loading extensions, writing out files (`COPY TO`), and potentially executing commands. There are no restrictions stopping the user or agent from installing arbitrary extensions.
-- **LOW:** **History Filenames:** SQL content is properly sanitized (`re.sub`) before being used in filenames, avoiding path injection.
-- **LOW:** **CORS:** Securely locked to `localhost` via regex.
+## 4. README Accuracy
+1. **Test Badge Discrepancy**: The prompt asks if the badge says 48 tests. The README badge explicitly reads "tests-59 passing" (which correctly sums 41 backend + 18 frontend).
+2. **Roadmap Inaccuracy**: None of the listed roadmap items (Tauri, PyInstaller, File watcher, HITL, Arrow IPC) are built yet, which accurately reflects the codebase.
+3. **Missing Key Binding**: README documents `Cmd+L` for chat sidebar, but this binding is entirely missing from the CodeMirror `keymap` in `SqlEditor.tsx`.
+4. **Architecture Diagram**: Mentions the `File Watcher` and `GET /api/workspace/files` broadcasting events, which is completely missing in implementation.
+
+## 5. Security
+1. **HIGH**: **Workspace Sandbox Bypass**: In `db.py` `_check_path_safety`, if `workspace_root` is `None` (unconfigured), the check immediately returns. This allows queries to read/write any file on the host machine relative to the backend's current working directory.
+2. **MEDIUM**: **Settings File Permissions**: `workspace.py` saves `settings.json` using `write_text()` without setting restricted file permissions (e.g., 600), leaving plain text API keys accessible to any process.
+3. **LOW**: **DuckDB Blocklist**: `_check_sql_safety` correctly blocks COPY, INSTALL, ATTACH, and httpfs, securing the endpoint once the workspace is actually configured.
+4. **LOW**: **History Filenames**: Filenames are thoroughly stripped of special characters, eliminating path traversal risks during SQL persistence.
+5. **LOW**: **CORS Sandbox**: `CORSMiddleware` correctly utilizes a strict localhost regex.
 
 ## 6. UX GAPS
-- **HIGH:** **Unconfigured State:** If no workspace is configured, DuckDB falls back to the current working directory of the backend server. Queries will execute against whatever files happen to be there instead of showing an error.
-- **MEDIUM:** **Backend Unreachable:** If the frontend loads and the backend is down, `fetch` calls fail silently or show generic network errors. `SettingsModal` hangs on a loading state.
-- **LOW:** **Model Visibility:** There is no UI indicator for which LLM model is currently active without opening the Settings modal.
-- **LOW:** **Concurrency UX:** `isQuerying` is a single global boolean in `zustand`. If you execute a query, you must wait for it to finish. You cannot run multiple queries concurrently in different editor tabs (since there are no tabs).
-- **LOW:** **Empty State:** With zero files in the workspace, the sidebar just awkwardly says "no files loaded" with no further onboarding instructions.
+1. **No Workspace Configured**: DuckDB silently falls back to the backend's working directory. A user can unknowingly query the source code directory.
+2. **Backend Down**: If the backend is unreachable during frontend load, API calls fail silently with generic network errors, and the settings modal gets stuck in a loading state.
+3. **Zero Files**: The UI displays "no files loaded" without an onboarding action or instruction to add files to the selected directory.
+4. **Large Workspaces**: A basic file filter is implemented in `FileExplorer.tsx`, appearing only when file count exceeds 10.
+5. **Model Indicator**: No persistent UI indicator displays the currently active inline or chat model without opening the settings modal.
+6. **Schema Cache**: `schema_cache.clear()` is properly called when switching workspaces in `workspace.py`.
+7. **Onboarding Banner**: Implemented in `App.tsx`; the UI surfaces a banner prompting API key configuration if no keys are found.
+
+## Top 5 Priority Fixes
+1. **Patch Unconfigured Path Safety Bypass**: Fix `_check_path_safety` in `db.py` to hard-reject all queries (raise `ValueError`) if `workspace_root` is `None`.
+2. **Handle SSE Disconnects**: Implement `asyncio.CancelledError` handling in the `/api/ai/chat` stream generator to kill LangChain runs when the client closes the chat.
+3. **Add Tauri & PyInstaller Wrappers**: Fulfill the core spec by creating the `src-tauri` directory and PyInstaller sidecar logic to enable desktop packaging.
+4. **Wire Cmd+L Shortcut**: Add the missing `Mod-l` key binding in `SqlEditor.tsx` to actually toggle the chat sidebar as documented.
+5. **Implement File Watcher**: Add `watchfiles` to `main.py` lifespan and create the `GET /api/events` SSE endpoint to push schema invalidations to the frontend dynamically.
