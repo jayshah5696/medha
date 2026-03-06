@@ -168,3 +168,22 @@ export async function deleteChat(slug: string): Promise<void> {
     method: "DELETE",
   });
 }
+
+// SSE event stream for file change notifications
+
+export function openEventStream(
+  onFileChanged: (path: string) => void
+): EventSource {
+  const es = new EventSource("/api/events");
+  es.onmessage = (e) => {
+    try {
+      const event = JSON.parse(e.data);
+      if (event.type === "file_changed") {
+        onFileChanged(event.path);
+      }
+    } catch {
+      // skip malformed events
+    }
+  };
+  return es;
+}

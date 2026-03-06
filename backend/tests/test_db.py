@@ -3,8 +3,10 @@
 from pathlib import Path
 
 import pytest
+import httpx
 
 from app import db, workspace
+from app.main import app
 
 
 @pytest.mark.asyncio
@@ -156,3 +158,22 @@ async def test_export_blocked(configured_client):
     )
     assert resp.status_code == 400
     assert "EXPORT" in resp.json()["detail"]
+
+
+@pytest.mark.asyncio
+async def test_query_blocked_without_workspace():
+    """POST /api/db/query without configuring a workspace should return 400."""
+    # Use a raw client (no configured_client fixture) so workspace_root is None
+    old_root = db.workspace_root
+    db.workspace_root = None
+    try:
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://test") as raw:
+            resp = await raw.post(
+                "/api/db/query",
+                json={"query": "SELECT 1"},
+            )
+            assert resp.status_code == 400
+            assert "No workspace configured" in resp.json()["detail"]
+    finally:
+        db.workspace_root = old_root

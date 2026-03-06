@@ -292,6 +292,14 @@ export default function SqlEditor({
             },
             preventDefault: true,
           },
+          {
+            key: "Mod-l",
+            run: () => {
+              useStore.getState().toggleChatSidebar();
+              return true;
+            },
+            preventDefault: true,
+          },
         ]),
         EditorView.updateListener.of((update) => {
           if (update.docChanged) {
@@ -350,6 +358,7 @@ export default function SqlEditor({
             ⌘H History
           </span>
           <span style={{ opacity: 0.5 }}>⌘K Edit</span>
+          <span style={{ opacity: 0.5 }}>⌘L Chat</span>
           {isQuerying ? (
             <span
               style={{

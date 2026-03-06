@@ -7,7 +7,7 @@ import ChatSidebar from "./components/ChatSidebar";
 import DiffOverlay from "./components/DiffOverlay";
 import SettingsModal from "./components/SettingsModal";
 import { useStore } from "./store";
-import { runQuery } from "./lib/api";
+import { runQuery, getFiles, openEventStream } from "./lib/api";
 import "./index.css";
 
 const BANNER_DISMISSED_KEY = "medha_key_banner_dismissed";
@@ -19,6 +19,7 @@ function App() {
     queryResult,
     isQuerying,
     lastError,
+    isChatOpen,
     setQueryResult,
     setIsQuerying,
     setLastError,
@@ -51,6 +52,15 @@ function App() {
         // backend not ready yet, skip
       });
   }, []);
+
+  // SSE: listen for file changes and refresh the file list
+  const setFiles = useStore((s) => s.setFiles);
+  useEffect(() => {
+    const es = openEventStream(() => {
+      getFiles().then(setFiles).catch(() => {});
+    });
+    return () => es.close();
+  }, [setFiles]);
 
   const dismissBanner = () => {
     setShowKeyBanner(false);
@@ -231,11 +241,13 @@ function App() {
           <ResultGrid result={queryResult} isQuerying={isQuerying} />
         </div>
 
-        {/* Divider */}
-        <div style={{ width: 1, background: "var(--border)" }} />
-
-        {/* Right sidebar */}
-        <ChatSidebar />
+        {/* Divider + Right sidebar (toggled via Cmd+L) */}
+        {isChatOpen && (
+          <>
+            <div style={{ width: 1, background: "var(--border)" }} />
+            <ChatSidebar />
+          </>
+        )}
       </div>
 
       {/* Status bar */}

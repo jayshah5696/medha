@@ -11,13 +11,19 @@ from app.routers import db as db_router
 from app.routers import ai as ai_router
 from app.routers import history as history_router
 from app.routers import chats as chats_router
+from app.routers import events as events_router
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup
+    from app.workspace import start_watcher, stop_watcher
+    from app import db
+    if db.workspace_root is not None:
+        start_watcher()
     yield
-    # Shutdown: close DuckDB
+    # Shutdown: stop watcher and close DuckDB
+    stop_watcher()
     from app.db import conn
     conn.close()
 
@@ -38,6 +44,7 @@ app.include_router(db_router.router)
 app.include_router(ai_router.router)
 app.include_router(history_router.router)
 app.include_router(chats_router.router)
+app.include_router(events_router.router)
 
 
 @app.get("/health")

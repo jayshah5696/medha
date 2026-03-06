@@ -34,6 +34,9 @@ interface MedhaStore {
 
   chatHistory: ChatThreadSummary[];
   setChatHistory: (threads: ChatThreadSummary[]) => void;
+
+  isChatOpen: boolean;
+  toggleChatSidebar: () => void;
 }
 
 export const useStore = create<MedhaStore>((set) => ({
@@ -81,4 +84,7 @@ export const useStore = create<MedhaStore>((set) => ({
 
   chatHistory: [],
   setChatHistory: (threads) => set({ chatHistory: threads }),
+
+  isChatOpen: true,
+  toggleChatSidebar: () => set((state) => ({ isChatOpen: !state.isChatOpen })),
 }));

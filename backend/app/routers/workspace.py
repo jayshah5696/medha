@@ -55,6 +55,7 @@ def load_settings() -> Settings:
 def save_settings(s: Settings):
     SETTINGS_FILE.parent.mkdir(parents=True, exist_ok=True)
     SETTINGS_FILE.write_text(s.model_dump_json(indent=2))
+    os.chmod(SETTINGS_FILE, 0o600)
 
 
 # --- Workspace routes ---

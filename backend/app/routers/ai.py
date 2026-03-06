@@ -1,5 +1,6 @@
 """AI endpoints: inline edit and chat."""
 
+import asyncio
 import json
 from datetime import datetime, timezone
 
@@ -78,6 +79,9 @@ async def ai_chat(req: ChatRequest):
                     except (json.JSONDecodeError, KeyError):
                         pass
                 yield chunk
+        except asyncio.CancelledError:
+            # Client disconnected, clean up silently
+            return
         except Exception as e:
             error_msg = str(e)
             # Detect common LLM errors and surface friendly messages
@@ -126,6 +130,7 @@ async def ai_chat(req: ChatRequest):
         media_type="text/event-stream",
         headers={
             "Cache-Control": "no-cache",
+            "X-Accel-Buffering": "no",
             "Connection": "keep-alive",
         },
     )

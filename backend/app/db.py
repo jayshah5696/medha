@@ -49,7 +49,9 @@ def _check_sql_safety(sql: str) -> None:
 def _check_path_safety(sql: str) -> None:
     """Reject queries with directory traversal or paths outside workspace_root."""
     if workspace_root is None:
-        return
+        raise ValueError(
+            "No workspace configured. Set a workspace directory before running queries."
+        )
     if "../" in sql:
         raise ValueError("Path traversal ('..') is not allowed in queries.")
     # Check for absolute paths that are not under workspace_root

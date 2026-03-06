@@ -1,12 +1,60 @@
 """Workspace file scanning and schema caching."""
 
+import asyncio
 from pathlib import Path
+
+from watchfiles import awatch
 
 from app import db
 
 SUPPORTED_EXTENSIONS = {".parquet", ".csv", ".json", ".jsonl"}
 
 schema_cache: dict[str, list[dict]] = {}
+
+file_change_queue: asyncio.Queue = asyncio.Queue()
+
+_watcher_task: asyncio.Task | None = None
+
+
+async def watch_workspace() -> None:
+    """Background task: watch workspace_root for changes, push to queue."""
+    if db.workspace_root is None:
+        return
+    async for changes in awatch(str(db.workspace_root)):
+        for change_type, path in changes:
+            filename = Path(path).name
+            if filename in schema_cache:
+                del schema_cache[filename]
+            await file_change_queue.put({
+                "type": "file_changed",
+                "path": filename,
+                "change": change_type.name,
+            })
+
+
+def start_watcher() -> None:
+    """Start (or restart) the file watcher background task.
+
+    Safe to call from sync context: silently skips if no event loop is running
+    (e.g. during tests or before the ASGI server starts).
+    """
+    global _watcher_task
+    if _watcher_task is not None and not _watcher_task.done():
+        _watcher_task.cancel()
+    try:
+        loop = asyncio.get_running_loop()
+        _watcher_task = loop.create_task(watch_workspace())
+    except RuntimeError:
+        # No running event loop (sync context, tests, etc.)
+        _watcher_task = None
+
+
+def stop_watcher() -> None:
+    """Stop the file watcher if running."""
+    global _watcher_task
+    if _watcher_task is not None and not _watcher_task.done():
+        _watcher_task.cancel()
+    _watcher_task = None
 
 
 def set_workspace(path: str) -> None:
@@ -18,6 +66,7 @@ def set_workspace(path: str) -> None:
         raise NotADirectoryError(f"Workspace path is not a directory: {path}")
     db.workspace_root = p
     schema_cache.clear()
+    start_watcher()
 
 
 def scan_files() -> list[dict]:
