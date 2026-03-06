@@ -137,7 +137,7 @@ function ResultTable({
           style={{
             width: "100%",
             borderCollapse: "collapse",
-            fontSize: 12,
+            fontSize: 14,
             fontFamily: "var(--font-mono)",
           }}
         >
@@ -153,7 +153,7 @@ function ResultTable({
                       borderBottom: "1px solid var(--border-strong)",
                       color: "var(--text-dimmed)",
                       fontWeight: 500,
-                      fontSize: 10,
+                      fontSize: 12,
                       position: "sticky",
                       top: 0,
                       background: "var(--bg-secondary)",
@@ -208,7 +208,7 @@ function ResultTable({
       <div
         style={{
           padding: "0 10px",
-          fontSize: 10,
+          fontSize: 11,
           color: "var(--text-dimmed)",
           display: "flex",
           alignItems: "center",
@@ -229,7 +229,7 @@ function ResultTable({
             style={{
               color: "var(--accent)",
               fontWeight: 500,
-              fontSize: 10,
+              fontSize: 11,
               letterSpacing: "0.04em",
             }}
           >

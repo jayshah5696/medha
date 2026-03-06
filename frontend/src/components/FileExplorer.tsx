@@ -51,22 +51,7 @@ export default function FileExplorer() {
     }
   }, [historyOpen]);
 
-  // File System Access API picker (Chrome/Edge only — SPEC §14 & §16)
-  const hasDirPicker = "showDirectoryPicker" in window;
 
-  const handleBrowse = async () => {
-    try {
-      // @ts-ignore – TS lib doesn't include showDirectoryPicker yet
-      const handle = await window.showDirectoryPicker();
-      // The API only gives us a folder name, not the full path
-      setInputPath((prev) => {
-        const parent = prev.includes("/") ? prev.slice(0, prev.lastIndexOf("/") + 1) : "/";
-        return parent + handle.name;
-      });
-    } catch {
-      // User cancelled
-    }
-  };
 
   const handleConfigure = async () => {
     if (!inputPath.trim()) return;
@@ -167,33 +152,7 @@ export default function FileExplorer() {
               minWidth: 0,
             }}
           />
-          {hasDirPicker && (
-            <button
-              onClick={handleBrowse}
-              aria-label="Browse for folder"
-              title="Browse for folder (hints folder name only)"
-              style={{
-                background: "var(--bg-tertiary)",
-                border: "1px solid var(--border)",
-                borderLeft: "none",
-                color: "var(--text-secondary)",
-                cursor: "pointer",
-                padding: "5px 6px",
-                fontSize: 13,
-                lineHeight: 1,
-                display: "flex",
-                alignItems: "center",
-              }}
-            >
-              📁
-            </button>
-          )}
         </div>
-        {hasDirPicker && (
-          <div style={{ fontSize: 9, color: "var(--text-dimmed)", fontFamily: "var(--font-mono)", marginTop: 2, lineHeight: 1.4 }}>
-            web: folder name only — confirm full path above
-          </div>
-        )}
         <button
           onClick={handleConfigure}
           disabled={loading}

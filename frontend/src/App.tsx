@@ -122,7 +122,7 @@ function App() {
         }}
       >
         <img
-          src={theme === "dark" ? "/logo-dark.png" : "/logo-light.png"}
+          src={theme === "dark" ? "/logo-light.png" : "/logo-dark.png"}
           alt="medha"
           style={{ height: 20 }}
         />

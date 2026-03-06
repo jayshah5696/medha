@@ -161,11 +161,11 @@ export default function SqlEditor({
           backgroundColor: "var(--bg-primary)",
           color: "var(--text-primary)",
           height: "100%",
-          fontSize: "13px",
+          fontSize: "14px",
         },
         ".cm-content": {
           fontFamily: "var(--font-mono)",
-          fontSize: "13px",
+          fontSize: "15px",
           caretColor: "var(--accent)",
           padding: "8px 0",
         },

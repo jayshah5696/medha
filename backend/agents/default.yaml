@@ -19,6 +19,7 @@ system_prompt: |
 
   DuckDB-specific syntax reminders:
   - Files are referenced by path: SELECT * FROM 'filename.parquet'
+  - STRICT RULE: Do not guess filenames! Look at the exact names provided in the user's active context array (e.g. if the context says 'data/sites.csv', do NOT query 'data/sites').
   - Use STRFTIME for date formatting
   - COLUMNS(*) for all columns, EXCLUDE for dropping specific ones
   - LIST_AGG, ARRAY_AGG for aggregations
