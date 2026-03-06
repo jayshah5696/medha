@@ -1,14 +1,45 @@
-import { useEffect, useRef, useCallback } from "react";
-import { EditorState } from "@codemirror/state";
-import { EditorView, keymap } from "@codemirror/view";
+import { useEffect, useRef, useCallback, useState } from "react";
+import { EditorState, StateField, StateEffect } from "@codemirror/state";
+import { EditorView, keymap, Decoration, type DecorationSet } from "@codemirror/view";
 import { sql } from "@codemirror/lang-sql";
 import { basicSetup } from "codemirror";
+import { getHistory, getHistoryEntry } from "../lib/api";
+import type { HistoryEntry } from "../lib/api";
+
+// Error line decoration effect and field
+const setErrorLine = StateEffect.define<number | null>();
+
+const errorLineField = StateField.define<DecorationSet>({
+  create() {
+    return Decoration.none;
+  },
+  update(decorations, tr) {
+    for (const effect of tr.effects) {
+      if (effect.is(setErrorLine)) {
+        if (effect.value === null) {
+          return Decoration.none;
+        }
+        const lineNo = effect.value;
+        if (lineNo >= 1 && lineNo <= tr.state.doc.lines) {
+          const line = tr.state.doc.line(lineNo);
+          const deco = Decoration.line({ class: "cm-error-line" });
+          return Decoration.set([deco.range(line.from)]);
+        }
+        return Decoration.none;
+      }
+    }
+    return decorations;
+  },
+  provide: (f) => EditorView.decorations.from(f),
+});
 
 interface SqlEditorProps {
   initialValue?: string;
   onExecute?: (query: string) => void;
   onCmdK?: (selectedText: string, view: EditorView) => void;
   onChange?: (value: string) => void;
+  queryError?: string | null;
+  onDismissError?: () => void;
 }
 
 export default function SqlEditor({
@@ -16,6 +47,8 @@ export default function SqlEditor({
   onExecute,
   onCmdK,
   onChange,
+  queryError,
+  onDismissError,
 }: SqlEditorProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<EditorView | null>(null);
@@ -26,6 +59,11 @@ export default function SqlEditor({
   onCmdKRef.current = onCmdK;
   const onChangeRef = useRef(onChange);
   onChangeRef.current = onChange;
+
+  // History popover state
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [historyEntries, setHistoryEntries] = useState<HistoryEntry[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
 
   const getContent = useCallback(() => {
     return viewRef.current?.state.doc.toString() || "";
@@ -47,6 +85,67 @@ export default function SqlEditor({
       getView: () => viewRef.current,
     };
   }, [getContent, setContent]);
+
+  // Handle error decoration
+  useEffect(() => {
+    const view = viewRef.current;
+    if (!view) return;
+
+    if (queryError) {
+      // Try to parse line number from DuckDB error
+      const lineMatch = queryError.match(/[Ll][Ii][Nn][Ee]\s+(\d+)/);
+      if (lineMatch) {
+        const lineNo = parseInt(lineMatch[1], 10);
+        view.dispatch({ effects: setErrorLine.of(lineNo) });
+      }
+    } else {
+      // Clear error decoration
+      view.dispatch({ effects: setErrorLine.of(null) });
+    }
+  }, [queryError]);
+
+  // Load history
+  const loadHistory = useCallback(async () => {
+    setHistoryLoading(true);
+    try {
+      const entries = await getHistory();
+      setHistoryEntries(entries.slice(0, 20));
+    } catch {
+      // silently fail
+    } finally {
+      setHistoryLoading(false);
+    }
+  }, []);
+
+  const openHistory = useCallback(() => {
+    setHistoryOpen(true);
+    loadHistory();
+  }, [loadHistory]);
+
+  const handleHistorySelect = useCallback(
+    async (entry: HistoryEntry) => {
+      try {
+        const sql = await getHistoryEntry(entry.id);
+        setContent(sql);
+        setHistoryOpen(false);
+      } catch {
+        // silently fail
+      }
+    },
+    [setContent]
+  );
+
+  // Close on Escape
+  useEffect(() => {
+    if (!historyOpen) return;
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setHistoryOpen(false);
+      }
+    };
+    window.addEventListener("keydown", handleKey);
+    return () => window.removeEventListener("keydown", handleKey);
+  }, [historyOpen]);
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -143,6 +242,10 @@ export default function SqlEditor({
           fontFamily: "var(--font-mono)",
           fontSize: "11px",
         },
+        ".cm-error-line": {
+          backgroundColor: "rgba(255, 60, 60, 0.08)",
+          borderLeft: "2px solid #ff3c3c",
+        },
       },
       { dark: true }
     );
@@ -153,6 +256,7 @@ export default function SqlEditor({
         basicSetup,
         sql(),
         darkTheme,
+        errorLineField,
         keymap.of([
           {
             key: "Mod-Enter",
@@ -172,6 +276,14 @@ export default function SqlEditor({
               onCmdKRef.current?.(sel || view.state.doc.toString(), view);
               return true;
             },
+          },
+          {
+            key: "Mod-h",
+            run: () => {
+              openHistory();
+              return true;
+            },
+            preventDefault: true,
           },
         ]),
         EditorView.updateListener.of((update) => {
@@ -201,9 +313,10 @@ export default function SqlEditor({
         flexDirection: "column",
         overflow: "hidden",
         borderBottom: "1px solid var(--border)",
+        position: "relative",
       }}
     >
-      {/* Thin top bar */}
+      {/* Toolbar */}
       <div
         style={{
           height: 24,
@@ -221,10 +334,61 @@ export default function SqlEditor({
         <span style={{ color: "var(--text-secondary)", fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.06em" }}>
           sql
         </span>
-        <span style={{ color: "var(--text-dimmed)" }}>
-          Cmd+Enter to run / Cmd+K to edit
+        <span style={{ color: "var(--text-dimmed)", display: "flex", gap: 12 }}>
+          <span
+            onClick={openHistory}
+            style={{ cursor: "pointer", opacity: 0.7 }}
+            title="Open history"
+          >
+            ⌘H History
+          </span>
+          <span style={{ opacity: 0.5 }}>⌘K Edit</span>
+          <span style={{ opacity: 0.5 }}>⌘↵ Run</span>
         </span>
       </div>
+
+      {/* Error banner below toolbar */}
+      {queryError && (
+        <div
+          style={{
+            padding: "4px 10px",
+            background: "rgba(255, 60, 60, 0.08)",
+            borderBottom: "1px solid var(--border)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: 8,
+          }}
+        >
+          <span
+            style={{
+              fontSize: 11,
+              fontFamily: "var(--font-mono)",
+              color: "#ff3c3c",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+            }}
+          >
+            {queryError}
+          </span>
+          <button
+            onClick={onDismissError}
+            style={{
+              background: "none",
+              border: "none",
+              color: "#ff3c3c",
+              cursor: "pointer",
+              fontSize: 12,
+              fontFamily: "var(--font-mono)",
+              padding: "0 4px",
+              flexShrink: 0,
+            }}
+          >
+            x
+          </button>
+        </div>
+      )}
 
       {/* Editor container */}
       <div
@@ -234,6 +398,111 @@ export default function SqlEditor({
           overflow: "auto",
         }}
       />
+
+      {/* History popover */}
+      {historyOpen && (
+        <div
+          style={{
+            position: "absolute",
+            top: 28,
+            right: 10,
+            width: 340,
+            maxHeight: 380,
+            background: "var(--bg-elevated, var(--bg-secondary))",
+            border: "1px solid var(--border)",
+            zIndex: 50,
+            display: "flex",
+            flexDirection: "column",
+            overflow: "hidden",
+            boxShadow: "0 4px 16px rgba(0,0,0,0.4)",
+          }}
+        >
+          <div
+            style={{
+              padding: "6px 10px",
+              borderBottom: "1px solid var(--border)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              fontSize: 10,
+              fontFamily: "var(--font-ui)",
+              textTransform: "uppercase",
+              letterSpacing: "0.06em",
+              color: "var(--text-dimmed)",
+            }}
+          >
+            <span>query history</span>
+            <button
+              onClick={() => setHistoryOpen(false)}
+              style={{
+                background: "none",
+                border: "none",
+                color: "var(--text-dimmed)",
+                cursor: "pointer",
+                fontSize: 11,
+                padding: "0 2px",
+                fontFamily: "var(--font-mono)",
+              }}
+            >
+              esc
+            </button>
+          </div>
+          <div style={{ flex: 1, overflow: "auto" }}>
+            {historyLoading && (
+              <div style={{ padding: 12, fontSize: 11, color: "var(--text-dimmed)", textAlign: "center", fontFamily: "var(--font-ui)" }}>
+                loading...
+              </div>
+            )}
+            {!historyLoading && historyEntries.length === 0 && (
+              <div style={{ padding: 12, fontSize: 11, color: "var(--text-dimmed)", textAlign: "center", fontFamily: "var(--font-ui)" }}>
+                no history
+              </div>
+            )}
+            {historyEntries.map((entry) => {
+              const timePart = entry.timestamp
+                ? entry.timestamp.split(" ")[1]?.slice(0, 5) || ""
+                : "";
+              const preview = entry.preview.slice(0, 60);
+              return (
+                <div
+                  key={entry.id}
+                  onClick={() => handleHistorySelect(entry)}
+                  style={{
+                    padding: "5px 10px",
+                    cursor: "pointer",
+                    display: "flex",
+                    gap: 8,
+                    alignItems: "baseline",
+                    borderBottom: "1px solid var(--border)",
+                    fontSize: 11,
+                    fontFamily: "var(--font-mono)",
+                  }}
+                  onMouseEnter={(e) => {
+                    (e.currentTarget as HTMLDivElement).style.background = "var(--bg-tertiary)";
+                  }}
+                  onMouseLeave={(e) => {
+                    (e.currentTarget as HTMLDivElement).style.background = "transparent";
+                  }}
+                >
+                  <span style={{ color: "var(--accent)", flexShrink: 0, fontSize: 10 }}>
+                    {timePart}
+                  </span>
+                  <span
+                    style={{
+                      color: "var(--text-secondary)",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    {preview}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

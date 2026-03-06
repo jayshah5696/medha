@@ -1,21 +1,60 @@
-# Medha
+<div align="center">
 
-> मेधा — intelligence, mental power. A local-first SQL IDE for querying flat files with AI.
+# मेधा · medha
 
-Query Parquet, CSV, and JSON files at native DuckDB speed. AI SQL generation inline (Cmd+K) and conversational data exploration (Cmd+L). Zero data egress: only schemas reach the LLM, never your rows.
+**Local-first SQL IDE for flat files. Zero setup. AI-native.**
+
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Python](https://img.shields.io/badge/python-3.11+-blue.svg)](https://python.org)
+[![uv](https://img.shields.io/badge/uv-managed-8A2BE2)](https://astral.sh/uv)
+[![Tests](https://img.shields.io/badge/tests-59%20passing-brightgreen)]()
+
+Query Parquet, CSV, and JSON with native DuckDB speed.
+`Cmd+K` to rewrite SQL inline. `Cmd+L` to explore conversationally.
+Your data never leaves your machine.
+
+[**Quickstart**](#quickstart) · [**Key bindings**](#key-bindings) · [**Architecture**](#architecture) · [**Contributing**](#contributing)
 
 ---
 
-## What it is
+<!-- Screenshot placeholder: replace with actual screenshot -->
+![Medha screenshot](docs/screenshot.png)
 
-- **No database server.** DuckDB runs in-process, reads files directly.
-- **No data leaves your machine.** Only column names and types are sent to the LLM.
-- **LLM-agnostic.** Swap between OpenAI, Anthropic via OpenRouter, or local models (LM Studio) with one config change.
-- **Fast.** Handles 500MB+ Parquet files. Results capped at 10,000 rows by default.
+</div>
 
 ---
 
-## Prerequisites
+## Why Medha
+
+Most data tools require a database server, a cloud account, or a browser extension that phones home. Medha is different:
+
+- **No server.** DuckDB runs in-process. Open a folder, start querying.
+- **No egress.** The LLM sees your column names and types. Never your rows.
+- **No lock-in.** Switch between OpenAI, Anthropic, OpenRouter, or a local model in settings.
+- **No ceremony.** `just dev`, pick a folder, write SQL.
+
+मेधा (medhā) is Sanskrit for intelligence or mental power, the kind that comes from seeing patterns clearly.
+
+---
+
+## Features
+
+| Feature | Description |
+|---------|-------------|
+| **Native DuckDB** | Reads Parquet, CSV, JSON, JSONL directly. No import step. Up to 500MB+ files. |
+| **Cmd+K inline edit** | Select any SQL, describe a change, see a red/green diff, accept or reject. |
+| **Cmd+L chat agent** | Conversational data exploration. Agent checks schema, samples data, validates SQL. |
+| **YAML agent profiles** | Swap model, temperature, prompt, and iteration limit without touching code. |
+| **SQL history** | Every query auto-saved to `~/.medha/history/` as a `.sql` file with metadata header. |
+| **Chat threads** | Conversations persist to `~/.medha/chats/`. LLM-generated slug names. |
+| **Zero egress** | Schema only. No row data ever leaves unless you explicitly approve a sample. |
+| **LLM agnostic** | litellm routing. Plug in any OpenAI-compatible endpoint including LM Studio. |
+
+---
+
+## Quickstart
+
+### Prerequisites
 
 | Tool | Version | Install |
 |------|---------|---------|
@@ -24,41 +63,34 @@ Query Parquet, CSV, and JSON files at native DuckDB speed. AI SQL generation inl
 | Node.js | 20+ | [nodejs.org](https://nodejs.org) |
 | just | latest | `curl --proto '=https' --tlsv1.2 -sSf https://just.systems/install.sh \| bash -s -- --to ~/.local/bin` |
 
----
-
-## Quickstart
+### Install and run
 
 ```bash
-git clone <repo-url> medha
+git clone https://github.com/jayshah5696/medha
 cd medha
 
-# Install all deps
-just install
-
-# Start backend + frontend
-just dev
+just install   # installs backend (uv sync) + frontend (npm install)
+just dev       # starts backend :18900 + frontend :5173
 ```
 
-Open http://localhost:5173, set your workspace directory, and start querying.
+Open [http://localhost:5173](http://localhost:5173), set your workspace directory, and start querying.
 
----
+### Configure your LLM
 
-## LLM Configuration
+Click the gear icon (top-right) and enter your API key. Supported providers:
 
-Set environment variables before running `just dev`:
+```
+OpenAI:      sk-...
+OpenRouter:  sk-or-...
+LM Studio:   http://localhost:1234/v1  (no key needed)
+```
+
+Or set environment variables before `just dev`:
 
 ```bash
-# OpenAI (default for Cmd+K inline edit)
 export OPENAI_API_KEY=sk-...
-
-# Anthropic via OpenRouter (default for Cmd+L chat agent)
 export OPENROUTER_API_KEY=sk-or-...
-
-# Local model via LM Studio (optional)
-export LM_STUDIO_URL=http://localhost:1234/v1
 ```
-
-Model selection is available in the UI header. All routing goes through litellm.
 
 ---
 
@@ -67,46 +99,98 @@ Model selection is available in the UI header. All routing goes through litellm.
 | Binding | Action |
 |---------|--------|
 | `Cmd+Enter` | Execute SQL in editor |
-| `Cmd+K` | Inline AI edit (select SQL first, or place cursor) |
-| `Cmd+L` | Open/focus chat sidebar |
+| `Cmd+K` | Inline AI edit: select SQL first, or place cursor |
+| `Cmd+L` | Open chat sidebar |
+| `Cmd+H` | Open query history |
+
+---
+
+## Agent Profiles
+
+Agent behavior is defined in `backend/agents/*.yaml`. Three profiles ship by default:
+
+| Profile | Model | Iterations | Best for |
+|---------|-------|-----------|---------|
+| `default` | gpt-4o-mini | 10 | General data exploration |
+| `fast` | gpt-4o-mini | 5 | Simple lookups and counts |
+| `deep` | claude-sonnet-4.6 | 15 | Complex multi-step analysis |
+
+To add a profile, create a YAML file in `backend/agents/`:
+
+```yaml
+name: my-profile
+model: openrouter/meta-llama/llama-3.1-70b-instruct
+temperature: 0
+max_iterations: 8
+system_prompt: |
+  You are a DuckDB SQL expert. Write precise, efficient SQL.
+  Always validate before returning.
+```
 
 ---
 
 ## Architecture
 
-```
-Frontend (Vite + React + TypeScript)
-  CodeMirror 6   TanStack Table   Chat SSE
-        |               |              |
-        +---------------+--------------+
-                        |
-              FastAPI (Python)
-                        |
-              +----------+----------+
-              |          |          |
-           DuckDB    litellm    LangGraph
-        (in-process)  (routing)  (ReAct agent)
+```mermaid
+graph TB
+    subgraph Frontend["Frontend (Vite + React + TypeScript)"]
+        E[SqlEditor<br/>CodeMirror 6]
+        R[ResultGrid<br/>TanStack Table]
+        C[ChatSidebar<br/>SSE stream]
+        F[FileExplorer<br/>+ History]
+        S[SettingsModal<br/>gear icon]
+    end
+
+    subgraph Backend["Backend (FastAPI + Python)"]
+        API[FastAPI<br/>:18900]
+        DB[(DuckDB<br/>in-process)]
+        WS[Workspace<br/>File Watcher]
+        LM[litellm<br/>router]
+        AG[LangChain Agent<br/>YAML profiles]
+    end
+
+    subgraph Storage["Local Storage (~/.medha/)"]
+        H[history/<br/>YYYY-MM-DD/*.sql]
+        CH[chats/<br/>slug.json]
+        SET[settings.json]
+    end
+
+    E -->|Cmd+Enter POST /api/db/query| API
+    E -->|Cmd+K POST /api/ai/inline| LM
+    C -->|Cmd+L POST /api/ai/chat SSE| AG
+    F -->|GET /api/workspace/files| WS
+    S -->|POST /api/settings| SET
+
+    API --> DB
+    AG --> DB
+    AG --> LM
+    LM -->|schema only| LLM[(LLM<br/>OpenAI / Anthropic<br/>/ Local)]
+
+    API --> H
+    AG --> CH
+    WS --> Storage
 ```
 
-Data flow for Cmd+K:
+**Data flow for Cmd+K (inline edit):**
 ```
-user types instruction
-  -> POST /api/ai/inline (schema only, no rows)
-  -> litellm -> LLM
-  -> SQL string returned
-  -> diff rendered in editor (accept/reject)
+user selects SQL + types instruction
+  POST /api/ai/inline  {instruction, selected_sql, active_files}
+    schema fetched from DuckDB (no rows)
+    litellm -> LLM -> SQL string
+  diff rendered in editor (accept / reject)
 ```
 
-Data flow for Cmd+L:
+**Data flow for Cmd+L (chat agent):**
 ```
 user asks question
-  -> POST /api/ai/chat (SSE stream)
-  -> LangGraph ReAct agent
-       -> get_schema tool (local DuckDB call)
-       -> sample_data tool (local DuckDB call, 5 rows max)
-       -> execute_query tool (local DuckDB call, 20 rows max)
-  -> tokens stream back to UI
-  -> "Copy to Editor" button on any SQL blocks
+  POST /api/ai/chat  {message, active_files, thread_id}
+    SSE stream opens
+    LangChain ReAct agent runs:
+      get_schema()     -> DuckDB local call
+      sample_data()    -> DuckDB local call (5 rows max)
+      execute_query()  -> DuckDB local call (20 rows max)
+    tokens stream to UI
+    thread saved to ~/.medha/chats/{slug}.json
 ```
 
 ---
@@ -115,17 +199,18 @@ user asks question
 
 ```bash
 just --list        # show all recipes
-
+just dev           # start backend + frontend
 just backend       # backend only (port 18900)
 just frontend      # frontend only (port 5173)
-just dev           # both together
-
-just test          # run pytest (21 tests)
-just test-cov      # with coverage report
-just typecheck     # TypeScript type check
+just test          # backend pytest (41 tests)
+just test-frontend # frontend vitest (18 tests)
+just test-all      # both
+just test-cov      # backend with coverage
+just typecheck     # TypeScript tsc --noEmit
 just lint          # ruff lint
 just fmt           # ruff format
-just ci            # full verify: install + test + build + typecheck
+just ci            # full: install + test-all + build-frontend + typecheck
+just clean         # remove build artifacts
 ```
 
 ---
@@ -134,33 +219,78 @@ just ci            # full verify: install + test + build + typecheck
 
 ```
 medha/
-  backend/              Python FastAPI + DuckDB + LangGraph
+  backend/
     app/
-      main.py           FastAPI entry, lifespan, CORS
-      db.py             DuckDB manager (async, path-safe, auto-LIMIT)
-      workspace.py      File scanner, schema cache
+      main.py          FastAPI entry, lifespan, CORS
+      db.py            DuckDB manager (async, path-safe, auto-LIMIT 10k)
+      workspace.py     File scanner, schema cache, file watcher
       ai/
-        inline.py       Cmd+K single-turn litellm call
-        tools.py        LangGraph tools (get_schema, sample_data, execute_query)
-        agent.py        ReAct agent with SSE streaming
-      routers/          FastAPI route handlers
-    tests/              pytest suite (21 tests, all passing)
+        inline.py      Cmd+K single-turn litellm call
+        tools.py       LangChain tools: get_schema, sample_data, execute_query
+        agent.py       ReAct agent loaded from YAML profile
+      routers/
+        workspace.py   /api/workspace, /api/settings
+        db.py          /api/db/query, cancel
+        ai.py          /api/ai/inline, /api/ai/chat (SSE)
+        history.py     /api/history
+        chats.py       /api/chats
+    agents/
+      default.yaml     General-purpose profile
+      fast.yaml        Quick-lookup profile
+      deep.yaml        Deep-analysis profile
+    tests/             41 passing tests (pytest)
 
-  frontend/             Vite + React + TypeScript
+  frontend/
     src/
-      components/       FileExplorer, SqlEditor, ResultGrid, ChatSidebar, DiffOverlay
-      lib/api.ts        Typed fetch wrappers for all endpoints
-      store.ts          Zustand global state
+      components/
+        FileExplorer.tsx   Workspace files + query history
+        SqlEditor.tsx      CodeMirror 6 + Cmd+K + Cmd+H
+        ResultGrid.tsx     TanStack Table + truncation badge
+        ChatSidebar.tsx    SSE chat + thread history
+        DiffOverlay.tsx    Cmd+K accept/reject diff UI
+        SettingsModal.tsx  Gear icon settings panel
+      lib/api.ts           Typed fetch wrappers
+      store.ts             Zustand global state
+    tests/                 18 passing tests (vitest)
 
-  justfile              Task runner (just dev, just test, just ci)
-  SPEC.md               Full architecture specification
+  justfile               Task runner
+  SPEC.md                Full architecture specification
 ```
 
 ---
 
 ## Constraints
 
-- Workspace directory is sandboxed: queries cannot access paths outside it
-- No `../` traversal allowed in SQL
-- Result rows capped at 10,000 (configurable in `backend/app/db.py:MAX_ROWS`)
-- Only schemas (column names + types) sent to LLM. No row data unless user explicitly approves a sample via the chat sidebar
+- Workspace is sandboxed: queries cannot path-traverse outside it
+- `../` traversal rejected at the FastAPI layer
+- Result rows capped at **10,000** (configurable in `backend/app/db.py`)
+- Only column names and types go to the LLM. No row data unless you approve a sample.
+
+---
+
+## Roadmap
+
+- [ ] Tauri desktop app (single `.app` binary)
+- [ ] PyInstaller sidecar packaging
+- [ ] File watcher live schema invalidation in UI
+- [ ] Human-in-the-loop confirmation for large table scans
+- [ ] Arrow IPC for large result sets (faster than JSON)
+- [ ] Multi-file JOIN context in chat agent
+- [ ] Export results to CSV/Parquet
+
+---
+
+## Contributing
+
+PRs welcome. Run `just ci` before submitting: all 59 tests must pass and TypeScript must be clean.
+
+```bash
+just install
+just ci
+```
+
+---
+
+## License
+
+MIT

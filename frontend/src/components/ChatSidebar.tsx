@@ -2,8 +2,9 @@ import { useState, useRef, useEffect } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { useStore } from "../store";
-import { getChats, getChat, deleteChat } from "../lib/api";
-import type { ChatThreadSummary, ChatMessage as ApiChatMessage } from "../lib/api";
+import { getChats, getChat } from "../lib/api";
+import type { ChatMessage as ApiChatMessage } from "../lib/api";
+import ContextPill from "./ContextPill";
 
 interface ChatMessage {
   role: "user" | "assistant";
@@ -386,6 +387,7 @@ export default function ChatSidebar() {
           borderTop: "1px solid var(--border)",
         }}
       >
+        <ContextPill inputText={input} />
         <input
           type="text"
           value={input}

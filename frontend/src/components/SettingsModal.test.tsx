@@ -64,8 +64,8 @@ describe("SettingsModal", () => {
     fireEvent.click(saveBtn);
     await waitFor(() => {
       // Check that POST was called
-      const postCalls = mockFetch.mock.calls.filter(
-        (call: [string, RequestInit?]) => call[1]?.method === "POST"
+      const postCalls = (mockFetch.mock.calls as [string, RequestInit?][]).filter(
+        (call) => call[1]?.method === "POST"
       );
       expect(postCalls.length).toBeGreaterThan(0);
     });

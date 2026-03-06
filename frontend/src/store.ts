@@ -10,6 +10,8 @@ interface MedhaStore {
 
   activeFiles: string[];
   toggleActiveFile: (name: string) => void;
+  addActiveFile: (name: string) => void;
+  removeActiveFile: (name: string) => void;
 
   queryResult: QueryResult | null;
   setQueryResult: (result: QueryResult | null) => void;
@@ -50,6 +52,15 @@ export const useStore = create<MedhaStore>((set) => ({
       }
       return { activeFiles: [...state.activeFiles, name] };
     }),
+  addActiveFile: (name) =>
+    set((state) => {
+      if (state.activeFiles.includes(name)) return state;
+      return { activeFiles: [...state.activeFiles, name] };
+    }),
+  removeActiveFile: (name) =>
+    set((state) => ({
+      activeFiles: state.activeFiles.filter((f) => f !== name),
+    })),
 
   queryResult: null,
   setQueryResult: (result) => set({ queryResult: result }),

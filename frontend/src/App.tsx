@@ -117,39 +117,6 @@ function App() {
         </div>
       </div>
 
-      {/* Error banner */}
-      {lastError && (
-        <div
-          style={{
-            padding: "6px 12px",
-            background: "var(--diff-remove-bg)",
-            color: "var(--error)",
-            fontSize: 12,
-            borderBottom: "1px solid var(--border)",
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            fontFamily: "var(--font-mono)",
-          }}
-        >
-          <span>{lastError}</span>
-          <button
-            onClick={() => setLastError(null)}
-            style={{
-              background: "none",
-              border: "none",
-              color: "var(--error)",
-              cursor: "pointer",
-              fontSize: 14,
-              padding: "0 4px",
-              fontFamily: "var(--font-mono)",
-            }}
-          >
-            x
-          </button>
-        </div>
-      )}
-
       {/* Main content */}
       <div style={{ flex: 1, display: "flex", overflow: "hidden" }}>
         {/* Left sidebar */}
@@ -168,7 +135,12 @@ function App() {
             minWidth: 0,
           }}
         >
-          <SqlEditor onExecute={handleExecute} onCmdK={handleCmdK} />
+          <SqlEditor
+            onExecute={handleExecute}
+            onCmdK={handleCmdK}
+            queryError={lastError}
+            onDismissError={() => setLastError(null)}
+          />
           <ResultGrid result={queryResult} isQuerying={isQuerying} />
         </div>
 
