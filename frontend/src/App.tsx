@@ -1,4 +1,4 @@
-import { useCallback, useState, useEffect } from "react";
+import { useCallback, useState, useEffect, useRef } from "react";
 import type { EditorView } from "@codemirror/view";
 import FileExplorer from "./components/FileExplorer";
 import SqlEditor from "./components/SqlEditor";
@@ -46,6 +46,56 @@ function App() {
 
   const toggleTheme = () =>
     setTheme((t) => (t === "dark" ? "light" : "dark"));
+
+  // Resizable sidebars
+  const [leftWidth, setLeftWidth] = useState(240);
+  const [rightWidth, setRightWidth] = useState(320);
+  const dragRef = useRef<{
+    side: "left" | "right";
+    startX: number;
+    startWidth: number;
+  } | null>(null);
+
+  const handleDragStart = useCallback(
+    (side: "left" | "right") => (e: React.MouseEvent) => {
+      e.preventDefault();
+      dragRef.current = {
+        side,
+        startX: e.clientX,
+        startWidth: side === "left" ? leftWidth : rightWidth,
+      };
+
+      const onMove = (ev: MouseEvent) => {
+        if (!dragRef.current) return;
+        const delta = ev.clientX - dragRef.current.startX;
+        const newWidth = Math.max(
+          140,
+          Math.min(
+            600,
+            dragRef.current.side === "left"
+              ? dragRef.current.startWidth + delta
+              : dragRef.current.startWidth - delta
+          )
+        );
+        if (dragRef.current.side === "left") setLeftWidth(newWidth);
+        else setRightWidth(newWidth);
+      };
+
+      const onUp = () => {
+        dragRef.current = null;
+        document.removeEventListener("mousemove", onMove);
+        document.removeEventListener("mouseup", onUp);
+        document.body.style.cursor = "";
+        document.body.style.userSelect = "";
+      };
+
+      document.addEventListener("mousemove", onMove);
+      document.addEventListener("mouseup", onUp);
+      document.body.style.cursor = "col-resize";
+      document.body.style.userSelect = "none";
+    },
+    [leftWidth, rightWidth]
+  );
 
   // First-run check: if no LLM is configured, show onboarding banner
   useEffect(() => {
@@ -121,14 +171,34 @@ function App() {
           gap: 12,
         }}
       >
-        <img
-          src={theme === "dark" ? "/logo-light.png" : "/logo-dark.png"}
-          alt="medha"
+        <svg
+          viewBox="0 0 120 28"
           style={{ height: 20 }}
-        />
+          fill="none"
+          xmlns="http://www.w3.org/2000/svg"
+          aria-label="medha"
+        >
+          {/* Bar chart icon */}
+          <rect x="2" y="14" width="3.5" height="4" rx="0.5" fill="var(--accent)" />
+          <rect x="7" y="8" width="3.5" height="10" rx="0.5" fill="var(--accent)" />
+          <rect x="12" y="2" width="3.5" height="16" rx="0.5" fill="var(--accent)" />
+          <rect x="17" y="6" width="3.5" height="12" rx="0.5" fill="var(--accent)" />
+          {/* MEDHA text */}
+          <text
+            x="26"
+            y="17.5"
+            fill="var(--accent)"
+            fontFamily="var(--font-ui)"
+            fontSize="14"
+            fontWeight="600"
+            letterSpacing="0.15em"
+          >
+            MEDHA
+          </text>
+        </svg>
         <span
           style={{
-            fontSize: 12,
+            fontSize: 15,
             color: "var(--text-dimmed)",
             fontFamily: "var(--font-ui)",
           }}
@@ -169,7 +239,7 @@ function App() {
           </button>
           <span
             style={{
-              fontSize: 12,
+              fontSize: 14,
               color: "var(--text-dimmed)",
               fontFamily: "var(--font-ui)",
             }}
@@ -183,14 +253,14 @@ function App() {
       {showKeyBanner && (
         <div
           style={{
-            padding: "6px 12px",
+            padding: "8px 14px",
             background: "rgba(255, 180, 0, 0.1)",
             borderBottom: "1px solid var(--border)",
             display: "flex",
             alignItems: "center",
             justifyContent: "space-between",
             gap: 10,
-            fontSize: 11,
+            fontSize: 14,
             fontFamily: "var(--font-ui)",
             color: "var(--text-secondary)",
           }}
@@ -205,8 +275,8 @@ function App() {
                 dismissBanner();
               }}
               style={{
-                padding: "3px 10px",
-                fontSize: 10,
+                padding: "5px 14px",
+                fontSize: 13,
                 fontFamily: "var(--font-ui)",
                 fontWeight: 500,
                 textTransform: "uppercase",
@@ -240,10 +310,26 @@ function App() {
       {/* Main content */}
       <div style={{ flex: 1, display: "flex", overflow: "hidden" }}>
         {/* Left sidebar */}
-        <FileExplorer />
+        <FileExplorer width={leftWidth} />
 
-        {/* Divider */}
-        <div style={{ width: 1, background: "var(--border)" }} />
+        {/* Left resize handle */}
+        <div
+          onMouseDown={handleDragStart("left")}
+          style={{
+            width: 5,
+            cursor: "col-resize",
+            background: "var(--border)",
+            position: "relative",
+            flexShrink: 0,
+          }}
+        >
+          <div
+            style={{
+              position: "absolute",
+              inset: "0 -2px",
+            }}
+          />
+        </div>
 
         {/* Center panel */}
         <div
@@ -264,11 +350,27 @@ function App() {
           <ResultGrid result={queryResult} isQuerying={isQuerying} />
         </div>
 
-        {/* Divider + Right sidebar (toggled via Cmd+L) */}
+        {/* Right resize handle + Right sidebar (toggled via Cmd+L) */}
         {isChatOpen && (
           <>
-            <div style={{ width: 1, background: "var(--border)" }} />
-            <ChatSidebar />
+            <div
+              onMouseDown={handleDragStart("right")}
+              style={{
+                width: 5,
+                cursor: "col-resize",
+                background: "var(--border)",
+                position: "relative",
+                flexShrink: 0,
+              }}
+            >
+              <div
+                style={{
+                  position: "absolute",
+                  inset: "0 -2px",
+                }}
+              />
+            </div>
+            <ChatSidebar width={rightWidth} />
           </>
         )}
       </div>
@@ -284,15 +386,15 @@ function App() {
           alignItems: "center",
           padding: "0 12px",
           gap: 8,
-          fontSize: 10,
+          fontSize: 13,
           color: "var(--text-dimmed)",
           fontFamily: "var(--font-ui)",
         }}
       >
         <span
           style={{
-            width: 6,
-            height: 6,
+            width: 8,
+            height: 8,
             borderRadius: "50%",
             background: workspacePath ? "var(--success)" : "var(--text-dimmed)",
             display: "inline-block",
@@ -300,7 +402,7 @@ function App() {
           }}
         />
         <span>{workspacePath || "no workspace"}</span>
-        <span style={{ marginLeft: "auto", fontSize: 11 }}>medha v0.1</span>
+        <span style={{ marginLeft: "auto", fontSize: 13 }}>medha v0.1</span>
       </div>
 
       {/* Cmd+K Diff Overlay */}

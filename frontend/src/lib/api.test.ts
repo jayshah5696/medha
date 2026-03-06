@@ -5,7 +5,7 @@ const mockFetch = vi.fn();
 vi.stubGlobal("fetch", mockFetch);
 
 // Import after stubbing fetch
-import { getFiles, runQuery, getHistory, getChats } from "./api";
+import { getFiles, runQuery, getHistory, getChats, browseDirectory } from "./api";
 
 beforeEach(() => {
   mockFetch.mockReset();
@@ -72,5 +72,45 @@ describe("api", () => {
     expect(result).toHaveLength(1);
     expect(result[0]).toHaveProperty("slug");
     expect(result[0]).toHaveProperty("message_count");
+  });
+
+  it("browseDirectory sends correct payload and returns BrowseResult", async () => {
+    const mockBrowse = {
+      current: "/Users/test",
+      parent: "/Users",
+      entries: [
+        { name: "Documents", is_dir: true },
+        { name: "data.csv", is_dir: false },
+      ],
+    };
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: () => Promise.resolve(mockBrowse),
+    });
+    const result = await browseDirectory("/Users/test");
+    expect(mockFetch).toHaveBeenCalledWith("/api/workspace/browse", expect.objectContaining({
+      method: "POST",
+      body: JSON.stringify({ path: "/Users/test" }),
+    }));
+    expect(result.current).toBe("/Users/test");
+    expect(result.parent).toBe("/Users");
+    expect(result.entries).toHaveLength(2);
+    expect(result.entries[0]).toHaveProperty("is_dir", true);
+  });
+
+  it("browseDirectory defaults to empty path", async () => {
+    const mockBrowse = {
+      current: "/Users/test",
+      parent: "/Users",
+      entries: [],
+    };
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: () => Promise.resolve(mockBrowse),
+    });
+    await browseDirectory();
+    expect(mockFetch).toHaveBeenCalledWith("/api/workspace/browse", expect.objectContaining({
+      body: JSON.stringify({ path: "" }),
+    }));
   });
 });

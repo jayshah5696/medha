@@ -21,7 +21,7 @@ interface ToolStatus {
   status: string;
 }
 
-export default function ChatSidebar() {
+export default function ChatSidebar({ width }: { width: number }) {
   const { activeFiles, currentThreadId, setThreadId, chatHistory, setChatHistory, setEditorContent } = useStore();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
@@ -205,8 +205,8 @@ export default function ChatSidebar() {
   return (
     <div
       style={{
-        width: "var(--sidebar-right)",
-        minWidth: "var(--sidebar-right)",
+        width: width,
+        minWidth: width,
         background: "var(--bg-secondary)",
         display: "flex",
         flexDirection: "column",

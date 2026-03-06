@@ -37,11 +37,11 @@
   --font-ui: 'DM Mono', monospace;
 
   /* Sizes */
-  --header-height: 40px;
-  --status-height: 24px;
-  --sidebar-left: 220px;
-  --sidebar-right: 280px;
-  --row-height: 28px;
+  --header-height: 48px;
+  --status-height: 30px;
+  --sidebar-left: 240px;
+  --sidebar-right: 320px;
+  --row-height: 34px;
 }
 
 /* Light theme override */
@@ -87,8 +87,8 @@ body {
   font-family: var(--font-mono);
   background: var(--bg-primary);
   color: var(--text-primary);
-  font-size: 14px;
-  line-height: 1.4;
+  font-size: 16px;
+  line-height: 1.5;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -177,10 +177,10 @@ button:disabled {
   border: 1px solid #00D8FF;
   color: #00D8FF;
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: 13px;
   text-transform: uppercase;
   letter-spacing: 0.1em;
-  padding: 4px 12px;
+  padding: 7px 16px;
   border-radius: 0;
   cursor: pointer;
   transition: background 0.15s;

@@ -215,6 +215,63 @@ async def test_stream_agent_response_emits_done():
 
 
 @pytest.mark.asyncio
+async def test_stream_agent_response_injects_active_files():
+    """When active_files are provided, they are injected into the user message."""
+    captured_input = {}
+
+    async def _capture_astream(input_data, **kwargs):
+        captured_input.update(input_data)
+        return
+        yield  # make it a generator
+
+    mock_agent = MagicMock()
+    mock_agent.astream = MagicMock(side_effect=_capture_astream)
+
+    with patch("app.ai.agent.build_agent", return_value=mock_agent):
+        chunks = []
+        async for chunk in stream_agent_response(
+            message="head on this data",
+            chat_history=[],
+            active_files=["train.csv", "test.csv"],
+        ):
+            chunks.append(chunk)
+
+    # The last message should contain the active files context
+    last_msg = captured_input["messages"][-1]
+    assert "train.csv" in last_msg.content
+    assert "test.csv" in last_msg.content
+    assert "[Active files in workspace:" in last_msg.content
+    assert "head on this data" in last_msg.content
+
+
+@pytest.mark.asyncio
+async def test_stream_agent_response_no_active_files_no_injection():
+    """When no active_files, the message is sent unmodified."""
+    captured_input = {}
+
+    async def _capture_astream(input_data, **kwargs):
+        captured_input.update(input_data)
+        return
+        yield
+
+    mock_agent = MagicMock()
+    mock_agent.astream = MagicMock(side_effect=_capture_astream)
+
+    with patch("app.ai.agent.build_agent", return_value=mock_agent):
+        chunks = []
+        async for chunk in stream_agent_response(
+            message="show all rows",
+            chat_history=[],
+            active_files=[],
+        ):
+            chunks.append(chunk)
+
+    last_msg = captured_input["messages"][-1]
+    assert last_msg.content == "show all rows"
+    assert "[Active files" not in last_msg.content
+
+
+@pytest.mark.asyncio
 async def test_stream_agent_response_on_llm_error():
     """An exception from the agent yields an error dict, not a raise."""
 

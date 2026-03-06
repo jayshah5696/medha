@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { useStore } from "../store";
-import { configureWorkspace, getFiles, getHistory, getHistoryEntry, clearHistory } from "../lib/api";
-import type { HistoryEntry } from "../lib/api";
+import { configureWorkspace, getFiles, getHistory, getHistoryEntry, clearHistory, browseDirectory } from "../lib/api";
+import type { HistoryEntry, DirEntry } from "../lib/api";
 
 function formatBytes(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
@@ -9,7 +9,7 @@ function formatBytes(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-export default function FileExplorer() {
+export default function FileExplorer({ width }: { width: number }) {
   const {
     workspacePath,
     setWorkspacePath,
@@ -26,6 +26,33 @@ export default function FileExplorer() {
   const [historyOpen, setHistoryOpen] = useState(false);
   const [historyEntries, setHistoryEntries] = useState<HistoryEntry[]>([]);
   const [fileFilter, setFileFilter] = useState("");
+
+  // Folder browser state
+  const [browseOpen, setBrowseOpen] = useState(false);
+  const [browsePath, setBrowsePath] = useState("");
+  const [browseParent, setBrowseParent] = useState<string | null>(null);
+  const [browseEntries, setBrowseEntries] = useState<DirEntry[]>([]);
+  const [browseLoading, setBrowseLoading] = useState(false);
+
+  const openBrowser = async (path?: string) => {
+    setBrowseLoading(true);
+    setBrowseOpen(true);
+    try {
+      const result = await browseDirectory(path || "");
+      setBrowsePath(result.current);
+      setBrowseParent(result.parent);
+      setBrowseEntries(result.entries);
+    } catch (e) {
+      setLastError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setBrowseLoading(false);
+    }
+  };
+
+  const handleBrowseSelect = (dir: string) => {
+    setInputPath(dir);
+    setBrowseOpen(false);
+  };
 
   // Only show the filter input when there are more than 10 files
   const showFilter = files.length > 10;
@@ -50,8 +77,6 @@ export default function FileExplorer() {
       loadHistory();
     }
   }, [historyOpen]);
-
-
 
   const handleConfigure = async () => {
     if (!inputPath.trim()) return;
@@ -91,8 +116,8 @@ export default function FileExplorer() {
   return (
     <div
       style={{
-        width: "var(--sidebar-left)",
-        minWidth: "var(--sidebar-left)",
+        width: width,
+        minWidth: width,
         background: "var(--bg-secondary)",
         display: "flex",
         flexDirection: "column",
@@ -101,10 +126,10 @@ export default function FileExplorer() {
       }}
     >
       {/* Workspace config section */}
-      <div style={{ padding: "10px 10px 8px", borderBottom: "1px solid var(--border)" }}>
+      <div style={{ padding: "12px 12px 10px", borderBottom: "1px solid var(--border)" }}>
         <div
           style={{
-            fontSize: 10,
+            fontSize: 14,
             fontWeight: 500,
             textTransform: "uppercase",
             color: "var(--text-dimmed)",
@@ -119,9 +144,9 @@ export default function FileExplorer() {
         <div style={{ display: "flex", alignItems: "center", gap: 0 }}>
           <span
             style={{
-              fontSize: 12,
+              fontSize: 16,
               color: "var(--text-dimmed)",
-              padding: "5px 4px 5px 6px",
+              padding: "7px 6px 7px 8px",
               background: "var(--bg-tertiary)",
               border: "1px solid var(--border)",
               borderRight: "none",
@@ -140,8 +165,8 @@ export default function FileExplorer() {
             onKeyDown={(e) => e.key === "Enter" && handleConfigure()}
             style={{
               flex: 1,
-              padding: "5px 6px",
-              fontSize: 12,
+              padding: "7px 8px",
+              fontSize: 15,
               background: "var(--bg-tertiary)",
               border: "1px solid var(--border)",
               borderRadius: 0,
@@ -153,17 +178,24 @@ export default function FileExplorer() {
             }}
           />
         </div>
-        <button
-          onClick={handleConfigure}
-          disabled={loading}
-          className="medha-btn"
-          style={{
-            width: "100%",
-            marginTop: 6,
-          }}
-        >
-          {loading ? "loading..." : "configure"}
-        </button>
+        <div style={{ display: "flex", gap: 4, marginTop: 6 }}>
+          <button
+            onClick={handleConfigure}
+            disabled={loading}
+            className="medha-btn"
+            style={{ flex: 1 }}
+          >
+            {loading ? "loading..." : "configure"}
+          </button>
+          <button
+            onClick={() => openBrowser(inputPath || "")}
+            className="medha-btn"
+            title="Browse folders"
+            style={{ padding: "4px 8px", flexShrink: 0 }}
+          >
+            📁
+          </button>
+        </div>
       </div>
 
       {/* File list */}
@@ -176,7 +208,7 @@ export default function FileExplorer() {
       >
         {/* File filter input (only shown when >10 files) */}
         {showFilter && (
-          <div style={{ padding: "4px 10px 4px" }}>
+          <div style={{ padding: "4px 12px 4px" }}>
             <input
               type="text"
               value={fileFilter}
@@ -184,8 +216,8 @@ export default function FileExplorer() {
               placeholder="filter files..."
               style={{
                 width: "100%",
-                padding: "3px 6px",
-                fontSize: 11,
+                padding: "5px 8px",
+                fontSize: 14,
                 background: "var(--bg-tertiary)",
                 border: "1px solid var(--border)",
                 borderRadius: 0,
@@ -201,7 +233,7 @@ export default function FileExplorer() {
           <div
             style={{
               padding: "24px 16px",
-              fontSize: 11,
+              fontSize: 15,
               color: "#333",
               textAlign: "center",
               fontFamily: "var(--font-mono)",
@@ -225,8 +257,8 @@ export default function FileExplorer() {
               key={f.name}
               onClick={() => toggleActiveFile(f.name)}
               style={{
-                padding: "4px 10px",
-                fontSize: 12,
+                padding: "6px 12px",
+                fontSize: 15,
                 cursor: "pointer",
                 display: "flex",
                 justifyContent: "space-between",
@@ -236,7 +268,7 @@ export default function FileExplorer() {
                   ? "2px solid var(--accent)"
                   : "2px solid transparent",
                 fontFamily: "var(--font-mono)",
-                lineHeight: "20px",
+                lineHeight: "24px",
               }}
             >
               <span
@@ -251,7 +283,7 @@ export default function FileExplorer() {
               </span>
               <span
                 style={{
-                  fontSize: 10,
+                  fontSize: 13,
                   color: "var(--text-dimmed)",
                   marginLeft: 8,
                   flexShrink: 0,
@@ -269,8 +301,8 @@ export default function FileExplorer() {
           <div
             onClick={() => setHistoryOpen(!historyOpen)}
             style={{
-              padding: "6px 10px",
-              fontSize: 10,
+              padding: "8px 12px",
+              fontSize: 14,
               fontWeight: 500,
               textTransform: "uppercase",
               color: "var(--text-dimmed)",
@@ -283,7 +315,7 @@ export default function FileExplorer() {
               userSelect: "none",
             }}
           >
-            <span style={{ fontSize: 8 }}>{historyOpen ? "\u25BC" : "\u25B6"}</span>
+            <span style={{ fontSize: 12 }}>{historyOpen ? "\u25BC" : "\u25B6"}</span>
             history
           </div>
           {historyOpen && (
@@ -291,8 +323,8 @@ export default function FileExplorer() {
               {historyEntries.length === 0 && (
                 <div
                   style={{
-                    padding: "8px 10px",
-                    fontSize: 11,
+                    padding: "8px 12px",
+                    fontSize: 14,
                     color: "var(--text-dimmed)",
                     fontFamily: "var(--font-ui)",
                     textAlign: "center",
@@ -309,8 +341,8 @@ export default function FileExplorer() {
                     key={entry.id}
                     onClick={() => handleHistoryClick(entry)}
                     style={{
-                      padding: "3px 10px",
-                      fontSize: 11,
+                      padding: "5px 12px",
+                      fontSize: 14,
                       cursor: "pointer",
                       display: "flex",
                       justifyContent: "space-between",
@@ -320,7 +352,7 @@ export default function FileExplorer() {
                     }}
                     title={entry.preview}
                   >
-                    <span style={{ color: "var(--text-secondary)", flexShrink: 0, fontSize: 10 }}>
+                    <span style={{ color: "var(--text-secondary)", flexShrink: 0, fontSize: 13 }}>
                       {timePart}
                     </span>
                     <span
@@ -329,7 +361,7 @@ export default function FileExplorer() {
                         overflow: "hidden",
                         textOverflow: "ellipsis",
                         whiteSpace: "nowrap",
-                        fontSize: 10,
+                        fontSize: 13,
                       }}
                     >
                       {previewText}
@@ -338,7 +370,7 @@ export default function FileExplorer() {
                 );
               })}
               {historyEntries.length > 0 && (
-                <div style={{ padding: "4px 10px 6px", textAlign: "center" }}>
+                <div style={{ padding: "4px 12px 6px", textAlign: "center" }}>
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
@@ -346,8 +378,8 @@ export default function FileExplorer() {
                     }}
                     className="medha-btn"
                     style={{
-                      fontSize: 9,
-                      padding: "2px 8px",
+                      fontSize: 12,
+                      padding: "4px 10px",
                     }}
                   >
                     clear
@@ -358,6 +390,199 @@ export default function FileExplorer() {
           )}
         </div>
       </div>
+
+      {/* Folder browser overlay */}
+      {browseOpen && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0,0,0,0.5)",
+            zIndex: 100,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+          onClick={() => setBrowseOpen(false)}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              width: 480,
+              maxHeight: "70vh",
+              background: "var(--bg-elevated, var(--bg-secondary))",
+              border: "1px solid var(--border)",
+              display: "flex",
+              flexDirection: "column",
+              overflow: "hidden",
+              boxShadow: "0 8px 32px rgba(0,0,0,0.5)",
+            }}
+          >
+            {/* Header */}
+            <div
+              style={{
+                padding: "10px 14px",
+                borderBottom: "1px solid var(--border)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                fontSize: 13,
+                fontFamily: "var(--font-ui)",
+                textTransform: "uppercase",
+                letterSpacing: "0.06em",
+                color: "var(--text-dimmed)",
+              }}
+            >
+              <span>select folder</span>
+              <button
+                onClick={() => setBrowseOpen(false)}
+                style={{
+                  background: "none",
+                  border: "none",
+                  color: "var(--text-dimmed)",
+                  cursor: "pointer",
+                  fontSize: 14,
+                  fontFamily: "var(--font-mono)",
+                  padding: "0 2px",
+                }}
+              >
+                esc
+              </button>
+            </div>
+
+            {/* Current path */}
+            <div
+              style={{
+                padding: "8px 14px",
+                fontSize: 14,
+                fontFamily: "var(--font-mono)",
+                color: "var(--accent)",
+                borderBottom: "1px solid var(--border)",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
+              }}
+              title={browsePath}
+            >
+              {browsePath}
+            </div>
+
+            {/* Directory list */}
+            <div style={{ flex: 1, overflow: "auto" }}>
+              {browseLoading && (
+                <div style={{ padding: 16, fontSize: 14, color: "var(--text-dimmed)", textAlign: "center", fontFamily: "var(--font-ui)" }}>
+                  loading...
+                </div>
+              )}
+
+              {!browseLoading && browseParent && (
+                <div
+                  onClick={() => openBrowser(browseParent!)}
+                  style={{
+                    padding: "6px 14px",
+                    fontSize: 15,
+                    cursor: "pointer",
+                    fontFamily: "var(--font-mono)",
+                    color: "var(--text-secondary)",
+                    borderBottom: "1px solid var(--border)",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 6,
+                  }}
+                  onMouseEnter={(e) => {
+                    (e.currentTarget as HTMLDivElement).style.background = "var(--bg-tertiary)";
+                  }}
+                  onMouseLeave={(e) => {
+                    (e.currentTarget as HTMLDivElement).style.background = "transparent";
+                  }}
+                >
+                  <span style={{ fontSize: 16 }}>↑</span>
+                  <span>..</span>
+                </div>
+              )}
+
+              {!browseLoading &&
+                browseEntries.map((entry) => (
+                  <div
+                    key={entry.name}
+                    onClick={() => {
+                      if (entry.is_dir) {
+                        openBrowser(browsePath + "/" + entry.name);
+                      }
+                    }}
+                    style={{
+                      padding: "5px 14px",
+                      fontSize: 15,
+                      cursor: entry.is_dir ? "pointer" : "default",
+                      fontFamily: "var(--font-mono)",
+                      color: entry.is_dir ? "var(--text-primary)" : "var(--text-dimmed)",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 8,
+                    }}
+                    onMouseEnter={(e) => {
+                      if (entry.is_dir) (e.currentTarget as HTMLDivElement).style.background = "var(--bg-tertiary)";
+                    }}
+                    onMouseLeave={(e) => {
+                      (e.currentTarget as HTMLDivElement).style.background = "transparent";
+                    }}
+                  >
+                    <span style={{ fontSize: 15, width: 20, textAlign: "center", flexShrink: 0 }}>
+                      {entry.is_dir ? "📁" : "📄"}
+                    </span>
+                    <span
+                      style={{
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      {entry.name}
+                    </span>
+                  </div>
+                ))}
+
+              {!browseLoading && browseEntries.length === 0 && (
+                <div style={{ padding: 16, fontSize: 14, color: "var(--text-dimmed)", textAlign: "center", fontFamily: "var(--font-ui)" }}>
+                  empty directory
+                </div>
+              )}
+            </div>
+
+            {/* Footer: select this folder */}
+            <div
+              style={{
+                padding: "10px 14px",
+                borderTop: "1px solid var(--border)",
+                display: "flex",
+                justifyContent: "flex-end",
+                gap: 8,
+              }}
+            >
+              <button
+                onClick={() => setBrowseOpen(false)}
+                className="medha-btn"
+                style={{ fontSize: 13, padding: "5px 12px" }}
+              >
+                cancel
+              </button>
+              <button
+                onClick={() => handleBrowseSelect(browsePath)}
+                className="medha-btn"
+                style={{
+                  fontSize: 13,
+                  padding: "5px 12px",
+                  background: "var(--accent)",
+                  color: "var(--bg-primary)",
+                  fontWeight: 600,
+                }}
+              >
+                select this folder
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

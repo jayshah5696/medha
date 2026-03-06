@@ -169,6 +169,27 @@ export async function deleteChat(slug: string): Promise<void> {
   });
 }
 
+// Directory browsing API
+
+export interface DirEntry {
+  name: string;
+  is_dir: boolean;
+}
+
+export interface BrowseResult {
+  current: string;
+  parent: string | null;
+  entries: DirEntry[];
+}
+
+export async function browseDirectory(path: string = ""): Promise<BrowseResult> {
+  return fetchJSON("/api/workspace/browse", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ path }),
+  });
+}
+
 // SSE event stream for file change notifications
 
 export function openEventStream(

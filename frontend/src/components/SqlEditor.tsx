@@ -1,5 +1,5 @@
 import { useEffect, useRef, useCallback, useState } from "react";
-import { EditorState, StateField, StateEffect } from "@codemirror/state";
+import { EditorState, StateField, StateEffect, Prec } from "@codemirror/state";
 import { EditorView, keymap, Decoration, type DecorationSet } from "@codemirror/view";
 import { sql } from "@codemirror/lang-sql";
 import { basicSetup } from "codemirror";
@@ -161,11 +161,11 @@ export default function SqlEditor({
           backgroundColor: "var(--bg-primary)",
           color: "var(--text-primary)",
           height: "100%",
-          fontSize: "14px",
+          fontSize: "16px",
         },
         ".cm-content": {
           fontFamily: "var(--font-mono)",
-          fontSize: "15px",
+          fontSize: "17px",
           caretColor: "var(--accent)",
           padding: "8px 0",
         },
@@ -175,11 +175,11 @@ export default function SqlEditor({
           border: "none",
           borderRight: "1px solid var(--border)",
           fontFamily: "var(--font-mono)",
-          fontSize: "11px",
-          minWidth: "36px",
+          fontSize: "13px",
+          minWidth: "40px",
         },
         ".cm-gutter": {
-          minWidth: "36px",
+          minWidth: "40px",
         },
         ".cm-activeLine": {
           backgroundColor: "rgba(0, 216, 255, 0.03)",
@@ -237,7 +237,7 @@ export default function SqlEditor({
           color: "var(--text-primary)",
           borderRadius: "0",
           fontFamily: "var(--font-mono)",
-          fontSize: "12px",
+          fontSize: "14px",
         },
         ".cm-panel.cm-search button": {
           background: "var(--bg-tertiary)",
@@ -245,7 +245,7 @@ export default function SqlEditor({
           color: "var(--text-secondary)",
           borderRadius: "0",
           fontFamily: "var(--font-mono)",
-          fontSize: "11px",
+          fontSize: "13px",
         },
         ".cm-error-line": {
           backgroundColor: "rgba(255, 60, 60, 0.08)",
@@ -262,45 +262,49 @@ export default function SqlEditor({
         sql(),
         darkTheme,
         errorLineField,
-        keymap.of([
-          {
-            key: "Mod-Enter",
-            run: (view) => {
-              // Guard: do not re-execute while a query is already running
-              if (isQueryingRef.current) return true;
-              const content = view.state.doc.toString();
-              onExecuteRef.current?.(content);
-              return true;
+        Prec.highest(
+          keymap.of([
+            {
+              key: "Mod-Enter",
+              preventDefault: true,
+              run: (view) => {
+                // Guard: do not re-execute while a query is already running
+                if (isQueryingRef.current) return true;
+                const content = view.state.doc.toString();
+                onExecuteRef.current?.(content);
+                return true;
+              },
             },
-          },
-          {
-            key: "Mod-k",
-            run: (view) => {
-              const sel = view.state.sliceDoc(
-                view.state.selection.main.from,
-                view.state.selection.main.to
-              );
-              onCmdKRef.current?.(sel || view.state.doc.toString(), view);
-              return true;
+            {
+              key: "Mod-k",
+              preventDefault: true,
+              run: (view) => {
+                const sel = view.state.sliceDoc(
+                  view.state.selection.main.from,
+                  view.state.selection.main.to
+                );
+                onCmdKRef.current?.(sel || view.state.doc.toString(), view);
+                return true;
+              },
             },
-          },
-          {
-            key: "Mod-h",
-            run: () => {
-              openHistory();
-              return true;
+            {
+              key: "Mod-h",
+              preventDefault: true,
+              run: () => {
+                openHistory();
+                return true;
+              },
             },
-            preventDefault: true,
-          },
-          {
-            key: "Mod-l",
-            run: () => {
-              useStore.getState().toggleChatSidebar();
-              return true;
+            {
+              key: "Mod-l",
+              preventDefault: true,
+              run: () => {
+                useStore.getState().toggleChatSidebar();
+                return true;
+              },
             },
-            preventDefault: true,
-          },
-        ]),
+          ])
+        ),
         EditorView.updateListener.of((update) => {
           if (update.docChanged) {
             onChangeRef.current?.(update.state.doc.toString());
@@ -334,16 +338,16 @@ export default function SqlEditor({
       {/* Toolbar */}
       <div
         style={{
-          height: 24,
-          minHeight: 24,
+          height: 34,
+          minHeight: 34,
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
-          padding: "0 10px",
+          padding: "0 14px",
           background: "var(--bg-secondary)",
           borderBottom: "1px solid var(--border)",
           fontFamily: "var(--font-ui)",
-          fontSize: 10,
+          fontSize: 14,
         }}
       >
         <span style={{ color: "var(--text-secondary)", fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.06em" }}>
@@ -374,7 +378,16 @@ export default function SqlEditor({
               ⌘↵ Running...
             </span>
           ) : (
-            <span className="medha-toolbar-btn">⌘↵ Run</span>
+            <span
+              className="medha-toolbar-btn"
+              style={{ cursor: "pointer" }}
+              onClick={() => {
+                const content = viewRef.current?.state.doc.toString() || "";
+                if (content) onExecuteRef.current?.(content);
+              }}
+            >
+              ⌘↵ Run
+            </span>
           )}
         </span>
       </div>
@@ -387,9 +400,9 @@ export default function SqlEditor({
         }
         .medha-toolbar-btn {
           color: #444;
-          font-size: 10px;
+          font-size: 14px;
           font-family: var(--font-mono);
-          padding: 0 8px;
+          padding: 0 10px;
           transition: color 0.15s;
           white-space: nowrap;
         }
@@ -419,7 +432,7 @@ export default function SqlEditor({
         >
           <span
             style={{
-              fontSize: 11,
+              fontSize: 15,
               fontFamily: "var(--font-mono)",
               color: "#ff3c3c",
               overflow: "hidden",
@@ -461,10 +474,10 @@ export default function SqlEditor({
         <div
           style={{
             position: "absolute",
-            top: 28,
-            right: 10,
-            width: 340,
-            maxHeight: 380,
+            top: 38,
+            right: 14,
+            width: 420,
+            maxHeight: 450,
             background: "var(--bg-elevated, var(--bg-secondary))",
             border: "1px solid var(--border)",
             zIndex: 50,
@@ -476,12 +489,12 @@ export default function SqlEditor({
         >
           <div
             style={{
-              padding: "6px 10px",
+              padding: "10px 14px",
               borderBottom: "1px solid var(--border)",
               display: "flex",
               alignItems: "center",
               justifyContent: "space-between",
-              fontSize: 10,
+              fontSize: 14,
               fontFamily: "var(--font-ui)",
               textTransform: "uppercase",
               letterSpacing: "0.06em",
@@ -496,7 +509,7 @@ export default function SqlEditor({
                 border: "none",
                 color: "var(--text-dimmed)",
                 cursor: "pointer",
-                fontSize: 11,
+                fontSize: 15,
                 padding: "0 2px",
                 fontFamily: "var(--font-mono)",
               }}
@@ -506,12 +519,12 @@ export default function SqlEditor({
           </div>
           <div style={{ flex: 1, overflow: "auto" }}>
             {historyLoading && (
-              <div style={{ padding: 12, fontSize: 11, color: "var(--text-dimmed)", textAlign: "center", fontFamily: "var(--font-ui)" }}>
+              <div style={{ padding: 14, fontSize: 15, color: "var(--text-dimmed)", textAlign: "center", fontFamily: "var(--font-ui)" }}>
                 loading...
               </div>
             )}
             {!historyLoading && historyEntries.length === 0 && (
-              <div style={{ padding: 12, fontSize: 11, color: "var(--text-dimmed)", textAlign: "center", fontFamily: "var(--font-ui)" }}>
+              <div style={{ padding: 14, fontSize: 15, color: "var(--text-dimmed)", textAlign: "center", fontFamily: "var(--font-ui)" }}>
                 no history
               </div>
             )}
@@ -525,13 +538,13 @@ export default function SqlEditor({
                   key={entry.id}
                   onClick={() => handleHistorySelect(entry)}
                   style={{
-                    padding: "5px 10px",
+                    padding: "7px 14px",
                     cursor: "pointer",
                     display: "flex",
                     gap: 8,
                     alignItems: "baseline",
                     borderBottom: "1px solid var(--border)",
-                    fontSize: 11,
+                    fontSize: 15,
                     fontFamily: "var(--font-mono)",
                   }}
                   onMouseEnter={(e) => {
@@ -541,7 +554,7 @@ export default function SqlEditor({
                     (e.currentTarget as HTMLDivElement).style.background = "transparent";
                   }}
                 >
-                  <span style={{ color: "var(--accent)", flexShrink: 0, fontSize: 10 }}>
+                  <span style={{ color: "var(--accent)", flexShrink: 0, fontSize: 14 }}>
                     {timePart}
                   </span>
                   <span

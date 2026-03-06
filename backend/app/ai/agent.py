@@ -88,6 +88,7 @@ def build_agent(profile: str = "default", model_override: str | None = None):
 async def stream_agent_response(
     message: str,
     chat_history: list,
+    active_files: list[str] | None = None,
     profile: str = "default",
     model_override: str | None = None,
 ) -> AsyncGenerator[dict, None]:
@@ -111,8 +112,17 @@ async def stream_agent_response(
         elif msg["role"] == "assistant":
             history.append(AIMessage(content=msg["content"]))
 
+    # Inject active files context into the user message so the LLM
+    # knows which files are currently selected in the workspace.
+    augmented_message = message
+    if active_files:
+        files_list = ", ".join(f"'{f}'" for f in active_files)
+        augmented_message = (
+            f"[Active files in workspace: {files_list}]\n\n{message}"
+        )
+
     input_data = {
-        "messages": history + [HumanMessage(content=message)],
+        "messages": history + [HumanMessage(content=augmented_message)],
     }
 
     try:

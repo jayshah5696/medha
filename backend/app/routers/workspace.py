@@ -3,6 +3,7 @@
 import json
 import os
 from pathlib import Path
+from typing import List
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
@@ -102,6 +103,49 @@ async def file_schema(filename: str):
         raise HTTPException(status_code=404, detail=str(e))
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+
+class BrowseRequest(BaseModel):
+    path: str = ""
+
+
+class DirEntry(BaseModel):
+    name: str
+    is_dir: bool
+
+
+class BrowseResponse(BaseModel):
+    current: str
+    parent: str | None
+    entries: List[DirEntry]
+
+
+@router.post("/api/workspace/browse")
+async def browse_directory(req: BrowseRequest):
+    """List directories at a given path for the folder picker."""
+    target = Path(req.path) if req.path else Path.home()
+    target = target.expanduser().resolve()
+
+    if not target.exists():
+        raise HTTPException(status_code=400, detail=f"Path does not exist: {target}")
+    if not target.is_dir():
+        raise HTTPException(status_code=400, detail=f"Not a directory: {target}")
+
+    entries: List[DirEntry] = []
+    try:
+        for child in sorted(target.iterdir(), key=lambda p: p.name.lower()):
+            # Skip hidden dirs/files
+            if child.name.startswith("."):
+                continue
+            if child.is_dir():
+                entries.append(DirEntry(name=child.name, is_dir=True))
+            elif child.suffix.lower() in {".csv", ".parquet", ".json", ".jsonl", ".tsv", ".xlsx"}:
+                entries.append(DirEntry(name=child.name, is_dir=False))
+    except PermissionError:
+        raise HTTPException(status_code=403, detail=f"Permission denied: {target}")
+
+    parent = str(target.parent) if target.parent != target else None
+    return BrowseResponse(current=str(target), parent=parent, entries=entries)
 
 
 # --- Settings routes ---

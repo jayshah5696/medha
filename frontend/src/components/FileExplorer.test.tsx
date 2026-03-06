@@ -17,6 +17,14 @@ vi.mock("../lib/api", () => ({
   ]),
   getHistoryEntry: vi.fn().mockResolvedValue("SELECT * FROM users"),
   clearHistory: vi.fn().mockResolvedValue(undefined),
+  browseDirectory: vi.fn().mockResolvedValue({
+    current: "/Users/test/data",
+    parent: "/Users/test",
+    entries: [
+      { name: "subdir", is_dir: true },
+      { name: "sales.csv", is_dir: false },
+    ],
+  }),
 }));
 
 // Mock the store
@@ -47,26 +55,26 @@ beforeEach(() => {
 
 describe("FileExplorer", () => {
   it("renders workspace input", () => {
-    render(<FileExplorer />);
+    render(<FileExplorer width={220} />);
     const input = screen.getByPlaceholderText("/path/to/data");
     expect(input).toBeInTheDocument();
   });
 
   it("shows file list after files loaded", () => {
-    render(<FileExplorer />);
+    render(<FileExplorer width={220} />);
     expect(screen.getByText("data.csv")).toBeInTheDocument();
     expect(screen.getByText("users.parquet")).toBeInTheDocument();
   });
 
   it("active file shows highlighted", () => {
-    render(<FileExplorer />);
+    render(<FileExplorer width={220} />);
     const activeItem = screen.getByText("data.csv");
     // Active file has a different style; just check it exists
     expect(activeItem).toBeInTheDocument();
   });
 
   it("history section is collapsed by default", () => {
-    render(<FileExplorer />);
+    render(<FileExplorer width={220} />);
     expect(screen.getByText("history")).toBeInTheDocument();
     // The history entries should NOT be visible
     expect(screen.queryByText("no history")).not.toBeInTheDocument();
@@ -75,7 +83,7 @@ describe("FileExplorer", () => {
 
   it("clicking history entry calls loadHistoryEntry", async () => {
     const { getHistoryEntry } = await import("../lib/api");
-    render(<FileExplorer />);
+    render(<FileExplorer width={220} />);
     // Click to expand history
     fireEvent.click(screen.getByText("history"));
     // Wait for history to load
@@ -87,5 +95,88 @@ describe("FileExplorer", () => {
     await waitFor(() => {
       expect(getHistoryEntry).toHaveBeenCalledWith("2026-03-05/12-00-00_select.sql");
     });
+  });
+
+  it("renders browse button", () => {
+    render(<FileExplorer width={220} />);
+    const browseBtn = screen.getByTitle("Browse folders");
+    expect(browseBtn).toBeInTheDocument();
+  });
+
+  it("clicking browse opens folder picker modal", async () => {
+    const { browseDirectory } = await import("../lib/api");
+    render(<FileExplorer width={220} />);
+    fireEvent.click(screen.getByTitle("Browse folders"));
+    await waitFor(() => {
+      expect(browseDirectory).toHaveBeenCalled();
+    });
+    // Modal should show current path and entries
+    await waitFor(() => {
+      expect(screen.getByText("select folder")).toBeInTheDocument();
+      expect(screen.getByText("/Users/test/data")).toBeInTheDocument();
+      expect(screen.getByText("subdir")).toBeInTheDocument();
+      expect(screen.getByText("sales.csv")).toBeInTheDocument();
+    });
+  });
+
+  it("clicking 'select this folder' populates input and closes modal", async () => {
+    render(<FileExplorer width={220} />);
+    fireEvent.click(screen.getByTitle("Browse folders"));
+    await waitFor(() => {
+      expect(screen.getByText("select folder")).toBeInTheDocument();
+    });
+    fireEvent.click(screen.getByText("select this folder"));
+    // Modal should close
+    await waitFor(() => {
+      expect(screen.queryByText("select folder")).not.toBeInTheDocument();
+    });
+    // Input should have the browsed path
+    const input = screen.getByPlaceholderText("/path/to/data") as HTMLInputElement;
+    expect(input.value).toBe("/Users/test/data");
+  });
+
+  it("clicking cancel closes the browse modal", async () => {
+    render(<FileExplorer width={220} />);
+    fireEvent.click(screen.getByTitle("Browse folders"));
+    await waitFor(() => {
+      expect(screen.getByText("select folder")).toBeInTheDocument();
+    });
+    fireEvent.click(screen.getByText("cancel"));
+    await waitFor(() => {
+      expect(screen.queryByText("select folder")).not.toBeInTheDocument();
+    });
+  });
+
+  it("clicking a subdirectory in browse navigates into it", async () => {
+    const { browseDirectory } = await import("../lib/api");
+    render(<FileExplorer width={220} />);
+    fireEvent.click(screen.getByTitle("Browse folders"));
+    await waitFor(() => {
+      expect(screen.getByText("subdir")).toBeInTheDocument();
+    });
+    // Click into subdir — should call browseDirectory again
+    fireEvent.click(screen.getByText("subdir"));
+    await waitFor(() => {
+      expect(browseDirectory).toHaveBeenCalledWith("/Users/test/data/subdir");
+    });
+  });
+
+  it("clicking '..' navigates to parent directory", async () => {
+    const { browseDirectory } = await import("../lib/api");
+    render(<FileExplorer width={220} />);
+    fireEvent.click(screen.getByTitle("Browse folders"));
+    await waitFor(() => {
+      expect(screen.getByText("..")).toBeInTheDocument();
+    });
+    fireEvent.click(screen.getByText(".."));
+    await waitFor(() => {
+      expect(browseDirectory).toHaveBeenCalledWith("/Users/test");
+    });
+  });
+
+  it("uses width prop for sidebar width", () => {
+    const { container } = render(<FileExplorer width={300} />);
+    const sidebar = container.firstChild as HTMLElement;
+    expect(sidebar.style.width).toBe("300px");
   });
 });

@@ -103,6 +103,7 @@ async def ai_chat(req: ChatRequest, background_tasks: BackgroundTasks):
             async for event in stream_agent_response(
                 message=req.message,
                 chat_history=chat_history,
+                active_files=req.active_files,
                 profile=req.profile,
                 model_override=req.model,
             ):
