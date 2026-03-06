@@ -1,5 +1,6 @@
 """Workspace, schema, and settings endpoints."""
 
+import asyncio
 import json
 import os
 from pathlib import Path
@@ -81,13 +82,13 @@ class ConfigureRequest(BaseModel):
 
 @router.get("/api/workspace/files")
 async def list_files():
-    return scan_files()
+    return await asyncio.to_thread(scan_files)
 
 
 @router.post("/api/workspace/configure")
 async def configure_workspace(req: ConfigureRequest):
     try:
-        set_workspace(req.path)
+        await asyncio.to_thread(set_workspace, req.path)
         return {"ok": True, "path": req.path}
     except (FileNotFoundError, NotADirectoryError) as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -95,7 +96,6 @@ async def configure_workspace(req: ConfigureRequest):
 
 @router.get("/api/db/schema/{filename}")
 async def file_schema(filename: str):
-    import asyncio
     try:
         schema = await asyncio.to_thread(get_schema, filename)
         return {"filename": filename, "columns": schema}
@@ -120,6 +120,27 @@ class BrowseResponse(BaseModel):
     entries: List[DirEntry]
 
 
+def _get_directory_entries(target: Path) -> List[DirEntry]:
+    """Helper to perform blocking directory traversal."""
+    entries: List[DirEntry] = []
+    for child in sorted(target.iterdir(), key=lambda p: p.name.lower()):
+        # Skip hidden dirs/files
+        if child.name.startswith("."):
+            continue
+        if child.is_dir():
+            entries.append(DirEntry(name=child.name, is_dir=True))
+        elif child.suffix.lower() in {
+            ".csv",
+            ".parquet",
+            ".json",
+            ".jsonl",
+            ".tsv",
+            ".xlsx",
+        }:
+            entries.append(DirEntry(name=child.name, is_dir=False))
+    return entries
+
+
 @router.post("/api/workspace/browse")
 async def browse_directory(req: BrowseRequest):
     """List directories at a given path for the folder picker."""
@@ -131,16 +152,8 @@ async def browse_directory(req: BrowseRequest):
     if not target.is_dir():
         raise HTTPException(status_code=400, detail=f"Not a directory: {target}")
 
-    entries: List[DirEntry] = []
     try:
-        for child in sorted(target.iterdir(), key=lambda p: p.name.lower()):
-            # Skip hidden dirs/files
-            if child.name.startswith("."):
-                continue
-            if child.is_dir():
-                entries.append(DirEntry(name=child.name, is_dir=True))
-            elif child.suffix.lower() in {".csv", ".parquet", ".json", ".jsonl", ".tsv", ".xlsx"}:
-                entries.append(DirEntry(name=child.name, is_dir=False))
+        entries = await asyncio.to_thread(_get_directory_entries, target)
     except PermissionError:
         raise HTTPException(status_code=403, detail=f"Permission denied: {target}")
 
@@ -153,7 +166,7 @@ async def browse_directory(req: BrowseRequest):
 
 @router.get("/api/settings", response_model=MaskedSettings)
 async def get_settings():
-    s = load_settings()
+    s = await asyncio.to_thread(load_settings)
     return MaskedSettings(
         provider_inline=s.provider_inline,
         provider_chat=s.provider_chat,
@@ -172,7 +185,7 @@ async def get_settings():
 @router.post("/api/settings")
 async def update_settings(req: Settings):
     # Load existing settings so masked values do not overwrite real keys
-    existing = load_settings()
+    existing = await asyncio.to_thread(load_settings)
 
     def _resolve_key(new_val: str, existing_val: str) -> str:
         return existing_val if _is_masked(new_val) else new_val
@@ -184,14 +197,18 @@ async def update_settings(req: Settings):
         model_chat=req.model_chat,
         agent_profile=req.agent_profile,
         openai_api_key=_resolve_key(req.openai_api_key, existing.openai_api_key),
-        openrouter_api_key=_resolve_key(req.openrouter_api_key, existing.openrouter_api_key),
-        anthropic_api_key=_resolve_key(req.anthropic_api_key, existing.anthropic_api_key),
+        openrouter_api_key=_resolve_key(
+            req.openrouter_api_key, existing.openrouter_api_key
+        ),
+        anthropic_api_key=_resolve_key(
+            req.anthropic_api_key, existing.anthropic_api_key
+        ),
         gemini_api_key=_resolve_key(req.gemini_api_key, existing.gemini_api_key),
         lm_studio_url=req.lm_studio_url,
         ollama_url=req.ollama_url,
     )
 
-    save_settings(updated)
+    await asyncio.to_thread(save_settings, updated)
 
     # Apply API keys to environment so litellm picks them up immediately
     key_env_map = {

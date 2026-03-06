@@ -1,3 +1,4 @@
+import asyncio
 import json
 import re
 from datetime import datetime, timezone
@@ -126,14 +127,14 @@ def _list_threads() -> list[dict]:
 @router.get("/api/chats")
 async def list_chats():
     """List all chat threads, newest first."""
-    return _list_threads()
+    return await asyncio.to_thread(_list_threads)
 
 
 @router.get("/api/chats/{slug}")
 async def get_chat(slug: str):
     """Get full thread content."""
     _validate_slug(slug)
-    thread = _load_thread(slug)
+    thread = await asyncio.to_thread(_load_thread, slug)
     if thread is None:
         raise HTTPException(status_code=404, detail="Chat thread not found")
     return thread
@@ -146,7 +147,7 @@ async def delete_chat(slug: str):
     path = CHATS_DIR / f"{slug}.json"
     if not path.exists():
         raise HTTPException(status_code=404, detail="Chat thread not found")
-    path.unlink()
+    await asyncio.to_thread(path.unlink)
     return {"ok": True}
 
 
@@ -162,5 +163,5 @@ async def save_chat(slug: str, req: SaveThreadRequest):
         "active_files": req.active_files,
         "messages": [m.model_dump() for m in req.messages],
     }
-    _save_thread(data)
+    await asyncio.to_thread(_save_thread, data)
     return {"ok": True, "slug": slug}
