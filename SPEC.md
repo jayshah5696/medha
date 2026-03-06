@@ -1,4 +1,4 @@
-# Vāhaka — Local-First SQL IDE for Flat Files
+# Medha — Local-First SQL IDE for Flat Files
 **Version:** 0.1 (MVP Spec)
 **Stack:** Vite + React + TypeScript + FastAPI + DuckDB + LangGraph + Tauri
 
@@ -25,7 +25,7 @@ A single-binary desktop app for querying Parquet, CSV, and JSON files with nativ
 ### 3A. Repository Layout
 
 ```
-vahaka/
+medha/
   backend/          # Python FastAPI + DuckDB + LangGraph
     app/
       main.py       # FastAPI app entry
@@ -40,7 +40,7 @@ vahaka/
         db.py
         ai.py
     pyproject.toml  # uv-managed deps
-    vahaka.spec     # PyInstaller spec
+    medha.spec     # PyInstaller spec
   
   frontend/         # Vite + React + TypeScript
     src/
@@ -83,7 +83,7 @@ Tauri (Rust)
                   |-- all API calls to localhost:{port}
 ```
 
-**Port negotiation:** Tauri picks a free port in range 18900-18999 at startup, writes it to a temp file, passes path as env var `VAHAKA_PORT_FILE` to sidecar. Sidecar reads file, binds on that port. Frontend reads port via `window.__VAHAKA_PORT__` injected by Tauri before webview load.
+**Port negotiation:** Tauri picks a free port in range 18900-18999 at startup, writes it to a temp file, passes path as env var `MEDHA_PORT_FILE` to sidecar. Sidecar reads file, binds on that port. Frontend reads port via `window.__MEDHA_PORT__` injected by Tauri before webview load.
 
 **Sidecar lifecycle (Rust):**
 1. Spawn sidecar subprocess
@@ -313,12 +313,12 @@ Tauri sidecar config in `tauri.conf.json`:
 ```json
 {
   "bundle": {
-    "externalBin": ["binaries/vahaka-backend"]
+    "externalBin": ["binaries/medha-backend"]
   }
 }
 ```
 
-Binary naming convention: `vahaka-backend-x86_64-apple-darwin`, etc. (Tauri requires platform suffix).
+Binary naming convention: `medha-backend-x86_64-apple-darwin`, etc. (Tauri requires platform suffix).
 
 ---
 
@@ -341,11 +341,11 @@ make dev
 
 ```bash
 # 1. Bundle Python backend
-cd backend && pyinstaller vahaka.spec
-# Output: backend/dist/vahaka-backend (single binary)
+cd backend && pyinstaller medha.spec
+# Output: backend/dist/medha-backend (single binary)
 
 # 2. Copy binary to Tauri sidecar location
-cp backend/dist/vahaka-backend src-tauri/binaries/vahaka-backend-$(rustup show active-toolchain | cut -d- -f2-)
+cp backend/dist/medha-backend src-tauri/binaries/medha-backend-$(rustup show active-toolchain | cut -d- -f2-)
 
 # 3. Build Vite static
 cd frontend && npm run build
@@ -364,8 +364,8 @@ dev:
 	cd frontend && npm run dev
 
 build:
-	cd backend && pyinstaller vahaka.spec
-	cp backend/dist/vahaka-backend src-tauri/binaries/vahaka-backend-$$(rustup show active-toolchain | awk '{print $$1}' | cut -d- -f2-)
+	cd backend && pyinstaller medha.spec
+	cp backend/dist/medha-backend src-tauri/binaries/medha-backend-$$(rustup show active-toolchain | awk '{print $$1}' | cut -d- -f2-)
 	cd frontend && npm run build
 	cd src-tauri && cargo tauri build
 
@@ -430,7 +430,7 @@ Model selection dropdown in UI header.
 
 Opus gets this SPEC.md plus the following instruction:
 
-Build Vāhaka per this spec. Priority order:
+Build Medha per this spec. Priority order:
 1. Backend (FastAPI + DuckDB) — fully working first
 2. Frontend (Vite + React + TS) — functional second
 3. Tauri shell (Rust sidecar lifecycle) — you write the Rust, I don't

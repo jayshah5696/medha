@@ -1,0 +1,30 @@
+[project]
+name = "medha-backend"
+version = "0.1.0"
+description = "Medha backend - FastAPI + DuckDB + LangGraph"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+  "fastapi>=0.115",
+  "uvicorn[standard]",
+  "duckdb>=1.2",
+  "litellm>=1.55",
+  "langgraph>=0.2",
+  "langchain-core>=0.3",
+  "watchfiles>=1.0",
+  "python-multipart",
+  "pandas>=2.2",
+  "pyarrow>=17",
+  "sqlglot",
+]
+
+[dependency-groups]
+dev = [
+    "httpx>=0.28.1",
+    "pytest>=9.0.2",
+    "pytest-asyncio>=0.24",
+]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]

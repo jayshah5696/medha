@@ -1,0 +1,41 @@
+"""Medha backend: FastAPI + DuckDB + LangGraph."""
+
+import re
+from contextlib import asynccontextmanager
+
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+
+from app.routers import workspace as workspace_router
+from app.routers import db as db_router
+from app.routers import ai as ai_router
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup
+    yield
+    # Shutdown: close DuckDB
+    from app.db import conn
+    conn.close()
+
+
+app = FastAPI(title="Medha", version="0.1.0", lifespan=lifespan)
+
+# CORS: allow all localhost origins
+app.add_middleware(
+    CORSMiddleware,
+    allow_origin_regex=re.compile(r"^https?://localhost(:\d+)?$").pattern,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+app.include_router(workspace_router.router)
+app.include_router(db_router.router)
+app.include_router(ai_router.router)
+
+
+@app.get("/health")
+async def health():
+    return {"ok": True}
