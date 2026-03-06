@@ -3,6 +3,7 @@
 import asyncio
 import re
 import time
+import urllib.parse
 from pathlib import Path
 from typing import Any
 
@@ -58,14 +59,23 @@ def _check_path_safety(sql: str) -> None:
         raise ValueError(
             "No workspace configured. Set a workspace directory before running queries."
         )
-    if "../" in sql:
+
+    # Decode URL-encoded characters to prevent bypasses like ..%2f
+    decoded_sql = urllib.parse.unquote(sql)
+
+    if "../" in decoded_sql or "..\\" in decoded_sql:
         raise ValueError("Path traversal ('..') is not allowed in queries.")
-    # Check for absolute paths that are not under workspace_root
-    abs_path_pattern = re.findall(r"['\"](/[^'\"]+)['\"]", sql)
-    root_str = str(workspace_root)
+
+    # Check for absolute paths or file:// URIs that are not under workspace_root
+    # Matches '/path/to/file' or 'file:///path/to/file'
+    abs_path_pattern = re.findall(r"['\"]((?:file://)?/[^'\"]+)['\"]", decoded_sql)
     for p in abs_path_pattern:
-        resolved = str(Path(p).resolve())
-        if not resolved.startswith(root_str):
+        path_to_resolve = p
+        if p.startswith("file://"):
+            path_to_resolve = p[7:]
+
+        resolved = Path(path_to_resolve).resolve()
+        if not resolved.is_relative_to(workspace_root):
             raise ValueError(
                 f"Absolute path '{p}' is outside the workspace root."
             )
