@@ -94,8 +94,9 @@ async def configure_workspace(req: ConfigureRequest):
 
 @router.get("/api/db/schema/{filename}")
 async def file_schema(filename: str):
+    import asyncio
     try:
-        schema = get_schema(filename)
+        schema = await asyncio.to_thread(get_schema, filename)
         return {"filename": filename, "columns": schema}
     except FileNotFoundError as e:
         raise HTTPException(status_code=404, detail=str(e))

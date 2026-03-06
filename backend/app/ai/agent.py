@@ -101,6 +101,8 @@ async def stream_agent_response(
     deliver the full response from each 'model' node output.
     """
     agent = build_agent(profile, model_override)
+    config = load_agent_config(profile)
+    max_iterations = config.get("max_iterations", 15)
 
     history = []
     for msg in chat_history:
@@ -114,7 +116,7 @@ async def stream_agent_response(
     }
 
     try:
-        async for chunk in agent.astream(input_data):
+        async for chunk in agent.astream(input_data, config={"recursion_limit": max_iterations}):
             # Each chunk is a dict keyed by the node name that just finished.
             # The 'model' node produces {"messages": [AIMessage(...)]}
             # The 'tools' node produces {"messages": [ToolMessage(...)]}

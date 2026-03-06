@@ -25,11 +25,13 @@ async def inline_edit(
     model: str = "gpt-4o-mini",
 ) -> str:
     """Generate edited SQL based on user instruction."""
+    import asyncio
+    
     # Build schema context
     schema_parts = []
     for filename in active_files:
         try:
-            cols = get_schema(filename)
+            cols = await asyncio.to_thread(get_schema, filename)
             col_str = ", ".join(f"{c['name']} ({c['type']})" for c in cols)
             schema_parts.append(f"File: {filename}\nColumns: {col_str}")
         except Exception:

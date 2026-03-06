@@ -129,7 +129,16 @@ async def list_history():
 async def get_history_entry(date: str, filename: str):
     """Return full SQL content for a history entry."""
     filepath = HISTORY_DIR / date / filename
-    if not filepath.exists():
+    
+    try:
+        res_filepath = filepath.resolve()
+        res_history_dir = HISTORY_DIR.resolve()
+        if not res_filepath.is_relative_to(res_history_dir):
+            raise ValueError("Path traversal attempt")
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid path")
+
+    if not filepath.exists() or not filepath.is_file():
         raise HTTPException(status_code=404, detail="History entry not found")
     content = filepath.read_text()
     # Extract SQL content (skip header lines)
