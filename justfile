@@ -30,6 +30,10 @@ dev:
     
     trap 'kill 0' EXIT
     (cd backend && uv run uvicorn app.main:app --port 18900 --reload) &
+    
+    # Wait for the backend to be healthy before starting the frontend
+    while ! nc -z localhost 18900 2>/dev/null; do sleep 0.1; done
+    
     (cd frontend && NODE_ENV=development npm run dev) &
     wait
 
