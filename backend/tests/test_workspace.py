@@ -197,3 +197,29 @@ async def test_schema_cached(configured_client):
     assert resp2.status_code == 200
     # Cache entry should be the same object (not re-queried)
     assert workspace.schema_cache["sample.csv"] is cached_value
+
+
+def test_get_schema_no_workspace():
+    """get_schema raises ValueError if db.workspace_root is None."""
+    old_root = db.workspace_root
+    db.workspace_root = None
+    workspace.schema_cache.clear()
+    try:
+        with pytest.raises(ValueError, match="Workspace not configured."):
+            workspace.get_schema("any.csv")
+    finally:
+        db.workspace_root = old_root
+
+
+@pytest.mark.asyncio
+async def test_schema_no_workspace_returns_400(client):
+    """GET /api/db/schema/{filename} returns 400 if workspace not configured."""
+    old_root = db.workspace_root
+    db.workspace_root = None
+    workspace.schema_cache.clear()
+    try:
+        resp = await client.get("/api/db/schema/any.csv")
+        assert resp.status_code == 400
+        assert "Workspace not configured." in resp.json()["detail"]
+    finally:
+        db.workspace_root = old_root
