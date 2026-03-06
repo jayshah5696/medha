@@ -14,6 +14,7 @@ from app.routers.chats import (
     _load_thread,
     _save_thread,
     generate_slug_from_message,
+    generate_slug_from_message_with_timeout,
     generate_slug_fallback,
 )
 
@@ -47,7 +48,7 @@ async def _save_thread_background(
     try:
         if not thread_id:
             try:
-                thread_id = await generate_slug_from_message(req_message, model)
+                thread_id = await generate_slug_from_message(req_message)
             except Exception:
                 thread_id = generate_slug_fallback()
 
@@ -129,9 +130,12 @@ async def ai_chat(req: ChatRequest, background_tasks: BackgroundTasks):
             yield f'data: {json.dumps({"type": "error", "message": error_msg})}\n\n'
             return
 
-        # Generate slug inline (fast) if needed, but save in background
+        # BUG-2 fix: Generate slug inline via LLM (with 2s timeout)
+        # so the frontend gets a descriptive slug, not a timestamp fallback.
         if not thread_id:
-            thread_id = generate_slug_fallback()
+            thread_id = await generate_slug_from_message_with_timeout(
+                req.message, timeout=2.0
+            )
             yield f'data: {json.dumps({"type": "thread_id", "slug": thread_id})}\n\n'
 
         # Schedule thread persistence as a background task so the SSE

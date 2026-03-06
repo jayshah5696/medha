@@ -24,6 +24,9 @@ function App() {
     setQueryResult,
     setIsQuerying,
     setLastError,
+    bumpHistoryVersion,
+    resultPaneHeight,
+    setResultPaneHeight,
   } = useStore();
 
   const [diffState, setDiffState] = useState<{
@@ -97,6 +100,50 @@ function App() {
     [leftWidth, rightWidth]
   );
 
+  // FEAT-1: Vertical drag handle between editor and result pane
+  const vDragRef = useRef<{
+    startY: number;
+    startHeight: number;
+  } | null>(null);
+
+  const handleVDragStart = useCallback(
+    (e: React.MouseEvent) => {
+      e.preventDefault();
+      vDragRef.current = {
+        startY: e.clientY,
+        startHeight: resultPaneHeight,
+      };
+
+      const onMove = (ev: MouseEvent) => {
+        if (!vDragRef.current) return;
+        // Dragging up = increasing result pane height (delta is negative when moving up)
+        const delta = vDragRef.current.startY - ev.clientY;
+        const newHeight = Math.max(
+          100,
+          Math.min(
+            window.innerHeight * 0.8,
+            vDragRef.current.startHeight + delta
+          )
+        );
+        setResultPaneHeight(newHeight);
+      };
+
+      const onUp = () => {
+        vDragRef.current = null;
+        document.removeEventListener("mousemove", onMove);
+        document.removeEventListener("mouseup", onUp);
+        document.body.style.cursor = "";
+        document.body.style.userSelect = "";
+      };
+
+      document.addEventListener("mousemove", onMove);
+      document.addEventListener("mouseup", onUp);
+      document.body.style.cursor = "row-resize";
+      document.body.style.userSelect = "none";
+    },
+    [resultPaneHeight, setResultPaneHeight]
+  );
+
   // First-run check: if no LLM is configured, show onboarding banner
   useEffect(() => {
     const dismissed = localStorage.getItem(BANNER_DISMISSED_KEY);
@@ -139,6 +186,7 @@ function App() {
         const qid = crypto.randomUUID();
         const result = await runQuery(query, qid);
         setQueryResult(result);
+        bumpHistoryVersion(); // BUG-4: trigger sidebar history refresh
       } catch (e) {
         setLastError(e instanceof Error ? e.message : String(e));
         setQueryResult(null);
@@ -146,7 +194,7 @@ function App() {
         setIsQuerying(false);
       }
     },
-    [setIsQuerying, setLastError, setQueryResult]
+    [setIsQuerying, setLastError, setQueryResult, bumpHistoryVersion]
   );
 
   const handleCmdK = useCallback(
@@ -310,7 +358,7 @@ function App() {
       {/* Main content */}
       <div style={{ flex: 1, display: "flex", overflow: "hidden" }}>
         {/* Left sidebar */}
-        <FileExplorer width={leftWidth} />
+        <FileExplorer width={leftWidth} onFilePreview={handleExecute} />
 
         {/* Left resize handle */}
         <div
@@ -347,7 +395,29 @@ function App() {
             queryError={lastError}
             onDismissError={() => setLastError(null)}
           />
-          <ResultGrid result={queryResult} isQuerying={isQuerying} />
+          {/* FEAT-1: Vertical resize handle */}
+          <div
+            onMouseDown={handleVDragStart}
+            style={{
+              height: 5,
+              cursor: "row-resize",
+              background: "var(--border)",
+              position: "relative",
+              flexShrink: 0,
+            }}
+          >
+            <div
+              style={{
+                position: "absolute",
+                inset: "-2px 0",
+              }}
+            />
+          </div>
+          <ResultGrid
+            result={queryResult}
+            isQuerying={isQuerying}
+            height={resultPaneHeight}
+          />
         </div>
 
         {/* Right resize handle + Right sidebar (toggled via Cmd+L) */}

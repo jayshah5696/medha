@@ -160,6 +160,51 @@ async def test_export_blocked(configured_client):
     assert "EXPORT" in resp.json()["detail"]
 
 
+# --- FILE_SEARCH_PATH: relative paths resolve against workspace ---
+
+
+@pytest.mark.asyncio
+async def test_relative_path_resolves_to_workspace(configured_client, tmp_workspace):
+    """Query with bare filename 'sample.csv' should resolve against workspace_root."""
+    resp = await configured_client.post(
+        "/api/db/query",
+        json={"query": "SELECT * FROM 'sample.csv' LIMIT 3"},
+    )
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["columns"] == ["id", "name", "score"]
+    assert data["row_count"] == 3
+
+
+@pytest.mark.asyncio
+async def test_select_literal_works_with_workspace(configured_client):
+    """SELECT 1 (no file reference) should work when workspace is configured."""
+    resp = await configured_client.post(
+        "/api/db/query",
+        json={"query": "SELECT 1 AS val"},
+    )
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["columns"] == ["val"]
+    assert data["rows"] == [[1]]
+
+
+@pytest.mark.asyncio
+async def test_relative_path_in_agent_tool(tmp_workspace):
+    """execute_query tool with bare filename should also resolve via FILE_SEARCH_PATH."""
+    from app import workspace as ws
+    from app.ai.tools import execute_query as eq_tool
+    ws.set_workspace(str(tmp_workspace))
+    try:
+        result = await eq_tool.ainvoke({"sql": "SELECT * FROM 'sample.csv' LIMIT 2"})
+        assert "id" in result
+        assert "name" in result
+        assert "Error" not in result
+    finally:
+        db.workspace_root = None
+        ws.schema_cache.clear()
+
+
 @pytest.mark.asyncio
 async def test_query_blocked_without_workspace():
     """POST /api/db/query without configuring a workspace should return 400."""

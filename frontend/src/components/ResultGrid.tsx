@@ -10,18 +10,24 @@ import type { QueryResult } from "../lib/api";
 interface ResultGridProps {
   result: QueryResult | null;
   isQuerying: boolean;
+  height?: number;
 }
 
 function formatRowCount(n: number): string {
   return n.toLocaleString();
 }
 
-export default function ResultGrid({ result, isQuerying }: ResultGridProps) {
+export default function ResultGrid({ result, isQuerying, height }: ResultGridProps) {
+  // FEAT-1: use explicit height if provided, otherwise fall back to maxHeight
+  const paneStyle: React.CSSProperties = height
+    ? { height, minHeight: 100 }
+    : { maxHeight: "40vh" };
+
   if (isQuerying) {
     return (
       <div
         style={{
-          maxHeight: "40vh",
+          ...paneStyle,
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
@@ -41,7 +47,7 @@ export default function ResultGrid({ result, isQuerying }: ResultGridProps) {
     return (
       <div
         style={{
-          maxHeight: "40vh",
+          ...paneStyle,
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
@@ -61,7 +67,7 @@ export default function ResultGrid({ result, isQuerying }: ResultGridProps) {
     return (
       <div
         style={{
-          maxHeight: "40vh",
+          ...paneStyle,
           display: "flex",
           flexDirection: "column",
           alignItems: "center",
@@ -105,15 +111,17 @@ export default function ResultGrid({ result, isQuerying }: ResultGridProps) {
     );
   }, [result.columns]);
 
-  return <ResultTable result={result} columns={columns} />;
+  return <ResultTable result={result} columns={columns} height={height} />;
 }
 
 function ResultTable({
   result,
   columns,
+  height,
 }: {
   result: QueryResult;
   columns: ReturnType<ReturnType<typeof createColumnHelper<unknown[]>>["accessor"]>[];
+  height?: number;
 }) {
   const table = useReactTable({
     data: result.rows,
@@ -121,16 +129,14 @@ function ResultTable({
     getCoreRowModel: getCoreRowModel(),
   });
 
+  // FEAT-1: use explicit height if provided
+  const containerStyle: React.CSSProperties = height
+    ? { height, overflow: "auto", background: "var(--bg-primary)", display: "flex", flexDirection: "column" }
+    : { maxHeight: "40vh", overflow: "auto", background: "var(--bg-primary)", display: "flex", flexDirection: "column" };
+
   return (
-    <div
-      style={{
-        maxHeight: "40vh",
-        overflow: "auto",
-        background: "var(--bg-primary)",
-        display: "flex",
-        flexDirection: "column",
-      }}
-    >
+    <div style={containerStyle}>
+
       {/* Table */}
       <div style={{ flex: 1, overflow: "auto" }}>
         <table

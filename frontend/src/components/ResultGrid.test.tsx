@@ -44,4 +44,31 @@ describe("ResultGrid", () => {
     render(<ResultGrid result={baseResult} isQuerying={false} />);
     expect(screen.queryByText("TRUNCATED")).not.toBeInTheDocument();
   });
+
+  // FEAT-1: height prop tests
+  it("accepts height prop and renders with explicit height", () => {
+    const { container } = render(
+      <ResultGrid result={baseResult} isQuerying={false} height={300} />
+    );
+    // The outer div should use explicit height, not maxHeight
+    const outerDiv = container.firstElementChild as HTMLElement;
+    expect(outerDiv).toBeTruthy();
+    expect(outerDiv.style.height).toBe("300px");
+  });
+
+  it("renders loading state with height prop", () => {
+    const { container } = render(
+      <ResultGrid result={null} isQuerying={true} height={200} />
+    );
+    expect(screen.getByText("running query...")).toBeInTheDocument();
+    const outerDiv = container.firstElementChild as HTMLElement;
+    expect(outerDiv.style.height).toBe("200px");
+  });
+
+  it("renders empty state with height prop", () => {
+    render(
+      <ResultGrid result={null} isQuerying={false} height={250} />
+    );
+    expect(screen.getByText("Cmd+Enter to run")).toBeInTheDocument();
+  });
 });

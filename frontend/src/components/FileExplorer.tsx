@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { useStore } from "../store";
-import { configureWorkspace, getFiles, getHistory, getHistoryEntry, clearHistory, browseDirectory } from "../lib/api";
+import { configureWorkspace, getFiles, getHistory, getHistoryEntry, clearHistory, browseDirectory, runQuery } from "../lib/api";
 import type { HistoryEntry, DirEntry } from "../lib/api";
 
 function formatBytes(bytes: number): string {
@@ -9,7 +9,12 @@ function formatBytes(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-export default function FileExplorer({ width }: { width: number }) {
+interface FileExplorerProps {
+  width: number;
+  onFilePreview?: (query: string) => void;
+}
+
+export default function FileExplorer({ width, onFilePreview }: FileExplorerProps) {
   const {
     workspacePath,
     setWorkspacePath,
@@ -19,6 +24,11 @@ export default function FileExplorer({ width }: { width: number }) {
     toggleActiveFile,
     setLastError,
     loadHistoryEntry,
+    historyVersion,
+    setEditorContent,
+    setQueryResult,
+    setIsQuerying,
+    bumpHistoryVersion,
   } = useStore();
 
   const [inputPath, setInputPath] = useState(workspacePath);
@@ -72,11 +82,38 @@ export default function FileExplorer({ width }: { width: number }) {
     }
   };
 
+  // BUG-4: auto-refresh history when historyVersion changes (query executed)
   useEffect(() => {
     if (historyOpen) {
       loadHistory();
     }
-  }, [historyOpen]);
+  }, [historyOpen, historyVersion]);
+
+  // FEAT-2: Click file → auto-preview data in result grid
+  const handleFilePreview = async (filename: string) => {
+    const query = `SELECT * FROM '${filename}' LIMIT 100;`;
+    setEditorContent(query);
+    toggleActiveFile(filename);
+
+    if (onFilePreview) {
+      onFilePreview(query);
+    } else {
+      // Execute directly if no callback provided
+      setIsQuerying(true);
+      setLastError(null);
+      try {
+        const qid = crypto.randomUUID();
+        const result = await runQuery(query, qid);
+        setQueryResult(result);
+        bumpHistoryVersion();
+      } catch (e) {
+        setLastError(e instanceof Error ? e.message : String(e));
+        setQueryResult(null);
+      } finally {
+        setIsQuerying(false);
+      }
+    }
+  };
 
   const handleConfigure = async () => {
     if (!inputPath.trim()) return;
@@ -255,7 +292,7 @@ export default function FileExplorer({ width }: { width: number }) {
           return (
             <div
               key={f.name}
-              onClick={() => toggleActiveFile(f.name)}
+              onClick={() => handleFilePreview(f.name)}
               style={{
                 padding: "6px 12px",
                 fontSize: 15,
@@ -335,7 +372,8 @@ export default function FileExplorer({ width }: { width: number }) {
               )}
               {historyEntries.map((entry) => {
                 const timePart = entry.timestamp ? entry.timestamp.split(" ")[1]?.slice(0, 5) || "" : "";
-                const previewText = entry.preview.slice(0, 40);
+                const previewText = entry.preview.slice(0, 36);
+                const sourceIcon = entry.source === "agent" ? "🤖" : "👤";
                 return (
                   <div
                     key={entry.id}
@@ -350,8 +388,11 @@ export default function FileExplorer({ width }: { width: number }) {
                       fontFamily: "var(--font-mono)",
                       gap: 6,
                     }}
-                    title={entry.preview}
+                    title={`${sourceIcon} ${entry.preview}`}
                   >
+                    <span style={{ flexShrink: 0, fontSize: 11 }}>
+                      {sourceIcon}
+                    </span>
                     <span style={{ color: "var(--text-secondary)", flexShrink: 0, fontSize: 13 }}>
                       {timePart}
                     </span>

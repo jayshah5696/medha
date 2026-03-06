@@ -25,6 +25,10 @@ class Settings(BaseModel):
     model_inline: str = "openai/gpt-4o-mini"
     model_chat: str = "openai/gpt-4o-mini"
     agent_profile: str = "default"
+    # Meta: cheap model for slug generation (user-overridable)
+    model_slug: str = "openai/gpt-4o-mini"
+    # Workspace persistence
+    last_workspace: str = ""
     # API keys (stored on disk, never returned unmasked)
     openai_api_key: str = ""
     openrouter_api_key: str = ""
@@ -41,6 +45,8 @@ class MaskedSettings(BaseModel):
     model_inline: str = "openai/gpt-4o-mini"
     model_chat: str = "openai/gpt-4o-mini"
     agent_profile: str = "default"
+    model_slug: str = "openai/gpt-4o-mini"
+    last_workspace: str = ""
     openai_api_key: str = ""
     openrouter_api_key: str = ""
     anthropic_api_key: str = ""
@@ -73,6 +79,13 @@ def save_settings(s: Settings):
     os.chmod(SETTINGS_FILE, 0o600)
 
 
+def save_last_workspace(path: str) -> None:
+    """Persist the last-opened workspace path in settings."""
+    s = load_settings()
+    s.last_workspace = path
+    save_settings(s)
+
+
 # --- Workspace routes ---
 
 
@@ -89,6 +102,11 @@ async def list_files():
 async def configure_workspace(req: ConfigureRequest):
     try:
         await asyncio.to_thread(set_workspace, req.path)
+        # Persist so the workspace auto-loads on next startup
+        try:
+            save_last_workspace(req.path)
+        except Exception:
+            pass  # best-effort
         return {"ok": True, "path": req.path}
     except (FileNotFoundError, NotADirectoryError) as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -173,6 +191,8 @@ async def get_settings():
         model_inline=s.model_inline,
         model_chat=s.model_chat,
         agent_profile=s.agent_profile,
+        model_slug=s.model_slug,
+        last_workspace=s.last_workspace,
         openai_api_key=mask_key(s.openai_api_key),
         openrouter_api_key=mask_key(s.openrouter_api_key),
         anthropic_api_key=mask_key(s.anthropic_api_key),

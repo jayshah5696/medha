@@ -21,7 +21,24 @@ MAX_ROWS = 10000
 # DuckDB's Python binding is not safe for concurrent access from multiple
 # threads against the same connection. Since Medha is a local single-user
 # tool, serializing queries is acceptable and prevents data corruption.
-_db_lock = asyncio.Lock()
+#
+# The lock is created lazily to avoid binding to the wrong event loop
+# when the module is imported before asyncio starts.
+_db_lock: asyncio.Lock | None = None
+
+
+def _get_db_lock() -> asyncio.Lock:
+    """Get or create the DB lock, lazily bound to the current event loop."""
+    global _db_lock
+    if _db_lock is None:
+        _db_lock = asyncio.Lock()
+    return _db_lock
+
+
+def reset_db_lock() -> None:
+    """Reset the lock (for tests that create new event loops)."""
+    global _db_lock
+    _db_lock = None
 
 
 # --- SQL safety: block dangerous DuckDB operations ---
@@ -127,5 +144,5 @@ async def async_execute(
     queries fail fast without blocking other work.
     """
     _check_sql_safety(sql)
-    async with _db_lock:
+    async with _get_db_lock():
         return await asyncio.to_thread(_execute_sync, sql, params)

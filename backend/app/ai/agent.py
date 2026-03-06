@@ -8,9 +8,30 @@ import yaml
 from langchain.agents import create_agent
 from langchain_litellm import ChatLiteLLM
 from langchain_core.messages import HumanMessage, AIMessage
-from app.ai.tools import get_schema, sample_data, execute_query
+from app.ai.tools import get_schema, sample_data, execute_query, _pop_last_query_result
+from app.workspace import scan_files
+from app import db
 
 AGENTS_DIR = Path(__file__).parent.parent.parent / "agents"
+
+
+def _resolve_active_files(active_files: list[str] | None) -> list[str]:
+    """BUG-1 fix: auto-populate active_files from workspace when empty.
+
+    If the user hasn't explicitly selected files (active_files is empty
+    or None), return all workspace file names so the agent always has
+    context about what's available. User selection narrows focus, but
+    absence of selection shouldn't mean zero awareness.
+    """
+    if active_files:
+        return active_files
+    if db.workspace_root is None:
+        return []
+    try:
+        all_files = scan_files()
+        return [f["name"] for f in all_files]
+    except Exception:
+        return []
 
 # Module-level agent cache. Keyed by "profile:model_override".
 # Each entry stores (compiled_agent, yaml_mtime) so the agent is
@@ -112,11 +133,14 @@ async def stream_agent_response(
         elif msg["role"] == "assistant":
             history.append(AIMessage(content=msg["content"]))
 
+    # BUG-1 fix: auto-populate active_files from workspace when empty
+    resolved_files = _resolve_active_files(active_files)
+
     # Inject active files context into the user message so the LLM
     # knows which files are currently selected in the workspace.
     augmented_message = message
-    if active_files:
-        files_list = ", ".join(f"'{f}'" for f in active_files)
+    if resolved_files:
+        files_list = ", ".join(f"'{f}'" for f in resolved_files)
         augmented_message = (
             f"[Active files in workspace: {files_list}]\n\n{message}"
         )
@@ -145,6 +169,10 @@ async def stream_agent_response(
                     for msg in msgs:
                         tool_name = getattr(msg, "name", "unknown")
                         yield {"type": "tool_call", "tool": tool_name, "status": "end"}
+                    # Check if execute_query stashed a structured result
+                    stashed = _pop_last_query_result()
+                    if stashed:
+                        yield {"type": "query_result", **stashed}
         yield {"type": "done"}
     except Exception as e:
         yield {"type": "error", "message": str(e)}

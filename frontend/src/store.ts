@@ -28,6 +28,11 @@ interface MedhaStore {
   // History: load SQL into editor
   loadHistoryEntry: (sql: string) => void;
 
+  // BUG-4: history version counter — incremented after each query
+  // so sidebar auto-refreshes history list
+  historyVersion: number;
+  bumpHistoryVersion: () => void;
+
   // Chat thread persistence
   currentThreadId: string | null;
   setThreadId: (slug: string | null) => void;
@@ -37,6 +42,15 @@ interface MedhaStore {
 
   isChatOpen: boolean;
   toggleChatSidebar: () => void;
+
+  // FEAT-1: resizable result pane height
+  resultPaneHeight: number;
+  setResultPaneHeight: (h: number) => void;
+
+  // Agent query result: stored separately so it doesn't overwrite
+  // the user's editor content during agent streaming
+  agentLastQuery: string | null;
+  setAgentLastQuery: (sql: string | null) => void;
 }
 
 export const useStore = create<MedhaStore>((set) => ({
@@ -79,6 +93,10 @@ export const useStore = create<MedhaStore>((set) => ({
 
   loadHistoryEntry: (sql) => set({ editorContent: sql }),
 
+  historyVersion: 0,
+  bumpHistoryVersion: () =>
+    set((state) => ({ historyVersion: state.historyVersion + 1 })),
+
   currentThreadId: null,
   setThreadId: (slug) => set({ currentThreadId: slug }),
 
@@ -87,4 +105,10 @@ export const useStore = create<MedhaStore>((set) => ({
 
   isChatOpen: true,
   toggleChatSidebar: () => set((state) => ({ isChatOpen: !state.isChatOpen })),
+
+  resultPaneHeight: 250,
+  setResultPaneHeight: (h) => set({ resultPaneHeight: h }),
+
+  agentLastQuery: null,
+  setAgentLastQuery: (sql) => set({ agentLastQuery: sql }),
 }));

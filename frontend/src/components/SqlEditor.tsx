@@ -91,6 +91,16 @@ export default function SqlEditor({
     };
   }, [getContent, setContent]);
 
+  // Sync editorContent from store (agent query results, history entries)
+  const editorContent = useStore((s) => s.editorContent);
+  const prevContentRef = useRef(editorContent);
+  useEffect(() => {
+    if (editorContent !== prevContentRef.current) {
+      prevContentRef.current = editorContent;
+      setContent(editorContent);
+    }
+  }, [editorContent, setContent]);
+
   // Handle error decoration
   useEffect(() => {
     const view = viewRef.current;
@@ -532,7 +542,8 @@ export default function SqlEditor({
               const timePart = entry.timestamp
                 ? entry.timestamp.split(" ")[1]?.slice(0, 5) || ""
                 : "";
-              const preview = entry.preview.slice(0, 60);
+              const preview = entry.preview.slice(0, 55);
+              const sourceIcon = entry.source === "agent" ? "🤖" : "👤";
               return (
                 <div
                   key={entry.id}
@@ -554,6 +565,9 @@ export default function SqlEditor({
                     (e.currentTarget as HTMLDivElement).style.background = "transparent";
                   }}
                 >
+                  <span style={{ flexShrink: 0, fontSize: 12 }}>
+                    {sourceIcon}
+                  </span>
                   <span style={{ color: "var(--accent)", flexShrink: 0, fontSize: 14 }}>
                     {timePart}
                   </span>

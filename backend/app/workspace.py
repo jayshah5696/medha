@@ -58,13 +58,20 @@ def stop_watcher() -> None:
 
 
 def set_workspace(path: str) -> None:
-    """Set the workspace root directory."""
+    """Set the workspace root directory.
+
+    Also sets DuckDB's FILE_SEARCH_PATH so that bare filenames like
+    'sample.csv' resolve against the workspace root rather than the
+    process CWD.
+    """
     p = Path(path).resolve()
     if not p.exists():
         raise FileNotFoundError(f"Workspace path does not exist: {path}")
     if not p.is_dir():
         raise NotADirectoryError(f"Workspace path is not a directory: {path}")
     db.workspace_root = p
+    # Tell DuckDB to resolve relative file paths against workspace root
+    db.conn.execute(f"SET FILE_SEARCH_PATH='{p}'")
     schema_cache.clear()
     start_watcher()
 

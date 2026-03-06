@@ -31,6 +31,8 @@ export interface HistoryEntry {
   preview: string;
   duration_ms: number;
   row_count: number;
+  source?: string;       // "user" | "agent"
+  thread_slug?: string;  // chat thread slug (for agent queries)
 }
 
 export interface ChatThreadSummary {

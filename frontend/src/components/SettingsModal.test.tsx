@@ -48,11 +48,11 @@ describe("SettingsModal", () => {
     await waitFor(() => {
       expect(screen.getByText("settings")).toBeInTheDocument();
     });
-    // Check that model options exist in the DOM
+    // Check that provider options exist in the DOM
     const options = screen.getAllByRole("option");
     const optionValues = options.map((o) => (o as HTMLOptionElement).value);
-    expect(optionValues).toContain("openai/gpt-4o-mini");
-    expect(optionValues).toContain("openai/gpt-4o");
+    expect(optionValues).toContain("openai");
+    expect(optionValues).toContain("anthropic");
   });
 
   it("save button calls api", async () => {
@@ -77,7 +77,8 @@ describe("SettingsModal", () => {
     await waitFor(() => {
       expect(screen.getByText("settings")).toBeInTheDocument();
     });
-    fireEvent.click(screen.getByText("x"));
+    // The close button uses aria-label="Close settings"
+    fireEvent.click(screen.getByLabelText("Close settings"));
     expect(onClose).toHaveBeenCalledOnce();
   });
 });

@@ -39,6 +39,8 @@ async def run_query(req: QueryRequest):
                 row_count=result.get("row_count", 0),
                 truncated=result.get("truncated", False),
                 workspace_path=ws_path,
+                source="user",
+                dedup=True,
             )
         except Exception:
             # History save failure should not break queries

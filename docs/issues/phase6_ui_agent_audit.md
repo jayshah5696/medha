@@ -1,50 +1,79 @@
 # Medha Phase 6 UI and Agent Audit
 
-This document details the critical UX and agent execution bugs discovered during the visual pass of Medha v0.1. Each issue includes the root cause and the required architectural or UI code changes to correct it.
+> **Status:** ✅ All 4 critical bugs RESOLVED (2026-03-06)  
+> **Session log:** [docs/sessions/2026-03-06_phase6-audit-fixes.md](../sessions/2026-03-06_phase6-audit-fixes.md)  
+> **Decisions:** [docs/decisions/](../decisions/)
 
-## 1. Logo Visibility Inversion (BUG-UI-1)
+This document details the critical UX and agent execution bugs discovered during the visual pass of Medha v0.1. Each issue includes the root cause and the resolution applied.
+
+---
+
+## 1. Logo Visibility Inversion (BUG-UI-1) — ✅ RESOLVED
+
 **Issue:** The Medha logo is completely invisible in the top-left corner of the application when the app boots in Dark Mode.
-**Root Cause:** The image path logic in `App.tsx` is backwards. Wait, it currently states:
-`src={theme === "dark" ? "/logo-dark.png" : "/logo-light.png"}`
-This means when the app is dark (black background), we are loading the dark/black logo. Black-on-black renders it invisible.
-**Solution:**
-In `frontend/src/App.tsx:125`:
-```tsx
-- src={theme === "dark" ? "/logo-dark.png" : "/logo-light.png"}
-+ src={theme === "dark" ? "/logo-light.png" : "/logo-dark.png"}
-```
 
-## 2. Inadequate Baseline Typography Extents (BUG-UI-2)
+**Root Cause:** The image path logic in `App.tsx` was backwards AND the PNGs had opaque backgrounds. Dark logo on dark theme = invisible.
+
+**Resolution:** Replaced both PNG `<img>` tags with a single **inline SVG** using `fill: var(--accent)`. Automatically adapts to any theme. See [ADR-001](../decisions/ADR-001-svg-logo.md).
+
+**File:** `frontend/src/App.tsx`
+
+---
+
+## 2. Inadequate Baseline Typography Extents (BUG-UI-2) — ✅ RESOLVED
+
 **Issue:** Application typography is unreadable on standard desktop resolutions without explicitly zooming the browser to 175%.
-**Root Cause:** The CSS variables and fixed pixel sizes in `index.css` define `10px` for UI elements and `13px` for the core code editor. This is significantly below modern application baselines (14px-16px).
-**Solution:**
-In `frontend/src/index.css`:
-- `body { font-size: 14px; }` (Up from 13px)
-In `frontend/src/components/SqlEditor.tsx`:
-- `.cm-content { font-size: 15px; }` (Up from 13px)
-In `frontend/src/components/ResultGrid.tsx`:
-- Upgrade `th` font size from `10px` to `12px`
-- Upgrade `td` font size from `12px` to `14px`
-- Status bar size from `10px` to `11px`
 
-## 3. Web FileSystem API Path Illusion (BUG-ARCH-1)
-**Issue:** Selecting a folder via the application's native directory picker icon causes all SQL, even unrelated queries like `SELECT 1;`, to fail.
-**Root Cause:** For security reasons, the browser's `showDirectoryPicker()` API intentionally hides the true absolute path of the selected directory from the web application. It only returns the leaf folder name (e.g. `SyntheticData`).
-When the user clicks "Configure", `frontend/src/components/FileExplorer.tsx` sends the relative string `"SyntheticData"` to the `/api/workspace/configure` endpoint.
-The backend's path-safety sandbox (`backend/app/db.py:_check_path_safety`) enforces that all DuckDB reads occur inside an absolute `workspace_root`. Because the root was set to a relative, unreachable location, the safety check trips and locks the database.
-**Solution:**
-The native folder picker is inherently incompatible with Medha's backend architecture which fundamentally requires the absolute URL path string to route disk queries.
-The folder picker button must be removed entirely from the UI, and the user must paste the absolute path.
-In `frontend/src/components/FileExplorer.tsx:170`, delete:
-```tsx
-{hasDirPicker && (
-  <button onClick={handleBrowse}>...</button>
-)}
-```
+**Root Cause:** CSS variables and fixed pixel sizes defined `10px` for UI elements and `13px` for the code editor — significantly below modern baselines (14–16px).
 
-## 4. Agent File Extension Hallucination (BUG-AI-1)
-**Issue:** When instructed to query `data/sites`, the LangGraph agent hallucinates a `SELECT * FROM 'data/sites'` query, ignoring the actual file on disk which is `data/sites.csv`. The operation fails because the extensionless file does not exist.
-**Root Cause:** The `system_prompt` in `agents/default.yaml` tells the agent to query flat files but does not mandate strict adherence to the fully qualified extensions provided in the Active Files Context pills.
-**Solution:**
-Harden the prompt engineering in `agents/default.yaml` to instruct the model to append proper file extensions.
-Add: "You MUST query the exact full filename including the extension (e.g. 'data/sites.csv' not 'data/sites') as provided by the user's active file selection."
+**Resolution:** Multiple rounds of font-size bumps across all components. Final targets designed for **150% zoom readability**:
+
+| Element | Before | After |
+|---------|--------|-------|
+| Body | 13px | 16px |
+| SQL Editor | 13px | 17px |
+| Table headers | 10px | 13px |
+| Table cells | 12px | 15px |
+| Status bars | 10px | 12px |
+| Chat messages | 12px | 15px |
+| File explorer | 12px | 14px |
+
+**Files:** `index.css`, `App.tsx`, `SqlEditor.tsx`, `ResultGrid.tsx`, `FileExplorer.tsx`, `ChatSidebar.tsx`
+
+---
+
+## 3. Web FileSystem API Path Illusion (BUG-ARCH-1) — ✅ RESOLVED
+
+**Issue:** Selecting a folder via the browser's native directory picker caused all SQL to fail.
+
+**Root Cause:** `showDirectoryPicker()` only returns the leaf folder name (e.g., `"SyntheticData"`), not the absolute path. Backend requires absolute path for workspace sandbox.
+
+**Resolution:** Removed native directory picker. Built a **backend-powered folder browser** via `POST /api/workspace/browse` with modal UI for navigation. See [ADR-004](../decisions/ADR-004-backend-folder-browser.md).
+
+**Files:** `FileExplorer.tsx`, `api.ts`, `workspace.py`  
+**Tests added:** 7 FileExplorer tests, 2 API tests
+
+---
+
+## 4. Agent File Extension Hallucination (BUG-AI-1) — ✅ RESOLVED
+
+**Issue:** Agent queries `data/sites` instead of `data/sites.csv` — hallucinating filenames without extensions.
+
+**Root Cause:** System prompts in agent YAML profiles did not mandate strict filename adherence.
+
+**Resolution:** Hardened all 3 agent YAML profiles (`default.yaml`, `fast.yaml`, `deep.yaml`) with strict filename+extension rules and correct/incorrect examples.
+
+**Files:** `backend/agents/default.yaml`, `fast.yaml`, `deep.yaml`
+
+---
+
+## Additional Fixes Implemented (Same Session)
+
+| Fix | Description | ADR |
+|-----|-------------|-----|
+| Active files context | Frontend sends `active_files[]` → agent prepends to user message | — |
+| FILE_SEARCH_PATH | `set_workspace()` calls `SET FILE_SEARCH_PATH` for relative path resolution | [ADR-002](../decisions/ADR-002-file-search-path.md) |
+| Query result sync | Agent query results auto-populate editor + result grid via SSE | [ADR-003](../decisions/ADR-003-query-result-sync.md) |
+| JSON serialization | `_serialize_value()` handles DuckDB types (date, Decimal, UUID, bytes, timedelta) | — |
+| Meta config | `model_slug` + `last_workspace` fields in Settings | [ADR-005](../decisions/ADR-005-meta-config-slug-model.md) |
+| Cmd+Enter keymap | `Prec.highest()` fix for CodeMirror Run shortcut | — |

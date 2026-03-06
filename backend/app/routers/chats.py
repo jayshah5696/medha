@@ -51,12 +51,26 @@ def generate_slug_fallback() -> str:
     return f"chat-{datetime.now().strftime('%Y%m%d%H%M%S')}"
 
 
-async def generate_slug_from_message(message: str, model: str = "openai/gpt-4o-mini") -> str:
-    """Try to generate a slug via litellm. Falls back to timestamp."""
+import litellm
+
+
+def _get_slug_model() -> str:
+    """Read model_slug from settings. Cheap model for slug generation."""
     try:
-        import litellm
+        from app.routers.workspace import load_settings
+        s = load_settings()
+        return s.model_slug or "openai/gpt-4o-mini"
+    except Exception:
+        return "openai/gpt-4o-mini"
+
+
+async def generate_slug_from_message(message: str, model: str | None = None) -> str:
+    """Try to generate a slug via litellm using the cheap slug model.
+    Falls back to timestamp if LLM call fails."""
+    slug_model = model or _get_slug_model()
+    try:
         response = await litellm.acompletion(
-            model=model,
+            model=slug_model,
             messages=[
                 {
                     "role": "system",
@@ -76,6 +90,28 @@ async def generate_slug_from_message(message: str, model: str = "openai/gpt-4o-m
     except Exception:
         pass
     return generate_slug_fallback()
+
+
+async def generate_slug_from_message_with_timeout(
+    message: str,
+    timeout: float = 2.0,
+    model: str | None = None,
+) -> str:
+    """BUG-2 fix: Generate slug inline with a timeout.
+
+    Calls generate_slug_from_message with a timeout. If the LLM
+    takes longer than `timeout` seconds, falls back to timestamp slug.
+    This is called inline (before sending the thread_id SSE event)
+    so the frontend gets a descriptive slug immediately.
+    """
+    try:
+        slug = await asyncio.wait_for(
+            generate_slug_from_message(message, model),
+            timeout=timeout,
+        )
+        return slug
+    except (asyncio.TimeoutError, Exception):
+        return generate_slug_fallback()
 
 
 def _load_thread(slug: str) -> Optional[dict]:

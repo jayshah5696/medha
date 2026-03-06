@@ -270,6 +270,80 @@ async def test_stream_agent_response_no_active_files_no_injection():
     assert "[Active files" not in last_msg.content
 
 
+# ---------------------------------------------------------------------------
+# Issue 2: execute_query tool emits query_result event via stream
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_stream_emits_query_result_on_execute_query():
+    """When the agent calls execute_query, the stream should emit a
+    query_result event containing the SQL and structured result data."""
+    tool_msg = _make_tool_msg("execute_query")
+
+    fake_chunks = [
+        {"model": {"messages": [_make_ai_msg_with_tool_call("execute_query")]}},
+        {"tools": {"messages": [tool_msg]}},
+        {"model": {"messages": [_make_ai_msg("Here are your results.")]}},
+    ]
+
+    mock_agent = MagicMock()
+    mock_agent.astream = MagicMock(return_value=_fake_astream(fake_chunks))
+
+    # Mock the stashed result that execute_query would leave behind
+    stashed = {
+        "sql": "SELECT * FROM 'train.csv' LIMIT 5",
+        "result": {
+            "columns": ["Store", "Dept"],
+            "rows": [[1, 1], [1, 2]],
+            "row_count": 2,
+            "truncated": False,
+            "duration_ms": 3.5,
+        },
+    }
+
+    with patch("app.ai.agent.build_agent", return_value=mock_agent), \
+         patch("app.ai.agent._pop_last_query_result", return_value=stashed):
+        chunks = []
+        async for chunk in stream_agent_response(
+            message="head on this data",
+            chat_history=[],
+            active_files=["train.csv"],
+        ):
+            chunks.append(chunk)
+
+    qr_chunks = [c for c in chunks if c.get("type") == "query_result"]
+    assert len(qr_chunks) == 1
+    assert qr_chunks[0]["sql"] == "SELECT * FROM 'train.csv' LIMIT 5"
+    assert qr_chunks[0]["result"]["columns"] == ["Store", "Dept"]
+    assert qr_chunks[0]["result"]["row_count"] == 2
+
+
+@pytest.mark.asyncio
+async def test_stream_no_query_result_for_other_tools():
+    """When the agent calls get_schema (not execute_query), no query_result
+    event should be emitted."""
+    fake_chunks = [
+        {"model": {"messages": [_make_ai_msg_with_tool_call("get_schema")]}},
+        {"tools": {"messages": [_make_tool_msg("get_schema")]}},
+    ]
+
+    mock_agent = MagicMock()
+    mock_agent.astream = MagicMock(return_value=_fake_astream(fake_chunks))
+
+    with patch("app.ai.agent.build_agent", return_value=mock_agent), \
+         patch("app.ai.agent._pop_last_query_result", return_value=None):
+        chunks = []
+        async for chunk in stream_agent_response(
+            message="describe schema",
+            chat_history=[],
+        ):
+            chunks.append(chunk)
+
+    qr_chunks = [c for c in chunks if c.get("type") == "query_result"]
+    assert len(qr_chunks) == 0
+
+
 @pytest.mark.asyncio
 async def test_stream_agent_response_on_llm_error():
     """An exception from the agent yields an error dict, not a raise."""

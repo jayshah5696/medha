@@ -22,7 +22,7 @@ interface ToolStatus {
 }
 
 export default function ChatSidebar({ width }: { width: number }) {
-  const { activeFiles, currentThreadId, setThreadId, chatHistory, setChatHistory, setEditorContent } = useStore();
+  const { activeFiles, currentThreadId, setThreadId, chatHistory, setChatHistory, setEditorContent, setQueryResult, setLastError, setAgentLastQuery, bumpHistoryVersion } = useStore();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [isStreaming, setIsStreaming] = useState(false);
@@ -161,6 +161,14 @@ export default function ChatSidebar({ width }: { width: number }) {
                 ...prev.filter((t) => t.tool !== event.tool),
                 { tool: event.tool, status: event.status },
               ]);
+            } else if (event.type === "query_result") {
+              // Agent executed a query — push result to grid but DON'T
+              // overwrite the user's editor content. Store the agent's
+              // SQL separately so the user can load it if they want.
+              if (event.sql) setAgentLastQuery(event.sql);
+              if (event.result) setQueryResult(event.result);
+              setLastError(null);  // Clear stale errors from previous manual queries
+              bumpHistoryVersion(); // Refresh history sidebar
             } else if (event.type === "thread_id") {
               setThreadId(event.slug);
               loadThreadList();

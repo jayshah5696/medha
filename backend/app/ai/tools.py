@@ -8,10 +8,53 @@ db module lock, so agent tool calls never race the public query endpoint.
 """
 
 import asyncio
+import time
+from datetime import date, datetime, timedelta
+from decimal import Decimal
+from typing import Any
+from uuid import UUID
+
 from langchain_core.tools import tool
 
 from app.workspace import get_schema as _get_schema
 from app import db
+from app.routers.history import save_history_entry
+
+
+def _serialize_value(v: Any) -> Any:
+    """Convert DuckDB Python types to JSON-safe primitives."""
+    if v is None:
+        return None
+    if isinstance(v, (str, int, float, bool)):
+        return v
+    if isinstance(v, Decimal):
+        return float(v)
+    if isinstance(v, (date, datetime)):
+        return v.isoformat()
+    if isinstance(v, timedelta):
+        return str(v)
+    if isinstance(v, UUID):
+        return str(v)
+    if isinstance(v, bytes):
+        return v.hex()
+    if isinstance(v, (list, tuple)):
+        return [_serialize_value(x) for x in v]
+    if isinstance(v, dict):
+        return {k: _serialize_value(val) for k, val in v.items()}
+    return str(v)
+
+
+# Module-level stash for the last execute_query result.
+# The streamer pops this after each tool node to emit a query_result event.
+_last_query_result: dict[str, Any] | None = None
+
+
+def _pop_last_query_result() -> dict[str, Any] | None:
+    """Pop and return the last stashed query result, or None."""
+    global _last_query_result
+    result = _last_query_result
+    _last_query_result = None
+    return result
 
 
 @tool
@@ -44,7 +87,7 @@ async def sample_data(filename: str, n: int = 5) -> str:
             rows = result.fetchall()
             return columns, rows
 
-        async with db._db_lock:
+        async with db._get_db_lock():
             columns, rows = await asyncio.to_thread(_run)
 
         # Build markdown table
@@ -66,7 +109,12 @@ async def execute_query(sql: str) -> str:
     The query is validated against the same path-safety and SQL-safety
     rules that protect the public query endpoint, so the agent cannot
     escape the workspace sandbox or invoke dangerous DuckDB operations.
+
+    On success, the structured result (columns, rows, timing) is stashed
+    in a module-level variable so the streamer can emit a query_result
+    SSE event to push the result into the main editor/grid.
     """
+    global _last_query_result
     try:
         if db.workspace_root is None:
             return "Error: workspace not configured."
@@ -76,6 +124,7 @@ async def execute_query(sql: str) -> str:
         db._check_path_safety(sql)
 
         def _run():
+            start = time.perf_counter()
             result = db.conn.execute(sql)
             columns = [desc[0] for desc in result.description] if result.description else []
             rows = result.fetchmany(20)
@@ -86,12 +135,42 @@ async def execute_query(sql: str) -> str:
                 total += len(remaining)
             except Exception:
                 pass
-            return columns, rows, total
+            duration_ms = round((time.perf_counter() - start) * 1000, 2)
+            return columns, rows, total, duration_ms
 
-        async with db._db_lock:
-            columns, rows, total = await asyncio.to_thread(_run)
+        async with db._get_db_lock():
+            columns, rows, total, duration_ms = await asyncio.to_thread(_run)
 
-        # Build markdown table
+        # Stash structured result for the streamer to pick up.
+        # Serialize values so the SSE json.dumps() never crashes on
+        # date, Decimal, UUID, etc. returned by DuckDB.
+        _last_query_result = {
+            "sql": sql,
+            "result": {
+                "columns": columns,
+                "rows": [[_serialize_value(cell) for cell in r] for r in rows[:20]],
+                "row_count": total,
+                "truncated": total >= db.MAX_ROWS,
+                "duration_ms": duration_ms,
+            },
+        }
+
+        # BUG-3 fix: save agent queries to history
+        try:
+            ws_path = str(db.workspace_root) if db.workspace_root else ""
+            save_history_entry(
+                sql=sql,
+                duration_ms=duration_ms,
+                row_count=total,
+                truncated=total >= db.MAX_ROWS,
+                workspace_path=ws_path,
+                source="agent",
+                dedup=True,
+            )
+        except Exception:
+            pass  # History save failure should not break agent queries
+
+        # Build markdown table for the LLM
         header = "| " + " | ".join(columns) + " |"
         sep = "| " + " | ".join(["---"] * len(columns)) + " |"
         body_lines = []
