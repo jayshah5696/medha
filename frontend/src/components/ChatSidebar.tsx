@@ -2,6 +2,8 @@ import { useState, useRef, useEffect } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { useStore } from "../store";
+import { getChats, getChat, deleteChat } from "../lib/api";
+import type { ChatThreadSummary, ChatMessage as ApiChatMessage } from "../lib/api";
 
 interface ChatMessage {
   role: "user" | "assistant";
@@ -14,16 +16,53 @@ interface ToolStatus {
 }
 
 export default function ChatSidebar() {
-  const { activeFiles } = useStore();
+  const { activeFiles, currentThreadId, setThreadId, chatHistory, setChatHistory } = useStore();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [isStreaming, setIsStreaming] = useState(false);
   const [toolStatuses, setToolStatuses] = useState<ToolStatus[]>([]);
+  const [threadsOpen, setThreadsOpen] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, toolStatuses]);
+
+  const loadThreadList = async () => {
+    try {
+      const threads = await getChats();
+      setChatHistory(threads);
+    } catch {
+      // silently fail
+    }
+  };
+
+  useEffect(() => {
+    if (threadsOpen) {
+      loadThreadList();
+    }
+  }, [threadsOpen]);
+
+  const handleLoadThread = async (slug: string) => {
+    try {
+      const thread = await getChat(slug);
+      const msgs: ChatMessage[] = thread.messages
+        .filter((m: ApiChatMessage) => m.role === "user" || m.role === "assistant")
+        .map((m: ApiChatMessage) => ({
+          role: m.role as "user" | "assistant",
+          content: m.content,
+        }));
+      setMessages(msgs);
+      setThreadId(slug);
+    } catch {
+      // silently fail
+    }
+  };
+
+  const handleNewChat = () => {
+    setMessages([]);
+    setThreadId(null);
+  };
 
   const handleSend = async () => {
     const trimmed = input.trim();
@@ -44,6 +83,7 @@ export default function ChatSidebar() {
         body: JSON.stringify({
           message: trimmed,
           active_files: activeFiles,
+          thread_id: currentThreadId || "",
         }),
       });
 
@@ -96,6 +136,9 @@ export default function ChatSidebar() {
                 ...prev.filter((t) => t.tool !== event.tool),
                 { tool: event.tool, status: event.status },
               ]);
+            } else if (event.type === "thread_id") {
+              setThreadId(event.slug);
+              loadThreadList();
             } else if (event.type === "error") {
               assistantContent += `\n\nError: ${event.message}`;
               setMessages((prev) => {
@@ -162,9 +205,99 @@ export default function ChatSidebar() {
           fontVariant: "small-caps",
           display: "flex",
           alignItems: "center",
+          justifyContent: "space-between",
         }}
       >
-        assistant
+        <span>assistant</span>
+        <button
+          onClick={handleNewChat}
+          style={{
+            background: "none",
+            border: "none",
+            color: "var(--accent)",
+            cursor: "pointer",
+            fontSize: 9,
+            fontFamily: "var(--font-ui)",
+            textTransform: "uppercase",
+            letterSpacing: "0.06em",
+            padding: "2px 4px",
+          }}
+        >
+          new
+        </button>
+      </div>
+
+      {/* Threads panel */}
+      <div style={{ borderBottom: "1px solid var(--border)" }}>
+        <div
+          onClick={() => setThreadsOpen(!threadsOpen)}
+          style={{
+            padding: "5px 10px",
+            fontSize: 10,
+            fontWeight: 500,
+            textTransform: "uppercase",
+            color: "var(--text-dimmed)",
+            letterSpacing: "0.08em",
+            fontFamily: "var(--font-ui)",
+            cursor: "pointer",
+            display: "flex",
+            alignItems: "center",
+            gap: 4,
+            userSelect: "none",
+          }}
+        >
+          <span style={{ fontSize: 8 }}>{threadsOpen ? "\u25BC" : "\u25B6"}</span>
+          threads
+        </div>
+        {threadsOpen && (
+          <div style={{ maxHeight: 160, overflow: "auto" }}>
+            {chatHistory.length === 0 && (
+              <div
+                style={{
+                  padding: "6px 10px",
+                  fontSize: 10,
+                  color: "var(--text-dimmed)",
+                  fontFamily: "var(--font-ui)",
+                  textAlign: "center",
+                }}
+              >
+                no threads
+              </div>
+            )}
+            {chatHistory.map((thread) => (
+              <div
+                key={thread.slug}
+                onClick={() => handleLoadThread(thread.slug)}
+                style={{
+                  padding: "4px 10px",
+                  cursor: "pointer",
+                  background: currentThreadId === thread.slug ? "var(--bg-tertiary)" : "transparent",
+                  borderLeft: currentThreadId === thread.slug ? "2px solid var(--accent)" : "2px solid transparent",
+                }}
+              >
+                <div
+                  style={{
+                    fontSize: 11,
+                    fontWeight: 600,
+                    color: "var(--text-primary)",
+                    fontFamily: "var(--font-mono)",
+                  }}
+                >
+                  {thread.slug}
+                </div>
+                <div
+                  style={{
+                    fontSize: 9,
+                    color: "var(--text-dimmed)",
+                    fontFamily: "var(--font-ui)",
+                  }}
+                >
+                  {thread.created_at?.slice(0, 10)} / {thread.model}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Messages */}

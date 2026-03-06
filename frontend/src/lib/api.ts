@@ -24,6 +24,37 @@ export interface InlineEditResult {
   sql: string;
 }
 
+export interface HistoryEntry {
+  id: string;
+  filename: string;
+  timestamp: string;
+  preview: string;
+  duration_ms: number;
+  row_count: number;
+}
+
+export interface ChatThreadSummary {
+  slug: string;
+  created_at: string;
+  model: string;
+  message_count: number;
+  preview: string;
+}
+
+export interface ChatMessage {
+  role: string;
+  content: string;
+}
+
+export interface ChatThread {
+  slug: string;
+  created_at: string;
+  model: string;
+  agent_profile: string;
+  active_files: string[];
+  messages: ChatMessage[];
+}
+
 async function fetchJSON<T>(url: string, opts?: RequestInit): Promise<T> {
   const res = await fetch(url, opts);
   if (!res.ok) {
@@ -88,5 +119,52 @@ export async function inlineEdit(
       active_files: activeFiles,
       model: model || "gpt-4o-mini",
     }),
+  });
+}
+
+// History API
+
+export async function getHistory(): Promise<HistoryEntry[]> {
+  return fetchJSON<HistoryEntry[]>("/api/history");
+}
+
+export async function getHistoryEntry(id: string): Promise<string> {
+  const data = await fetchJSON<{ sql: string }>(`/api/history/${id}`);
+  return data.sql;
+}
+
+export async function clearHistory(): Promise<void> {
+  await fetchJSON("/api/history", { method: "DELETE" });
+}
+
+// Settings API
+
+export async function getSettings(): Promise<Record<string, string>> {
+  return fetchJSON("/api/settings");
+}
+
+export async function saveSettings(
+  settings: Record<string, string>
+): Promise<{ ok: boolean }> {
+  return fetchJSON("/api/settings", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(settings),
+  });
+}
+
+// Chats API
+
+export async function getChats(): Promise<ChatThreadSummary[]> {
+  return fetchJSON<ChatThreadSummary[]>("/api/chats");
+}
+
+export async function getChat(slug: string): Promise<ChatThread> {
+  return fetchJSON<ChatThread>(`/api/chats/${encodeURIComponent(slug)}`);
+}
+
+export async function deleteChat(slug: string): Promise<void> {
+  await fetchJSON(`/api/chats/${encodeURIComponent(slug)}`, {
+    method: "DELETE",
   });
 }

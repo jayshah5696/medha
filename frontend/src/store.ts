@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import type { FileInfo, QueryResult } from "./lib/api";
+import type { FileInfo, QueryResult, ChatThreadSummary } from "./lib/api";
 
 interface MedhaStore {
   workspacePath: string;
@@ -22,6 +22,16 @@ interface MedhaStore {
 
   editorContent: string;
   setEditorContent: (sql: string) => void;
+
+  // History: load SQL into editor
+  loadHistoryEntry: (sql: string) => void;
+
+  // Chat thread persistence
+  currentThreadId: string | null;
+  setThreadId: (slug: string | null) => void;
+
+  chatHistory: ChatThreadSummary[];
+  setChatHistory: (threads: ChatThreadSummary[]) => void;
 }
 
 export const useStore = create<MedhaStore>((set) => ({
@@ -52,4 +62,12 @@ export const useStore = create<MedhaStore>((set) => ({
 
   editorContent: "SELECT 1;",
   setEditorContent: (sql) => set({ editorContent: sql }),
+
+  loadHistoryEntry: (sql) => set({ editorContent: sql }),
+
+  currentThreadId: null,
+  setThreadId: (slug) => set({ currentThreadId: slug }),
+
+  chatHistory: [],
+  setChatHistory: (threads) => set({ chatHistory: threads }),
 }));

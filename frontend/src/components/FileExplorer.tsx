@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useStore } from "../store";
-import { configureWorkspace, getFiles } from "../lib/api";
+import { configureWorkspace, getFiles, getHistory, getHistoryEntry, clearHistory } from "../lib/api";
+import type { HistoryEntry } from "../lib/api";
 
 function formatBytes(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
@@ -17,10 +18,28 @@ export default function FileExplorer() {
     activeFiles,
     toggleActiveFile,
     setLastError,
+    loadHistoryEntry,
   } = useStore();
 
   const [inputPath, setInputPath] = useState(workspacePath);
   const [loading, setLoading] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [historyEntries, setHistoryEntries] = useState<HistoryEntry[]>([]);
+
+  const loadHistory = async () => {
+    try {
+      const entries = await getHistory();
+      setHistoryEntries(entries.slice(0, 10));
+    } catch {
+      // silently fail
+    }
+  };
+
+  useEffect(() => {
+    if (historyOpen) {
+      loadHistory();
+    }
+  }, [historyOpen]);
 
   const handleConfigure = async () => {
     if (!inputPath.trim()) return;
@@ -35,6 +54,24 @@ export default function FileExplorer() {
       setLastError(e instanceof Error ? e.message : String(e));
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleHistoryClick = async (entry: HistoryEntry) => {
+    try {
+      const sql = await getHistoryEntry(entry.id);
+      loadHistoryEntry(sql);
+    } catch (e) {
+      setLastError(e instanceof Error ? e.message : String(e));
+    }
+  };
+
+  const handleClearHistory = async () => {
+    try {
+      await clearHistory();
+      setHistoryEntries([]);
+    } catch (e) {
+      setLastError(e instanceof Error ? e.message : String(e));
     }
   };
 
@@ -191,6 +228,106 @@ export default function FileExplorer() {
             </div>
           );
         })}
+
+        {/* History section */}
+        <div style={{ borderTop: "1px solid var(--border)", marginTop: 4 }}>
+          <div
+            onClick={() => setHistoryOpen(!historyOpen)}
+            style={{
+              padding: "6px 10px",
+              fontSize: 10,
+              fontWeight: 500,
+              textTransform: "uppercase",
+              color: "var(--text-dimmed)",
+              letterSpacing: "0.08em",
+              fontFamily: "var(--font-ui)",
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              gap: 4,
+              userSelect: "none",
+            }}
+          >
+            <span style={{ fontSize: 8 }}>{historyOpen ? "\u25BC" : "\u25B6"}</span>
+            history
+          </div>
+          {historyOpen && (
+            <div>
+              {historyEntries.length === 0 && (
+                <div
+                  style={{
+                    padding: "8px 10px",
+                    fontSize: 11,
+                    color: "var(--text-dimmed)",
+                    fontFamily: "var(--font-ui)",
+                    textAlign: "center",
+                  }}
+                >
+                  no history
+                </div>
+              )}
+              {historyEntries.map((entry) => {
+                const timePart = entry.timestamp ? entry.timestamp.split(" ")[1]?.slice(0, 5) || "" : "";
+                const previewText = entry.preview.slice(0, 40);
+                return (
+                  <div
+                    key={entry.id}
+                    onClick={() => handleHistoryClick(entry)}
+                    style={{
+                      padding: "3px 10px",
+                      fontSize: 11,
+                      cursor: "pointer",
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      fontFamily: "var(--font-mono)",
+                      gap: 6,
+                    }}
+                    title={entry.preview}
+                  >
+                    <span style={{ color: "var(--text-secondary)", flexShrink: 0, fontSize: 10 }}>
+                      {timePart}
+                    </span>
+                    <span
+                      style={{
+                        color: "var(--text-dimmed)",
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap",
+                        fontSize: 10,
+                      }}
+                    >
+                      {previewText}
+                    </span>
+                  </div>
+                );
+              })}
+              {historyEntries.length > 0 && (
+                <div style={{ padding: "4px 10px 6px", textAlign: "center" }}>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleClearHistory();
+                    }}
+                    style={{
+                      background: "none",
+                      border: "none",
+                      color: "var(--text-dimmed)",
+                      fontSize: 9,
+                      cursor: "pointer",
+                      fontFamily: "var(--font-ui)",
+                      textTransform: "uppercase",
+                      letterSpacing: "0.06em",
+                      opacity: 0.6,
+                    }}
+                  >
+                    clear
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

@@ -9,6 +9,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.routers import workspace as workspace_router
 from app.routers import db as db_router
 from app.routers import ai as ai_router
+from app.routers import history as history_router
+from app.routers import chats as chats_router
 
 
 @asynccontextmanager
@@ -34,6 +36,8 @@ app.add_middleware(
 app.include_router(workspace_router.router)
 app.include_router(db_router.router)
 app.include_router(ai_router.router)
+app.include_router(history_router.router)
+app.include_router(chats_router.router)
 
 
 @app.get("/health")

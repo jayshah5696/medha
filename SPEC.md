@@ -496,3 +496,82 @@ The backend uses `uv` for Python dependency management:
 - `uv sync`: install all deps from the lockfile
 - `uv.lock`: committed to the repo for reproducible installs
 - Never hand-edit the `[dependencies]` section in pyproject.toml; always use `uv add`
+
+---
+
+## 12. Local Persistence
+
+### 12A. SQL History
+
+Every successful query execution automatically saves the SQL to disk for later recall.
+
+**Storage location:** `~/.medha/history/YYYY-MM-DD/`
+
+**Filename format:** `HH-MM-SS_{sanitized_first_words}.sql`
+
+**File format:**
+```sql
+-- executed: 2026-03-05 16:13:00
+-- duration: 42ms
+-- rows: 1234
+-- workspace: /Users/jay/data
+-- truncated: false
+
+SELECT * FROM 'revenue.parquet' WHERE region = 'US';
+```
+
+**API endpoints:**
+
+| Method | Path | Purpose |
+|--------|------|---------|
+| GET | `/api/history` | List entries (newest first, max 100) |
+| GET | `/api/history/{date}/{filename}` | Get full SQL content |
+| DELETE | `/api/history` | Clear all history |
+
+Each list entry contains: `id`, `filename`, `timestamp`, `preview` (first 80 chars), `duration_ms`, `row_count`.
+
+### 12B. Chat Thread Persistence
+
+Chat conversations are persisted as JSON files for cross-session recall.
+
+**Storage location:** `~/.medha/chats/{slug}.json`
+
+**JSON schema:**
+```json
+{
+  "slug": "revenue-by-region",
+  "created_at": "2026-03-05T16:13:00Z",
+  "model": "openai/gpt-4o-mini",
+  "agent_profile": "default",
+  "active_files": ["data.parquet"],
+  "messages": [
+    {"role": "user", "content": "Show revenue by region"},
+    {"role": "assistant", "content": "Here is the SQL..."}
+  ]
+}
+```
+
+**API endpoints:**
+
+| Method | Path | Purpose |
+|--------|------|---------|
+| GET | `/api/chats` | List threads (newest first) |
+| GET | `/api/chats/{slug}` | Full thread content |
+| POST | `/api/chats/{slug}/save` | Save/update a thread |
+| DELETE | `/api/chats/{slug}` | Delete a thread |
+
+### 12C. Slug Generation
+
+When a new chat starts (no `thread_id` in the request), the backend generates a slug:
+
+1. Call litellm with the configured model: system prompt asks for a 2-3 word lowercase kebab-case slug
+2. Sanitize the response (lowercase, alphanumeric + hyphens only)
+3. If litellm fails (no API key, network error, etc.), fall back to `chat-{YYYYMMDDHHMMSS}`
+
+### 12D. Thread ID Flow via SSE
+
+1. Frontend sends `POST /api/ai/chat` with `thread_id: ""` (new chat) or `thread_id: "existing-slug"` (continuation)
+2. Backend streams agent response via SSE tokens
+3. If new chat: backend generates slug, emits final SSE event: `data: {"type": "thread_id", "slug": "revenue-by-region"}`
+4. Frontend receives `thread_id` event, stores it in zustand `currentThreadId`, refreshes thread list
+5. Subsequent messages in the same chat send the stored `thread_id` to continue the conversation

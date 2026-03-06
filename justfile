@@ -65,3 +65,12 @@ ci:
     just test
     just build-frontend
     just typecheck
+
+# Run frontend tests
+test-frontend:
+    cd frontend && NODE_ENV=development npx vitest run
+
+# Run all tests (backend + frontend)
+test-all:
+    just test
+    just test-frontend

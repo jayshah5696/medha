@@ -6,7 +6,8 @@ import uuid
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
-from app.db import async_execute, active_queries
+from app.db import async_execute, active_queries, workspace_root
+from app.routers.history import save_history_entry
 
 router = APIRouter()
 
@@ -29,6 +30,19 @@ async def run_query(req: QueryRequest):
 
     try:
         result = await task
+        # Save to history on successful execution
+        try:
+            ws_path = str(workspace_root) if workspace_root else ""
+            save_history_entry(
+                sql=req.query,
+                duration_ms=result.get("duration_ms", 0),
+                row_count=result.get("row_count", 0),
+                truncated=result.get("truncated", False),
+                workspace_path=ws_path,
+            )
+        except Exception:
+            # History save failure should not break queries
+            pass
         return result
     except asyncio.CancelledError:
         return {"error": "Query cancelled", "query_id": qid}
