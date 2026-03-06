@@ -668,3 +668,76 @@ AGENT PROFILE
 Agent profiles should NOT hardcode a model. The `model` field in YAML should be treated as a default that is overridden by the settings `model_chat` value. If the YAML model is explicitly set, it takes precedence only when the user selects that profile and has no settings override.
 
 Priority: `settings.model_chat` > `YAML profile model` > fallback `openai/gpt-4o-mini`
+
+---
+
+## 14. Workspace Directory Picker (NOT YET BUILT)
+
+### 14A. Problem
+
+Currently the user must type the full filesystem path manually (e.g. `/Users/jay/data`). This is error-prone and bad UX.
+
+### 14B. Web Version (File System Access API)
+
+Add a folder icon / "Browse" button next to the workspace path input:
+
+```
+[ > /path/to/data          ] [📁]
+[ configure ]
+```
+
+On click: call `window.showDirectoryPicker()` (File System Access API, supported in Chrome/Edge).
+- This opens the native OS folder picker (Finder on Mac, Explorer on Windows)
+- The API returns a `FileSystemDirectoryHandle`, NOT a raw path string
+- Extract `dirHandle.name` (folder name only, not full path) and show it as a hint
+- Display a note: "Web limitation: enter the full path manually. Use the desktop build for native path resolution."
+- Pre-fill the text input with the folder name as a starting point so the user just completes the path
+
+Fallback: if `window.showDirectoryPicker` is not available (Firefox, Safari), hide the Browse button entirely.
+
+### 14C. Tauri Version (Recommended)
+
+In the Tauri desktop build, replace the text input + Browse button with a single "Choose Folder" button that calls:
+
+```rust
+// Tauri command
+tauri::command
+fn pick_directory() -> Option<String> {
+    tauri::api::dialog::blocking::FileDialogBuilder::new()
+        .pick_folder()
+        .map(|p| p.to_string_lossy().to_string())
+}
+```
+
+Frontend calls via:
+```typescript
+import { invoke } from '@tauri-apps/api/tauri'
+const path = await invoke<string>('pick_directory')
+// immediately configure workspace with returned path
+```
+
+This gives true native folder picker with full path returned. Auto-calls `POST /api/workspace/configure` with the result.
+
+### 14D. UX Flow (Tauri)
+
+1. User clicks "Choose Folder" (or the folder icon)
+2. Native OS folder picker opens
+3. User selects a directory
+4. Path auto-fills and `POST /api/workspace/configure` fires immediately
+5. File list refreshes
+6. No manual typing needed
+
+### 14E. Detection Logic
+
+At runtime, detect which environment we are in:
+
+```typescript
+const isTauri = '__TAURI__' in window
+if (isTauri) {
+  // use invoke('pick_directory')
+} else if ('showDirectoryPicker' in window) {
+  // use File System Access API (hint mode)
+} else {
+  // text input only, no browse button
+}
+```
