@@ -439,3 +439,60 @@ Build Medha per this spec. Priority order:
 Use uv for Python deps. Use npm for frontend. Write all Rust.
 Test each phase with curl/httpie before moving to next.
 No hallucinated dependencies. Only what's in the spec.
+
+---
+
+## 11. Agent Architecture and Configuration
+
+### 11A. LangChain Agent
+
+The chat agent (Cmd+L) uses LangChain's `create_tool_calling_agent` with `AgentExecutor` instead of a hand-rolled LangGraph graph. This provides:
+
+- Built-in tool calling via the LLM's native function calling API
+- Streaming via `astream_events(version="v2")` for token-level SSE output
+- Configurable `max_iterations` to prevent runaway tool loops
+- Automatic parsing error recovery via `handle_parsing_errors=True`
+
+The agent is constructed at request time from a YAML profile, making it hot-reloadable without restarting the server.
+
+### 11B. YAML Agent Profiles
+
+Agent behavior is configured via YAML files in `backend/agents/`. Each file defines:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `name` | string | Profile identifier |
+| `model` | string | litellm model string (e.g. `openai/gpt-4o-mini`) |
+| `temperature` | float | LLM temperature (0 = deterministic) |
+| `max_iterations` | int | Max tool-call loops before the agent stops |
+| `system_prompt` | string | Full system prompt injected into the agent |
+
+Three profiles ship by default:
+
+- **default**: `openai/gpt-4o-mini`, 10 iterations, balanced prompt for general data analysis
+- **fast**: `openai/gpt-4o-mini`, 5 iterations, minimal prompt for quick queries
+- **deep**: `anthropic/claude-sonnet-4.6`, 15 iterations, thorough prompt for complex analysis
+
+To add a custom profile, create a new YAML file in `backend/agents/` and select it in the settings UI.
+
+### 11C. Settings Persistence
+
+User settings are stored at `~/.medha/settings.json` and include:
+
+- `model_inline`: model for Cmd+K inline edits
+- `model_chat`: model for Cmd+L chat
+- `agent_profile`: which YAML profile to load (default/fast/deep)
+- `openai_api_key`: OpenAI API key
+- `openrouter_api_key`: OpenRouter API key
+- `lm_studio_url`: local LM Studio endpoint
+
+API keys are applied to `os.environ` on save so litellm picks them up immediately without a restart.
+
+### 11D. Dependency Management (uv)
+
+The backend uses `uv` for Python dependency management:
+
+- `uv add <package>`: add a dependency (updates pyproject.toml and uv.lock)
+- `uv sync`: install all deps from the lockfile
+- `uv.lock`: committed to the repo for reproducible installs
+- Never hand-edit the `[dependencies]` section in pyproject.toml; always use `uv add`

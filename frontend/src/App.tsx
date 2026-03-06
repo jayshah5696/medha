@@ -5,6 +5,7 @@ import SqlEditor from "./components/SqlEditor";
 import ResultGrid from "./components/ResultGrid";
 import ChatSidebar from "./components/ChatSidebar";
 import DiffOverlay from "./components/DiffOverlay";
+import SettingsModal from "./components/SettingsModal";
 import { useStore } from "./store";
 import { runQuery } from "./lib/api";
 import "./index.css";
@@ -24,6 +25,8 @@ function App() {
     selectedSql: string;
     editorView: EditorView;
   } | null>(null);
+
+  const [showSettings, setShowSettings] = useState(false);
 
   const handleExecute = useCallback(
     async (query: string) => {
@@ -85,16 +88,33 @@ function App() {
         >
           sql ide for flat files
         </span>
-        <span
-          style={{
-            marginLeft: "auto",
-            fontSize: 10,
-            color: "var(--text-dimmed)",
-            fontFamily: "var(--font-ui)",
-          }}
-        >
-          duckdb
-        </span>
+        <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 8 }}>
+          <button
+            onClick={() => setShowSettings(true)}
+            title="Settings"
+            style={{
+              background: "none",
+              border: "none",
+              color: "var(--text-dimmed)",
+              cursor: "pointer",
+              fontSize: 16,
+              fontFamily: "var(--font-mono)",
+              padding: "2px 6px",
+              lineHeight: 1,
+            }}
+          >
+            &#9881;
+          </button>
+          <span
+            style={{
+              fontSize: 10,
+              color: "var(--text-dimmed)",
+              fontFamily: "var(--font-ui)",
+            }}
+          >
+            duckdb
+          </span>
+        </div>
       </div>
 
       {/* Error banner */}
@@ -196,6 +216,11 @@ function App() {
           editorView={diffState.editorView}
           onClose={() => setDiffState(null)}
         />
+      )}
+
+      {/* Settings Modal */}
+      {showSettings && (
+        <SettingsModal onClose={() => setShowSettings(false)} />
       )}
     </div>
   );

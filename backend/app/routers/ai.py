@@ -7,7 +7,7 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
 from app.ai.inline import inline_edit
-from app.ai.agent import run_agent_stream
+from app.ai.agent import stream_agent_response
 
 router = APIRouter()
 
@@ -23,7 +23,8 @@ class ChatRequest(BaseModel):
     message: str
     active_files: list[str] = []
     thread_id: str = ""
-    model: str = "anthropic/claude-sonnet-4-6"
+    model: str = "openai/gpt-4o-mini"
+    profile: str = "default"
 
 
 @router.post("/api/ai/inline")
@@ -43,12 +44,13 @@ async def ai_inline(req: InlineRequest):
 @router.post("/api/ai/chat")
 async def ai_chat(req: ChatRequest):
     async def event_stream():
-        async for event in run_agent_stream(
-            user_message=req.message,
-            active_files=req.active_files,
-            model_name=req.model,
+        async for chunk in stream_agent_response(
+            message=req.message,
+            chat_history=[],
+            profile=req.profile,
+            model_override=req.model,
         ):
-            yield f"data: {json.dumps(event)}\n\n"
+            yield chunk
 
     return StreamingResponse(
         event_stream(),
