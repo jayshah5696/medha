@@ -209,19 +209,14 @@ export default function ChatSidebar() {
           justifyContent: "space-between",
         }}
       >
-        <span>assistant</span>
+        <span style={{ fontSize: 9, letterSpacing: "0.15em", color: "#444" }}>assistant</span>
         <button
           onClick={handleNewChat}
+          className="medha-btn"
           style={{
-            background: "none",
-            border: "none",
-            color: "var(--accent)",
-            cursor: "pointer",
             fontSize: 9,
-            fontFamily: "var(--font-ui)",
-            textTransform: "uppercase",
-            letterSpacing: "0.06em",
-            padding: "2px 4px",
+            padding: "1px 8px",
+            lineHeight: 1.4,
           }}
         >
           new
@@ -248,21 +243,21 @@ export default function ChatSidebar() {
           }}
         >
           <span style={{ fontSize: 8 }}>{threadsOpen ? "\u25BC" : "\u25B6"}</span>
-          threads
+          <span style={{ fontSize: 9, letterSpacing: "0.15em", color: "#444" }}>threads</span>
         </div>
         {threadsOpen && (
           <div style={{ maxHeight: 160, overflow: "auto" }}>
             {chatHistory.length === 0 && (
               <div
                 style={{
-                  padding: "6px 10px",
-                  fontSize: 10,
-                  color: "var(--text-dimmed)",
-                  fontFamily: "var(--font-ui)",
+                  padding: "10px 10px",
+                  fontSize: 11,
+                  color: "#333",
+                  fontFamily: "var(--font-mono)",
                   textAlign: "center",
                 }}
               >
-                no threads
+                No saved threads yet.
               </div>
             )}
             {chatHistory.map((thread) => (
@@ -309,17 +304,17 @@ export default function ChatSidebar() {
           padding: "8px",
           display: "flex",
           flexDirection: "column",
-          gap: 6,
+          gap: 12,
         }}
       >
         {messages.length === 0 && (
           <div
             style={{
-              color: "var(--text-dimmed)",
+              color: "#333",
               fontSize: 11,
               textAlign: "center",
               marginTop: 24,
-              fontFamily: "var(--font-ui)",
+              fontFamily: "var(--font-mono)",
             }}
           >
             ask about your data
@@ -330,33 +325,49 @@ export default function ChatSidebar() {
           <div
             key={i}
             style={{
-              padding: "6px 8px",
-              fontSize: 12,
-              lineHeight: 1.5,
-              fontFamily: "var(--font-mono)",
-              borderRadius: 0,
-              ...(msg.role === "user"
-                ? {
-                    borderLeft: "2px solid var(--accent)",
-                    background: "transparent",
-                    textAlign: "right" as const,
-                    paddingLeft: 10,
-                    color: "var(--text-primary)",
-                  }
-                : {
-                    background: "var(--bg-tertiary)",
-                    borderLeft: "2px solid transparent",
-                    color: "var(--text-primary)",
-                  }),
+              textAlign: msg.role === "user" ? ("right" as const) : ("left" as const),
             }}
           >
-            {msg.role === "assistant" ? (
-              <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                {msg.content}
-              </ReactMarkdown>
-            ) : (
-              msg.content
-            )}
+            <div
+              style={{
+                fontSize: 8,
+                textTransform: "uppercase" as const,
+                letterSpacing: "0.15em",
+                marginBottom: 2,
+                fontFamily: "var(--font-mono)",
+                color: msg.role === "user" ? "#00D8FF" : "#555",
+              }}
+            >
+              {msg.role === "user" ? "you" : "medha"}
+            </div>
+            <div
+              style={{
+                padding: "6px 10px",
+                fontSize: 12,
+                lineHeight: 1.5,
+                fontFamily: "var(--font-mono)",
+                borderRadius: 0,
+                ...(msg.role === "user"
+                  ? {
+                      borderLeft: "2px solid #00D8FF",
+                      background: "rgba(0, 216, 255, 0.04)",
+                      color: "var(--text-primary)",
+                    }
+                  : {
+                      borderLeft: "2px solid #1a1a1f",
+                      background: "rgba(255, 255, 255, 0.02)",
+                      color: "var(--text-primary)",
+                    }),
+              }}
+            >
+              {msg.role === "assistant" ? (
+                <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                  {msg.content}
+                </ReactMarkdown>
+              ) : (
+                msg.content
+              )}
+            </div>
           </div>
         ))}
 
@@ -368,12 +379,15 @@ export default function ChatSidebar() {
               style={{
                 fontSize: 11,
                 fontStyle: "italic",
-                color: "var(--text-dimmed)",
+                color: "#444",
                 padding: "4px 8px",
                 fontFamily: "var(--font-mono)",
+                textAlign: "left",
               }}
             >
-              [ running {t.tool}... ]
+              {"[ "}
+              {t.tool}
+              {" \u00B7 running ]"}
             </div>
           ))}
 
@@ -399,13 +413,15 @@ export default function ChatSidebar() {
             width: "100%",
             padding: "6px 8px",
             fontSize: 12,
-            background: "var(--bg-tertiary)",
-            border: "1px solid var(--border)",
+            background: "#0f0f12",
+            border: "1px solid #1a1a1f",
             borderRadius: 0,
-            color: "var(--text-primary)",
+            color: "#ccc",
             outline: "none",
             fontFamily: "var(--font-mono)",
           }}
+          onFocus={(e) => { e.currentTarget.style.borderColor = "#00D8FF"; }}
+          onBlur={(e) => { e.currentTarget.style.borderColor = "#1a1a1f"; }}
         />
       </div>
     </div>

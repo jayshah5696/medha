@@ -349,36 +349,58 @@ export default function SqlEditor({
         <span style={{ color: "var(--text-secondary)", fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.06em" }}>
           sql
         </span>
-        <span style={{ color: "var(--text-dimmed)", display: "flex", gap: 12 }}>
+        <span style={{ display: "flex", alignItems: "center", gap: 0 }}>
           <span
             onClick={openHistory}
-            style={{ cursor: "pointer", opacity: 0.7 }}
+            className="medha-toolbar-btn"
+            style={{ cursor: "pointer" }}
             title="Open history"
           >
             ⌘H History
           </span>
-          <span style={{ opacity: 0.5 }}>⌘K Edit</span>
-          <span style={{ opacity: 0.5 }}>⌘L Chat</span>
+          <span className="medha-toolbar-sep" />
+          <span className="medha-toolbar-btn">⌘K Edit</span>
+          <span className="medha-toolbar-sep" />
+          <span className="medha-toolbar-btn">⌘L Chat</span>
+          <span className="medha-toolbar-sep" />
           {isQuerying ? (
             <span
+              className="medha-toolbar-btn"
               style={{
-                opacity: 0.5,
-                animation: "medha-pulse 1.2s ease-in-out infinite",
+                color: "#00D8FF",
+                animation: "medha-pulse 1s ease-in-out infinite",
               }}
             >
               ⌘↵ Running...
             </span>
           ) : (
-            <span style={{ opacity: 0.5 }}>⌘↵ Run</span>
+            <span className="medha-toolbar-btn">⌘↵ Run</span>
           )}
         </span>
       </div>
 
-      {/* Pulse animation for the running indicator */}
+      {/* Toolbar + pulse animation styles */}
       <style>{`
         @keyframes medha-pulse {
           0%, 100% { opacity: 0.5; }
           50% { opacity: 1; }
+        }
+        .medha-toolbar-btn {
+          color: #444;
+          font-size: 10px;
+          font-family: var(--font-mono);
+          padding: 0 8px;
+          transition: color 0.15s;
+          white-space: nowrap;
+        }
+        .medha-toolbar-btn:hover {
+          color: #00D8FF;
+        }
+        .medha-toolbar-sep {
+          width: 1px;
+          height: 10px;
+          background: #1a1a1f;
+          flex-shrink: 0;
         }
       `}</style>
 

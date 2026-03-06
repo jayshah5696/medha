@@ -56,6 +56,37 @@ export default function ResultGrid({ result, isQuerying }: ResultGridProps) {
     );
   }
 
+  if (result.row_count === 0 || result.rows.length === 0) {
+    return (
+      <div
+        style={{
+          maxHeight: "40vh",
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          color: "#333",
+          fontSize: 11,
+          padding: 24,
+          background: "var(--bg-primary)",
+          fontFamily: "var(--font-mono)",
+        }}
+      >
+        <div>Query returned 0 rows.</div>
+        <div
+          style={{
+            marginTop: 4,
+            fontSize: 10,
+            color: "var(--text-dimmed)",
+            fontFamily: "var(--font-ui)",
+          }}
+        >
+          {result.duration_ms}ms
+        </div>
+      </div>
+    );
+  }
+
   const columnHelper = createColumnHelper<unknown[]>();
 
   const columns = result.columns.map((col, idx) =>

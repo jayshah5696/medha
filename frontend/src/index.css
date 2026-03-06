@@ -75,31 +75,52 @@ body {
 
 /* Scrollbar */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 4px;
+  height: 4px;
 }
 
 ::-webkit-scrollbar-track {
-  background: transparent;
+  background: #0f0f12;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: var(--border-strong);
+  background: #222;
   border-radius: 0;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--text-dimmed);
+  background: #333;
 }
 
 ::-webkit-scrollbar-corner {
-  background: transparent;
+  background: #0f0f12;
 }
 
 /* Selection */
 ::selection {
-  background: var(--accent-dimmed);
+  background: rgba(0, 216, 255, 0.15);
   color: var(--text-primary);
+}
+
+/* Focus outlines */
+*:focus {
+  outline: 1px solid var(--accent);
+  outline-offset: -1px;
+}
+
+*:focus:not(:focus-visible) {
+  outline: none;
+}
+
+*:focus-visible {
+  outline: 1px solid var(--accent);
+  outline-offset: -1px;
+}
+
+/* Placeholder color */
+::placeholder {
+  color: #333;
+  opacity: 1;
 }
 
 /* Links */
@@ -120,4 +141,28 @@ button {
 button:disabled {
   cursor: not-allowed;
   opacity: 0.4;
+}
+
+/* Medha button: outlined cyan */
+.medha-btn {
+  background: transparent;
+  border: 1px solid #00D8FF;
+  color: #00D8FF;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  padding: 4px 12px;
+  border-radius: 0;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.medha-btn:hover {
+  background: rgba(0, 216, 255, 0.08);
+}
+
+.medha-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
 }

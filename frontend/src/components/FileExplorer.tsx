@@ -154,19 +154,10 @@ export default function FileExplorer() {
         <button
           onClick={handleConfigure}
           disabled={loading}
+          className="medha-btn"
           style={{
             width: "100%",
-            padding: "4px",
-            fontSize: 11,
-            background: "transparent",
-            color: "var(--accent)",
-            border: "1px solid var(--border)",
-            borderRadius: 0,
-            cursor: "pointer",
-            fontWeight: 500,
-            fontFamily: "var(--font-ui)",
             marginTop: 6,
-            letterSpacing: "0.04em",
           }}
         >
           {loading ? "loading..." : "configure"}
@@ -207,14 +198,22 @@ export default function FileExplorer() {
         {files.length === 0 && (
           <div
             style={{
-              padding: "16px 10px",
+              padding: "24px 16px",
               fontSize: 11,
-              color: "var(--text-dimmed)",
+              color: "#333",
               textAlign: "center",
-              fontFamily: "var(--font-ui)",
+              fontFamily: "var(--font-mono)",
+              lineHeight: 1.6,
             }}
           >
-            no files loaded
+            <div style={{ fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 6 }}>
+              no files
+            </div>
+            <div>
+              Set a workspace directory above
+              <br />
+              to load Parquet, CSV, or JSON files.
+            </div>
           </div>
         )}
         {filteredFiles.map((f) => {
@@ -343,16 +342,10 @@ export default function FileExplorer() {
                       e.stopPropagation();
                       handleClearHistory();
                     }}
+                    className="medha-btn"
                     style={{
-                      background: "none",
-                      border: "none",
-                      color: "var(--text-dimmed)",
                       fontSize: 9,
-                      cursor: "pointer",
-                      fontFamily: "var(--font-ui)",
-                      textTransform: "uppercase",
-                      letterSpacing: "0.06em",
-                      opacity: 0.6,
+                      padding: "2px 8px",
                     }}
                   >
                     clear
