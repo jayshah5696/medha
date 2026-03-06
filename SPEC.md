@@ -741,3 +741,90 @@ if (isTauri) {
   // text input only, no browse button
 }
 ```
+
+---
+
+## 15. UI Polish Requirements (NOT YET BUILT)
+
+### 15A. Buttons
+- All buttons: transparent background, 1px solid #00D8FF border, #00D8FF text color
+- Font: JetBrains Mono, 11px, uppercase, letter-spacing: 0.1em
+- Padding: 4px 12px, border-radius: 0
+- Hover: background rgba(0,216,255,0.08)
+- No default browser button styling anywhere
+
+### 15B. Chat Message Bubbles
+- User messages: right-aligned, label "YOU" (8px uppercase accent above), border-left: 2px solid #00D8FF, padding: 6px 10px, background: rgba(0,216,255,0.04)
+- Assistant messages: left-aligned, label "MEDHA" (8px uppercase dimmed above), border-left: 2px solid #1a1a1f, padding: 6px 10px, background: rgba(255,255,255,0.02)
+- Tool call lines: italic, #444, format: `[ get_schema · running ]`
+- 12px gap between messages
+- Input: border 1px solid #1a1a1f, background #0f0f12, monospace, no border-radius, focus: border #00D8FF
+
+### 15C. Toolbar
+- Each chip: 10px monospace, color #444
+- Hover: #00D8FF
+- Running state: #00D8FF with CSS pulse animation (opacity 0.5-1, 1s loop)
+- Vertical separator between groups
+
+### 15D. Empty States
+- No files: "NO FILES\nSet a workspace directory above\nto load Parquet, CSV, or JSON files."
+- No threads: "No saved threads yet."
+- Zero rows: "Query returned 0 rows."
+- All: centered, #333, 11px monospace
+
+### 15E. CSS Global
+- Scrollbars: 4px width, #0f0f12 track, #222 thumb, #333 hover
+- Selection: background rgba(0,216,255,0.15)
+- Focus outlines: 1px solid #00D8FF
+- Placeholder color: #333
+
+### 15F. Silent Error Fix
+- When LLM call fails (no API key, rate limit, network), show error inline in chat: red monospace text, not silent
+- On page load: check GET /api/settings, if no keys configured show dismissable banner: "No LLM configured. Open Settings (⚙) to add an API key."
+
+---
+
+## 16. Workspace Folder Picker (NOT YET BUILT)
+
+### 16A. Web Build
+- Add folder icon button next to workspace text input
+- On click: call window.showDirectoryPicker() (File System Access API, Chrome/Edge only)
+- Returns folder name hint only (not full path due to browser security)
+- Pre-fill input with folder name, user completes the path
+- Hide button if showDirectoryPicker not available (Firefox, Safari)
+
+### 16B. Tauri Build
+- Single "Choose Folder" button replaces text input + browse
+- Calls Tauri command pick_directory() -> returns full OS path string
+- Auto-calls POST /api/workspace/configure with result
+- File list refreshes immediately
+
+### 16C. Detection
+```typescript
+const isTauri = '__TAURI__' in window
+if (isTauri) { /* invoke pick_directory */ }
+else if ('showDirectoryPicker' in window) { /* hint mode */ }
+else { /* text only */ }
+```
+
+---
+
+## 17. Logo (NOT YET BUILT)
+
+### 17A. Concept
+- Hexagon outline (thin 2px stroke, electric cyan #00D8FF, no fill)
+- Devanagari letter म inside, centered, same cyan
+- Wordmark "medha" below in JetBrains Mono lowercase, small
+- Dark background #0a0a0b
+- Flat design, no gradients, no shadows
+- 1:1 square ratio for icon use
+
+### 17B. Variants Needed
+- Icon only (hexagon + म), for favicon and dock icon
+- Icon + wordmark horizontal, for README hero
+- Light variant (dark cyan on white) for light backgrounds
+
+### 17C. Deliverables
+- SVG source (scalable, usable in Tauri app icon)
+- PNG exports: 16px, 32px, 128px, 512px (for Tauri bundle)
+- Place in docs/brand/
