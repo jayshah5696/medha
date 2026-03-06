@@ -9,7 +9,6 @@ These tests verify that:
 LLM calls are mocked via unittest.mock so the tests are fully offline.
 """
 
-import json
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
