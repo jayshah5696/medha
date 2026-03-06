@@ -137,49 +137,58 @@ export default function ChatSidebar() {
   return (
     <div
       style={{
-        width: 300,
-        minWidth: 300,
+        width: "var(--sidebar-right)",
+        minWidth: "var(--sidebar-right)",
         background: "var(--bg-secondary)",
-        borderLeft: "1px solid var(--border)",
         display: "flex",
         flexDirection: "column",
         height: "100%",
+        overflow: "hidden",
       }}
     >
+      {/* Header */}
       <div
         style={{
-          padding: "12px",
+          padding: "0 10px",
+          height: 28,
+          minHeight: 28,
           borderBottom: "1px solid var(--border)",
-          fontSize: 11,
-          fontWeight: 600,
+          fontSize: 10,
+          fontWeight: 500,
           textTransform: "uppercase",
-          color: "var(--text-secondary)",
-          letterSpacing: "0.05em",
+          color: "var(--text-dimmed)",
+          letterSpacing: "0.08em",
+          fontFamily: "var(--font-ui)",
+          fontVariant: "small-caps",
+          display: "flex",
+          alignItems: "center",
         }}
       >
-        Chat (Cmd+L)
+        assistant
       </div>
 
+      {/* Messages */}
       <div
         style={{
           flex: 1,
           overflow: "auto",
-          padding: "12px",
+          padding: "8px",
           display: "flex",
           flexDirection: "column",
-          gap: 12,
+          gap: 6,
         }}
       >
         {messages.length === 0 && (
           <div
             style={{
-              color: "var(--text-secondary)",
-              fontSize: 13,
+              color: "var(--text-dimmed)",
+              fontSize: 11,
               textAlign: "center",
               marginTop: 24,
+              fontFamily: "var(--font-ui)",
             }}
           >
-            Ask questions about your data files.
+            ask about your data
           </div>
         )}
 
@@ -187,16 +196,24 @@ export default function ChatSidebar() {
           <div
             key={i}
             style={{
-              padding: "8px 12px",
-              borderRadius: 8,
-              fontSize: 13,
+              padding: "6px 8px",
+              fontSize: 12,
               lineHeight: 1.5,
-              background:
-                msg.role === "user" ? "var(--bg-tertiary)" : "transparent",
-              borderLeft:
-                msg.role === "assistant"
-                  ? "3px solid var(--accent)"
-                  : "none",
+              fontFamily: "var(--font-mono)",
+              borderRadius: 0,
+              ...(msg.role === "user"
+                ? {
+                    borderLeft: "2px solid var(--accent)",
+                    background: "transparent",
+                    textAlign: "right" as const,
+                    paddingLeft: 10,
+                    color: "var(--text-primary)",
+                  }
+                : {
+                    background: "var(--bg-tertiary)",
+                    borderLeft: "2px solid transparent",
+                    color: "var(--text-primary)",
+                  }),
             }}
           >
             {msg.role === "assistant" ? (
@@ -215,25 +232,25 @@ export default function ChatSidebar() {
             <div
               key={t.tool}
               style={{
-                fontSize: 12,
+                fontSize: 11,
                 fontStyle: "italic",
-                color: "var(--text-secondary)",
-                padding: "4px 12px",
+                color: "var(--text-dimmed)",
+                padding: "4px 8px",
+                fontFamily: "var(--font-mono)",
               }}
             >
-              Using {t.tool}...
+              [ running {t.tool}... ]
             </div>
           ))}
 
         <div ref={messagesEndRef} />
       </div>
 
+      {/* Input */}
       <div
         style={{
-          padding: "12px",
+          padding: "8px",
           borderTop: "1px solid var(--border)",
-          display: "flex",
-          gap: 8,
         }}
       >
         <input
@@ -241,35 +258,20 @@ export default function ChatSidebar() {
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && handleSend()}
-          placeholder="Ask about your data..."
+          placeholder="ask..."
           disabled={isStreaming}
           style={{
-            flex: 1,
-            padding: "8px 10px",
-            fontSize: 13,
+            width: "100%",
+            padding: "6px 8px",
+            fontSize: 12,
             background: "var(--bg-tertiary)",
             border: "1px solid var(--border)",
-            borderRadius: 6,
+            borderRadius: 0,
             color: "var(--text-primary)",
             outline: "none",
+            fontFamily: "var(--font-mono)",
           }}
         />
-        <button
-          onClick={handleSend}
-          disabled={isStreaming || !input.trim()}
-          style={{
-            padding: "8px 14px",
-            fontSize: 13,
-            background: "var(--accent)",
-            color: "#1e1e2e",
-            border: "none",
-            borderRadius: 6,
-            cursor: "pointer",
-            fontWeight: 600,
-          }}
-        >
-          Send
-        </button>
       </div>
     </div>
   );

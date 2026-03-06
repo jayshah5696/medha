@@ -42,11 +42,11 @@ function computeLineDiff(oldText: string, newText: string): DiffLine[] {
   return lines;
 }
 
-function formatSql(sql: string): string {
+function formatSql(sqlStr: string): string {
   try {
-    return format(sql, { language: "sql", keywordCase: "upper" });
+    return format(sqlStr, { language: "sql", keywordCase: "upper" });
   } catch {
-    return sql;
+    return sqlStr;
   }
 }
 
@@ -90,7 +90,6 @@ export default function DiffOverlay({
     const { from, to } = state.selection.main;
 
     if (from === to) {
-      // No selection: replace entire doc
       editorView.dispatch({
         changes: { from: 0, to: state.doc.length, insert: newSql },
       });
@@ -110,7 +109,7 @@ export default function DiffOverlay({
         left: 0,
         right: 0,
         bottom: 0,
-        background: "rgba(0,0,0,0.5)",
+        background: "rgba(0, 0, 0, 0.7)",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
@@ -123,26 +122,32 @@ export default function DiffOverlay({
       <div
         style={{
           background: "var(--bg-primary)",
-          border: "1px solid var(--border)",
-          borderRadius: 12,
-          width: 600,
+          border: "1px solid var(--border-strong)",
+          borderRadius: 0,
+          width: 640,
+          maxWidth: "90vw",
           maxHeight: "80vh",
           overflow: "auto",
-          padding: 20,
+          padding: 16,
         }}
       >
+        {/* Title */}
         <div
           style={{
-            fontSize: 14,
-            fontWeight: 600,
+            fontSize: 11,
+            fontWeight: 500,
             marginBottom: 12,
             color: "var(--accent)",
+            fontFamily: "var(--font-ui)",
+            textTransform: "uppercase",
+            letterSpacing: "0.06em",
           }}
         >
-          Cmd+K: Inline Edit
+          inline edit
         </div>
 
-        <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
+        {/* Instruction input */}
+        <div style={{ display: "flex", gap: 6, marginBottom: 12 }}>
           <input
             type="text"
             value={instruction}
@@ -152,61 +157,67 @@ export default function DiffOverlay({
             autoFocus
             style={{
               flex: 1,
-              padding: "8px 12px",
-              fontSize: 13,
+              padding: "6px 8px",
+              fontSize: 12,
               background: "var(--bg-tertiary)",
               border: "1px solid var(--border)",
-              borderRadius: 6,
+              borderRadius: 0,
               color: "var(--text-primary)",
               outline: "none",
+              fontFamily: "var(--font-mono)",
             }}
           />
           <button
             onClick={handleSubmit}
             disabled={loading || !instruction.trim()}
             style={{
-              padding: "8px 16px",
-              fontSize: 13,
-              background: "var(--accent)",
-              color: "#1e1e2e",
-              border: "none",
-              borderRadius: 6,
+              padding: "6px 12px",
+              fontSize: 11,
+              background: "transparent",
+              color: "var(--accent)",
+              border: "1px solid var(--border)",
+              borderRadius: 0,
               cursor: "pointer",
-              fontWeight: 600,
+              fontWeight: 500,
+              fontFamily: "var(--font-ui)",
             }}
           >
-            {loading ? "..." : "Edit"}
+            {loading ? "..." : "edit"}
           </button>
         </div>
 
+        {/* Error */}
         {error && (
           <div
             style={{
-              padding: "8px 12px",
-              background: "rgba(243, 139, 168, 0.15)",
+              padding: "6px 8px",
+              background: "var(--diff-remove-bg)",
               color: "var(--error)",
-              borderRadius: 6,
-              fontSize: 13,
+              borderRadius: 0,
+              fontSize: 12,
               marginBottom: 12,
+              fontFamily: "var(--font-mono)",
             }}
           >
             {error}
           </div>
         )}
 
+        {/* Diff view */}
         {diffLines && (
           <>
             <div
               style={{
-                fontFamily: "'JetBrains Mono', monospace",
-                fontSize: 13,
+                fontFamily: "var(--font-mono)",
+                fontSize: 12,
                 lineHeight: 1.6,
                 background: "var(--bg-secondary)",
-                borderRadius: 8,
-                padding: 12,
+                borderRadius: 0,
+                padding: 8,
                 overflow: "auto",
                 maxHeight: 400,
                 marginBottom: 12,
+                border: "1px solid var(--border)",
               }}
             >
               {diffLines.map((line, i) => (
@@ -215,20 +226,20 @@ export default function DiffOverlay({
                   style={{
                     background:
                       line.type === "added"
-                        ? "rgba(166, 227, 161, 0.15)"
+                        ? "var(--diff-add-bg)"
                         : line.type === "removed"
-                          ? "rgba(243, 139, 168, 0.15)"
+                          ? "var(--diff-remove-bg)"
                           : "transparent",
                     color:
                       line.type === "added"
-                        ? "var(--success)"
+                        ? "var(--diff-add-text)"
                         : line.type === "removed"
-                          ? "var(--error)"
+                          ? "var(--diff-remove-text)"
                           : "var(--text-primary)",
                     padding: "1px 8px",
                   }}
                 >
-                  <span style={{ opacity: 0.5, marginRight: 8 }}>
+                  <span style={{ opacity: 0.4, marginRight: 8 }}>
                     {line.type === "added"
                       ? "+"
                       : line.type === "removed"
@@ -240,35 +251,38 @@ export default function DiffOverlay({
               ))}
             </div>
 
+            {/* Actions */}
             <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
               <button
                 onClick={onClose}
                 style={{
-                  padding: "8px 16px",
-                  fontSize: 13,
-                  background: "var(--bg-tertiary)",
-                  color: "var(--text-primary)",
+                  padding: "5px 12px",
+                  fontSize: 11,
+                  background: "transparent",
+                  color: "var(--text-dimmed)",
                   border: "1px solid var(--border)",
-                  borderRadius: 6,
+                  borderRadius: 0,
                   cursor: "pointer",
+                  fontFamily: "var(--font-ui)",
                 }}
               >
-                Reject
+                reject
               </button>
               <button
                 onClick={handleAccept}
                 style={{
-                  padding: "8px 16px",
-                  fontSize: 13,
-                  background: "var(--success)",
-                  color: "#1e1e2e",
-                  border: "none",
-                  borderRadius: 6,
+                  padding: "5px 12px",
+                  fontSize: 11,
+                  background: "transparent",
+                  color: "var(--accent)",
+                  border: "1px solid var(--border)",
+                  borderRadius: 0,
                   cursor: "pointer",
-                  fontWeight: 600,
+                  fontWeight: 500,
+                  fontFamily: "var(--font-ui)",
                 }}
               >
-                Accept
+                accept
               </button>
             </div>
           </>

@@ -41,82 +41,109 @@ export default function FileExplorer() {
   return (
     <div
       style={{
-        width: 240,
-        minWidth: 240,
+        width: "var(--sidebar-left)",
+        minWidth: "var(--sidebar-left)",
         background: "var(--bg-secondary)",
-        borderRight: "1px solid var(--border)",
         display: "flex",
         flexDirection: "column",
         height: "100%",
+        overflow: "hidden",
       }}
     >
-      <div style={{ padding: "12px", borderBottom: "1px solid var(--border)" }}>
+      {/* Workspace config section */}
+      <div style={{ padding: "10px 10px 8px", borderBottom: "1px solid var(--border)" }}>
         <div
           style={{
-            fontSize: 11,
-            fontWeight: 600,
+            fontSize: 10,
+            fontWeight: 500,
             textTransform: "uppercase",
-            color: "var(--text-secondary)",
+            color: "var(--text-dimmed)",
             marginBottom: 8,
-            letterSpacing: "0.05em",
+            letterSpacing: "0.08em",
+            fontFamily: "var(--font-ui)",
+            fontVariant: "small-caps",
           }}
         >
-          Workspace
+          workspace
         </div>
-        <input
-          type="text"
-          value={inputPath}
-          onChange={(e) => setInputPath(e.target.value)}
-          placeholder="/path/to/data"
-          onKeyDown={(e) => e.key === "Enter" && handleConfigure()}
-          style={{
-            width: "100%",
-            padding: "6px 8px",
-            fontSize: 12,
-            background: "var(--bg-tertiary)",
-            border: "1px solid var(--border)",
-            borderRadius: 4,
-            color: "var(--text-primary)",
-            marginBottom: 6,
-            outline: "none",
-          }}
-        />
+        <div style={{ display: "flex", alignItems: "center", gap: 0 }}>
+          <span
+            style={{
+              fontSize: 12,
+              color: "var(--text-dimmed)",
+              padding: "5px 4px 5px 6px",
+              background: "var(--bg-tertiary)",
+              border: "1px solid var(--border)",
+              borderRight: "none",
+              borderRadius: 0,
+              fontFamily: "var(--font-mono)",
+              lineHeight: 1,
+            }}
+          >
+            &gt;
+          </span>
+          <input
+            type="text"
+            value={inputPath}
+            onChange={(e) => setInputPath(e.target.value)}
+            placeholder="/path/to/data"
+            onKeyDown={(e) => e.key === "Enter" && handleConfigure()}
+            style={{
+              flex: 1,
+              padding: "5px 6px",
+              fontSize: 12,
+              background: "var(--bg-tertiary)",
+              border: "1px solid var(--border)",
+              borderRadius: 0,
+              color: "var(--text-primary)",
+              outline: "none",
+              fontFamily: "var(--font-mono)",
+              width: "100%",
+              minWidth: 0,
+            }}
+          />
+        </div>
         <button
           onClick={handleConfigure}
           disabled={loading}
           style={{
             width: "100%",
-            padding: "6px",
-            fontSize: 12,
-            background: "var(--accent)",
-            color: "#1e1e2e",
-            border: "none",
-            borderRadius: 4,
+            padding: "4px",
+            fontSize: 11,
+            background: "transparent",
+            color: "var(--accent)",
+            border: "1px solid var(--border)",
+            borderRadius: 0,
             cursor: "pointer",
-            fontWeight: 600,
+            fontWeight: 500,
+            fontFamily: "var(--font-ui)",
+            marginTop: 6,
+            letterSpacing: "0.04em",
           }}
         >
-          {loading ? "Loading..." : "Configure"}
+          {loading ? "loading..." : "configure"}
         </button>
       </div>
 
+      {/* File list */}
       <div
         style={{
           flex: 1,
           overflow: "auto",
-          padding: "8px 0",
+          padding: "4px 0",
         }}
       >
         {files.length === 0 && (
           <div
             style={{
-              padding: "12px",
-              fontSize: 12,
-              color: "var(--text-secondary)",
+              padding: "16px 10px",
+              fontSize: 11,
+              color: "var(--text-dimmed)",
               textAlign: "center",
+              fontFamily: "var(--font-ui)",
             }}
           >
-            No files. Configure a workspace above.
+            no files loaded
           </div>
         )}
         {files.map((f) => {
@@ -126,16 +153,18 @@ export default function FileExplorer() {
               key={f.name}
               onClick={() => toggleActiveFile(f.name)}
               style={{
-                padding: "6px 12px",
-                fontSize: 13,
+                padding: "4px 10px",
+                fontSize: 12,
                 cursor: "pointer",
                 display: "flex",
                 justifyContent: "space-between",
                 alignItems: "center",
                 background: isActive ? "var(--bg-tertiary)" : "transparent",
                 borderLeft: isActive
-                  ? "3px solid var(--accent)"
-                  : "3px solid transparent",
+                  ? "2px solid var(--accent)"
+                  : "2px solid transparent",
+                fontFamily: "var(--font-mono)",
+                lineHeight: "20px",
               }}
             >
               <span
@@ -143,16 +172,18 @@ export default function FileExplorer() {
                   overflow: "hidden",
                   textOverflow: "ellipsis",
                   whiteSpace: "nowrap",
+                  color: isActive ? "var(--text-primary)" : "var(--text-secondary)",
                 }}
               >
                 {f.name}
               </span>
               <span
                 style={{
-                  fontSize: 11,
-                  color: "var(--text-secondary)",
+                  fontSize: 10,
+                  color: "var(--text-dimmed)",
                   marginLeft: 8,
                   flexShrink: 0,
+                  fontFamily: "var(--font-ui)",
                 }}
               >
                 {formatBytes(f.size_bytes)}

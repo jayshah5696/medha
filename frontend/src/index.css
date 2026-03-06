@@ -1,17 +1,47 @@
 @import "tailwindcss";
 
 :root {
-  --bg-primary: #1e1e2e;
-  --bg-secondary: #181825;
-  --bg-tertiary: #313244;
-  --text-primary: #cdd6f4;
-  --text-secondary: #a6adc8;
-  --accent: #89b4fa;
-  --accent-hover: #74c7ec;
-  --border: #45475a;
-  --success: #a6e3a1;
-  --error: #f38ba8;
-  --warning: #fab387;
+  /* Backgrounds */
+  --bg-primary: #0a0a0b;
+  --bg-secondary: #0e0e10;
+  --bg-tertiary: #141416;
+  --bg-elevated: #1a1a1d;
+  --bg-row-alt: #0c0c0e;
+
+  /* Text */
+  --text-primary: #c8c8cc;
+  --text-secondary: #5a5a62;
+  --text-dimmed: #3a3a42;
+
+  /* Accent: ice blue */
+  --accent: #00D8FF;
+  --accent-dimmed: rgba(0, 216, 255, 0.15);
+
+  /* Borders */
+  --border: #1e1e22;
+  --border-strong: #2a2a30;
+
+  /* Semantic */
+  --success: #6bff6b;
+  --error: #ff6b6b;
+  --warning: #F5A623;
+
+  /* Diff */
+  --diff-add-bg: #001a00;
+  --diff-add-text: #6bff6b;
+  --diff-remove-bg: #3d0000;
+  --diff-remove-text: #ff6b6b;
+
+  /* Typography */
+  --font-mono: 'JetBrains Mono', monospace;
+  --font-ui: 'DM Mono', monospace;
+
+  /* Sizes */
+  --header-height: 36px;
+  --status-height: 24px;
+  --sidebar-left: 220px;
+  --sidebar-right: 280px;
+  --row-height: 28px;
 }
 
 * {
@@ -20,32 +50,74 @@
   padding: 0;
 }
 
+html, body {
+  height: 100%;
+  overflow: hidden;
+}
+
 body {
-  font-family: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
+  font-family: var(--font-mono);
   background: var(--bg-primary);
   color: var(--text-primary);
-  overflow: hidden;
-  height: 100vh;
+  font-size: 13px;
+  line-height: 1.4;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 #root {
   height: 100vh;
+  max-width: none;
+  margin: 0;
+  padding: 0;
+  text-align: left;
 }
 
+/* Scrollbar */
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 6px;
+  height: 6px;
 }
 
 ::-webkit-scrollbar-track {
-  background: var(--bg-secondary);
+  background: transparent;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: var(--border);
-  border-radius: 4px;
+  background: var(--border-strong);
+  border-radius: 0;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--text-secondary);
+  background: var(--text-dimmed);
+}
+
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+/* Selection */
+::selection {
+  background: var(--accent-dimmed);
+  color: var(--text-primary);
+}
+
+/* Links */
+a {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+/* Input resets */
+input, button, textarea {
+  font-family: var(--font-mono);
+}
+
+button {
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
 }

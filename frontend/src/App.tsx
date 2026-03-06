@@ -11,6 +11,7 @@ import "./index.css";
 
 function App() {
   const {
+    workspacePath,
     queryResult,
     isQuerying,
     lastError,
@@ -50,81 +51,143 @@ function App() {
   );
 
   return (
-    <div style={{ display: "flex", height: "100vh", width: "100vw" }}>
-      <FileExplorer />
-
+    <div style={{ display: "flex", flexDirection: "column", height: "100vh", width: "100vw" }}>
+      {/* Header bar */}
       <div
         style={{
-          flex: 1,
+          height: "var(--header-height)",
+          minHeight: "var(--header-height)",
+          background: "var(--bg-secondary)",
+          borderBottom: "1px solid var(--border)",
           display: "flex",
-          flexDirection: "column",
-          overflow: "hidden",
+          alignItems: "center",
+          padding: "0 12px",
+          gap: 12,
         }}
       >
-        {/* Header */}
-        <div
+        <span
           style={{
-            padding: "8px 16px",
-            borderBottom: "1px solid var(--border)",
-            background: "var(--bg-secondary)",
-            display: "flex",
-            alignItems: "center",
-            gap: 12,
+            fontFamily: "var(--font-ui)",
+            fontWeight: 500,
+            fontSize: 14,
+            color: "var(--accent)",
+            letterSpacing: "0.02em",
           }}
         >
-          <span style={{ fontWeight: 700, fontSize: 16 }}>Medha</span>
-          <span style={{ fontSize: 12, color: "var(--text-secondary)" }}>
-            Local SQL IDE for flat files
-          </span>
-          <span
-            style={{
-              marginLeft: "auto",
-              fontSize: 11,
-              color: "var(--text-secondary)",
-            }}
-          >
-            Cmd+Enter: Run | Cmd+K: Edit | Cmd+L: Chat
-          </span>
-        </div>
-
-        {/* Error banner */}
-        {lastError && (
-          <div
-            style={{
-              padding: "8px 16px",
-              background: "rgba(243, 139, 168, 0.15)",
-              color: "var(--error)",
-              fontSize: 13,
-              borderBottom: "1px solid var(--error)",
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-            }}
-          >
-            <span>{lastError}</span>
-            <button
-              onClick={() => setLastError(null)}
-              style={{
-                background: "none",
-                border: "none",
-                color: "var(--error)",
-                cursor: "pointer",
-                fontSize: 16,
-              }}
-            >
-              x
-            </button>
-          </div>
-        )}
-
-        {/* Editor */}
-        <SqlEditor onExecute={handleExecute} onCmdK={handleCmdK} />
-
-        {/* Results */}
-        <ResultGrid result={queryResult} isQuerying={isQuerying} />
+          medha
+        </span>
+        <span
+          style={{
+            fontSize: 10,
+            color: "var(--text-dimmed)",
+            fontFamily: "var(--font-ui)",
+          }}
+        >
+          sql ide for flat files
+        </span>
+        <span
+          style={{
+            marginLeft: "auto",
+            fontSize: 10,
+            color: "var(--text-dimmed)",
+            fontFamily: "var(--font-ui)",
+          }}
+        >
+          duckdb
+        </span>
       </div>
 
-      <ChatSidebar />
+      {/* Error banner */}
+      {lastError && (
+        <div
+          style={{
+            padding: "6px 12px",
+            background: "var(--diff-remove-bg)",
+            color: "var(--error)",
+            fontSize: 12,
+            borderBottom: "1px solid var(--border)",
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            fontFamily: "var(--font-mono)",
+          }}
+        >
+          <span>{lastError}</span>
+          <button
+            onClick={() => setLastError(null)}
+            style={{
+              background: "none",
+              border: "none",
+              color: "var(--error)",
+              cursor: "pointer",
+              fontSize: 14,
+              padding: "0 4px",
+              fontFamily: "var(--font-mono)",
+            }}
+          >
+            x
+          </button>
+        </div>
+      )}
+
+      {/* Main content */}
+      <div style={{ flex: 1, display: "flex", overflow: "hidden" }}>
+        {/* Left sidebar */}
+        <FileExplorer />
+
+        {/* Divider */}
+        <div style={{ width: 1, background: "var(--border)" }} />
+
+        {/* Center panel */}
+        <div
+          style={{
+            flex: 1,
+            display: "flex",
+            flexDirection: "column",
+            overflow: "hidden",
+            minWidth: 0,
+          }}
+        >
+          <SqlEditor onExecute={handleExecute} onCmdK={handleCmdK} />
+          <ResultGrid result={queryResult} isQuerying={isQuerying} />
+        </div>
+
+        {/* Divider */}
+        <div style={{ width: 1, background: "var(--border)" }} />
+
+        {/* Right sidebar */}
+        <ChatSidebar />
+      </div>
+
+      {/* Status bar */}
+      <div
+        style={{
+          height: "var(--status-height)",
+          minHeight: "var(--status-height)",
+          background: "var(--bg-secondary)",
+          borderTop: "1px solid var(--border)",
+          display: "flex",
+          alignItems: "center",
+          padding: "0 12px",
+          gap: 8,
+          fontSize: 10,
+          color: "var(--text-dimmed)",
+          fontFamily: "var(--font-ui)",
+        }}
+      >
+        <span
+          style={{
+            width: 6,
+            height: 6,
+            borderRadius: "50%",
+            background: workspacePath ? "var(--success)" : "var(--text-dimmed)",
+            display: "inline-block",
+            flexShrink: 0,
+          }}
+        />
+        <span>{workspacePath || "no workspace"}</span>
+        <span style={{ marginLeft: "auto" }}>medha v0.1</span>
+      </div>
 
       {/* Cmd+K Diff Overlay */}
       {diffState && (

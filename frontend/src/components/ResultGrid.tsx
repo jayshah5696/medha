@@ -11,6 +11,10 @@ interface ResultGridProps {
   isQuerying: boolean;
 }
 
+function formatRowCount(n: number): string {
+  return n.toLocaleString();
+}
+
 export default function ResultGrid({ result, isQuerying }: ResultGridProps) {
   if (isQuerying) {
     return (
@@ -20,13 +24,14 @@ export default function ResultGrid({ result, isQuerying }: ResultGridProps) {
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          color: "var(--text-secondary)",
-          fontSize: 14,
+          color: "var(--text-dimmed)",
+          fontSize: 12,
           padding: 24,
-          background: "var(--bg-secondary)",
+          background: "var(--bg-primary)",
+          fontFamily: "var(--font-ui)",
         }}
       >
-        Running query...
+        running query...
       </div>
     );
   }
@@ -39,13 +44,14 @@ export default function ResultGrid({ result, isQuerying }: ResultGridProps) {
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          color: "var(--text-secondary)",
-          fontSize: 13,
+          color: "var(--text-dimmed)",
+          fontSize: 11,
           padding: 24,
-          background: "var(--bg-secondary)",
+          background: "var(--bg-primary)",
+          fontFamily: "var(--font-ui)",
         }}
       >
-        Run a query with Cmd+Enter to see results here.
+        Cmd+Enter to run
       </div>
     );
   }
@@ -58,7 +64,7 @@ export default function ResultGrid({ result, isQuerying }: ResultGridProps) {
       header: col,
       cell: (info) => {
         const val = info.getValue();
-        if (val === null) return <span style={{ color: "var(--text-secondary)", fontStyle: "italic" }}>null</span>;
+        if (val === null) return <span style={{ color: "var(--text-dimmed)", fontStyle: "italic" }}>null</span>;
         return String(val);
       },
     })
@@ -85,99 +91,117 @@ function ResultTable({
       style={{
         maxHeight: "40vh",
         overflow: "auto",
-        background: "var(--bg-secondary)",
+        background: "var(--bg-primary)",
+        display: "flex",
+        flexDirection: "column",
       }}
     >
+      {/* Table */}
+      <div style={{ flex: 1, overflow: "auto" }}>
+        <table
+          style={{
+            width: "100%",
+            borderCollapse: "collapse",
+            fontSize: 12,
+            fontFamily: "var(--font-mono)",
+          }}
+        >
+          <thead>
+            {table.getHeaderGroups().map((hg) => (
+              <tr key={hg.id}>
+                {hg.headers.map((header) => (
+                  <th
+                    key={header.id}
+                    style={{
+                      padding: "4px 10px",
+                      textAlign: "left",
+                      borderBottom: "1px solid var(--border-strong)",
+                      color: "var(--text-dimmed)",
+                      fontWeight: 500,
+                      fontSize: 10,
+                      position: "sticky",
+                      top: 0,
+                      background: "var(--bg-secondary)",
+                      whiteSpace: "nowrap",
+                      textTransform: "uppercase",
+                      letterSpacing: "0.06em",
+                      fontFamily: "var(--font-ui)",
+                      height: "var(--row-height)",
+                    }}
+                  >
+                    {flexRender(
+                      header.column.columnDef.header,
+                      header.getContext()
+                    )}
+                  </th>
+                ))}
+              </tr>
+            ))}
+          </thead>
+          <tbody>
+            {table.getRowModel().rows.map((row, rowIdx) => (
+              <tr
+                key={row.id}
+                style={{
+                  background: rowIdx % 2 === 0 ? "var(--bg-primary)" : "var(--bg-row-alt)",
+                }}
+              >
+                {row.getVisibleCells().map((cell) => (
+                  <td
+                    key={cell.id}
+                    style={{
+                      padding: "0 10px",
+                      whiteSpace: "nowrap",
+                      maxWidth: 300,
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      height: "var(--row-height)",
+                      lineHeight: "var(--row-height)",
+                      color: "var(--text-primary)",
+                    }}
+                  >
+                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Status bar */}
       <div
         style={{
-          padding: "6px 12px",
-          fontSize: 12,
-          color: "var(--text-secondary)",
+          padding: "0 10px",
+          fontSize: 10,
+          color: "var(--text-dimmed)",
           display: "flex",
-          gap: 16,
-          borderBottom: "1px solid var(--border)",
-          background: "var(--bg-tertiary)",
+          alignItems: "center",
+          gap: 8,
+          borderTop: "1px solid var(--border)",
+          background: "var(--bg-secondary)",
+          height: 22,
+          minHeight: 22,
+          fontFamily: "var(--font-ui)",
+          flexShrink: 0,
         }}
       >
-        <span>{result.row_count} rows</span>
+        <span>{formatRowCount(result.row_count)} rows</span>
+        <span style={{ color: "var(--text-dimmed)" }}>{"\u00B7"}</span>
         <span>{result.duration_ms}ms</span>
         {result.truncated && (
           <span
             style={{
-              background: "var(--warning)",
-              color: "#1e1e2e",
-              padding: "1px 6px",
-              borderRadius: 3,
-              fontWeight: 600,
-              fontSize: 11,
+              color: "var(--accent)",
+              fontWeight: 500,
+              fontSize: 10,
+              letterSpacing: "0.04em",
             }}
           >
             TRUNCATED
           </span>
         )}
       </div>
-      <table
-        style={{
-          width: "100%",
-          borderCollapse: "collapse",
-          fontSize: 13,
-          fontFamily: "'JetBrains Mono', monospace",
-        }}
-      >
-        <thead>
-          {table.getHeaderGroups().map((hg) => (
-            <tr key={hg.id}>
-              {hg.headers.map((header) => (
-                <th
-                  key={header.id}
-                  style={{
-                    padding: "6px 10px",
-                    textAlign: "left",
-                    borderBottom: "1px solid var(--border)",
-                    color: "var(--accent)",
-                    fontWeight: 600,
-                    fontSize: 12,
-                    position: "sticky",
-                    top: 0,
-                    background: "var(--bg-secondary)",
-                    whiteSpace: "nowrap",
-                  }}
-                >
-                  {flexRender(
-                    header.column.columnDef.header,
-                    header.getContext()
-                  )}
-                </th>
-              ))}
-            </tr>
-          ))}
-        </thead>
-        <tbody>
-          {table.getRowModel().rows.map((row) => (
-            <tr
-              key={row.id}
-              style={{
-                borderBottom: "1px solid var(--border)",
-              }}
-            >
-              {row.getVisibleCells().map((cell) => (
-                <td
-                  key={cell.id}
-                  style={{
-                    padding: "4px 10px",
-                    whiteSpace: "nowrap",
-                    maxWidth: 300,
-                    overflow: "hidden",
-                    textOverflow: "ellipsis",
-                  }}
-                >
-                  {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                </td>
-              ))}
-            </tr>
-          ))}
-        </tbody>
-      </table>
     </div>
   );
 }
