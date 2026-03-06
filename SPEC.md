@@ -576,3 +576,93 @@ When a new chat starts (no `thread_id` in the request), the backend generates a 
 3. If new chat: backend generates slug, emits final SSE event: `data: {"type": "thread_id", "slug": "revenue-by-region"}`
 4. Frontend receives `thread_id` event, stores it in zustand `currentThreadId`, refreshes thread list
 5. Subsequent messages in the same chat send the stored `thread_id` to continue the conversation
+
+---
+
+## 13. Dynamic Model Selection (NOT YET BUILT)
+
+### 13A. Problem with Current Approach
+
+The current Settings modal hardcodes a fixed list of model strings (e.g. "openai/gpt-4o-mini", "anthropic/claude-sonnet-4.6"). This breaks for:
+- LM Studio: user can load ANY model locally (llama-3.1-8b, mistral-7b, custom fine-tunes). The available models depend on what the user has downloaded.
+- OpenRouter: has 200+ models. A hardcoded list is always stale.
+- Ollama (future): same problem as LM Studio.
+
+### 13B. Desired Behavior
+
+Settings UI should be **provider-aware** with **dynamic model fetching**:
+
+1. User selects a provider from a top-level dropdown: `OpenAI | Anthropic | OpenRouter | LM Studio | Ollama | Custom`
+2. After provider is selected (and API key/URL is set), a "Fetch Models" button queries the provider's model list endpoint
+3. The model dropdowns (Inline/Cmd+K and Chat/Cmd+L) are then populated from the fetched list
+4. Selected model is stored as the full litellm string (e.g. `openrouter/meta-llama/llama-3.1-70b-instruct`)
+
+### 13C. Backend Endpoints Needed
+
+```
+GET /api/models?provider=openai           -> ["openai/gpt-4o", "openai/gpt-4o-mini", ...]
+GET /api/models?provider=openrouter       -> ["openrouter/anthropic/claude-...", ...]
+GET /api/models?provider=lm_studio       -> queries http://localhost:1234/v1/models, returns available local models
+GET /api/models?provider=ollama          -> queries http://localhost:11434/api/tags, returns pulled models
+```
+
+**Implementation per provider:**
+- **OpenAI:** call `https://api.openai.com/v1/models` with the stored API key, filter to chat-capable models (gpt-4*, gpt-3.5*)
+- **Anthropic:** static list (Anthropic has no public models endpoint) — return known claude-* strings
+- **OpenRouter:** call `https://openrouter.ai/api/v1/models` (no auth required for model list), return `id` field prefixed with `openrouter/`
+- **LM Studio:** call `{lm_studio_url}/models` (OpenAI-compatible endpoint), return `id` field prefixed with `lm_studio/`
+- **Ollama:** call `{ollama_url}/api/tags`, return `name` field prefixed with `ollama/`
+
+**Error handling:** if the provider endpoint is unreachable or auth fails, return `{"error": "...", "models": []}`. Frontend shows "Could not fetch models — enter manually" with a free-text input fallback.
+
+### 13D. Frontend UI Design
+
+Settings modal redesign (provider-first layout):
+
+```
+PROVIDER
+[ OpenAI ▼ ]   [ Fetch Models ]   ● connected / ✗ error
+
+API KEY (or URL for local)
+[ sk-... ]
+
+INLINE / CMD+K MODEL
+[ gpt-4o-mini ▼ ]   (populated from fetched list)
+
+CHAT / CMD+L MODEL  
+[ gpt-4o ▼ ]        (populated from fetched list)
+
+AGENT PROFILE
+[ default ▼ ]
+
+[ Save ]
+```
+
+- Provider dropdown is the primary control. Changing provider clears the model selections.
+- "Fetch Models" button: triggers `GET /api/models?provider=X`, populates dropdowns, shows spinner while loading.
+- Connection indicator dot: green if last fetch succeeded, red if failed.
+- Fallback: if user dismisses without fetching, show a plain text input so they can type a model string manually.
+- Model strings stored in settings.json and sent to litellm as-is.
+
+### 13E. Settings Schema Update
+
+```json
+{
+  "provider_inline": "openai",
+  "model_inline": "openai/gpt-4o-mini",
+  "provider_chat": "openrouter",
+  "model_chat": "openrouter/anthropic/claude-sonnet-4.6",
+  "agent_profile": "default",
+  "openai_api_key": "sk-...",
+  "openrouter_api_key": "sk-or-...",
+  "anthropic_api_key": "",
+  "lm_studio_url": "http://localhost:1234/v1",
+  "ollama_url": "http://localhost:11434"
+}
+```
+
+### 13F. YAML Agent Profile Update
+
+Agent profiles should NOT hardcode a model. The `model` field in YAML should be treated as a default that is overridden by the settings `model_chat` value. If the YAML model is explicitly set, it takes precedence only when the user selects that profile and has no settings override.
+
+Priority: `settings.model_chat` > `YAML profile model` > fallback `openai/gpt-4o-mini`
