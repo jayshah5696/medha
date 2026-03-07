@@ -216,5 +216,61 @@ describe("ResultGrid", () => {
       // 1000 rows * 34px = 34000px total height
       expect(scrollBody.style.height).toBe("34000px");
     });
+
+    it("header and body rows use the same grid-template-columns", () => {
+      const largeResult = makeLargeResult(100);
+      const { container } = render(
+        <ResultGrid result={largeResult} isQuerying={false} height={400} />
+      );
+      // Header row (outside scroll container)
+      const headerRow = container.querySelector('[role="rowgroup"] [role="row"]') as HTMLElement;
+      expect(headerRow).toBeTruthy();
+      const headerGrid = headerRow.style.gridTemplateColumns;
+      expect(headerGrid).toBeTruthy();
+
+      // First body row (inside scroll container)
+      const scrollContainer = container.querySelector('[data-testid="virtual-scroll-container"]');
+      const bodyRow = scrollContainer!.querySelector('[role="row"]') as HTMLElement;
+      expect(bodyRow).toBeTruthy();
+      const bodyGrid = bodyRow.style.gridTemplateColumns;
+
+      // They must be identical so columns align
+      expect(bodyGrid).toBe(headerGrid);
+    });
+
+    it("each body row has the same number of cells as there are column headers", () => {
+      const largeResult = makeLargeResult(50);
+      const { container } = render(
+        <ResultGrid result={largeResult} isQuerying={false} height={400} />
+      );
+      const headerCells = container.querySelectorAll('[role="columnheader"]');
+      const scrollContainer = container.querySelector('[data-testid="virtual-scroll-container"]');
+      const firstBodyRow = scrollContainer!.querySelector('[role="row"]') as HTMLElement;
+      const bodyCells = firstBodyRow.querySelectorAll('[role="cell"]');
+
+      expect(headerCells.length).toBe(3); // id, name, score
+      expect(bodyCells.length).toBe(headerCells.length);
+    });
+
+    it("body cells are not truncated to single characters on wide data", () => {
+      // Regression guard: columns must get enough width to show content,
+      // not collapse into equal-width flex items showing "a..." for everything.
+      const wideResult = {
+        columns: ["id", "full_name", "email"],
+        rows: [
+          [1, "Alice Wonderland", "alice@example.com"],
+          [2, "Bob Builder", "bob@example.com"],
+        ],
+        truncated: false,
+        row_count: 2,
+        duration_ms: 10,
+      };
+      render(
+        <ResultGrid result={wideResult} isQuerying={false} height={400} />
+      );
+      // Full text should be present in the DOM (not truncated to "A...")
+      expect(screen.getByText("Alice Wonderland")).toBeInTheDocument();
+      expect(screen.getByText("alice@example.com")).toBeInTheDocument();
+    });
   });
 });
