@@ -52,6 +52,17 @@ interface MedhaStore {
   // the user's editor content during agent streaming
   agentLastQuery: string | null;
   setAgentLastQuery: (sql: string | null) => void;
+
+  // FEAT-8-3: Toast notifications
+  toasts: Toast[];
+  addToast: (message: string) => void;
+  removeToast: (id: string) => void;
+}
+
+export interface Toast {
+  id: string;
+  message: string;
+  createdAt: number;
 }
 
 export const useStore = create<MedhaStore>((set) => ({
@@ -113,4 +124,20 @@ export const useStore = create<MedhaStore>((set) => ({
 
   agentLastQuery: null,
   setAgentLastQuery: (sql) => set({ agentLastQuery: sql }),
+
+  toasts: [],
+  addToast: (message) =>
+    set((state) => {
+      const id = crypto.randomUUID();
+      const toast: Toast = { id, message, createdAt: Date.now() };
+      // Auto-remove after 5 seconds
+      setTimeout(() => {
+        useStore.getState().removeToast(id);
+      }, 5000);
+      return { toasts: [...state.toasts, toast] };
+    }),
+  removeToast: (id) =>
+    set((state) => ({
+      toasts: state.toasts.filter((t) => t.id !== id),
+    })),
 }));

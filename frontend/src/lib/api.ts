@@ -218,15 +218,25 @@ export async function browseDirectory(path: string = ""): Promise<BrowseResult> 
 
 // SSE event stream for file change notifications
 
+export type FileChangeType = "added" | "modified" | "deleted";
+
+export interface FileChangeEvent {
+  path: string;
+  change: FileChangeType;
+}
+
 export function openEventStream(
-  onFileChanged: (path: string) => void
+  onFileChanged: (event: FileChangeEvent) => void
 ): EventSource {
   const es = new EventSource("/api/events");
   es.onmessage = (e) => {
     try {
       const event = JSON.parse(e.data);
       if (event.type === "file_changed") {
-        onFileChanged(event.path);
+        onFileChanged({
+          path: event.path,
+          change: (event.change || "modified").toLowerCase() as FileChangeType,
+        });
       }
     } catch {
       // skip malformed events

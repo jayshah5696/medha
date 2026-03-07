@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from "react";
 import { useStore } from "../store";
 import { configureWorkspace, getFiles, getHistory, getHistoryEntry, clearHistory, browseDirectory, runQuery } from "../lib/api";
 import type { HistoryEntry, DirEntry } from "../lib/api";
+import SidebarSection from "./SidebarSection";
 
 function formatBytes(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
@@ -319,77 +320,65 @@ export default function FileExplorer({ width, onFilePreview }: FileExplorerProps
       }}
     >
       {/* Workspace config section */}
-      <div style={{ padding: "12px 12px 10px", borderBottom: "1px solid var(--border)" }}>
-        <div
-          style={{
-            fontSize: 'var(--font-size-sm)',
-            fontWeight: 500,
-            textTransform: "uppercase",
-            color: "var(--text-dimmed)",
-            marginBottom: 8,
-            letterSpacing: "0.08em",
-            fontFamily: "var(--font-ui)",
-            fontVariant: "small-caps",
-          }}
-        >
-          workspace
+      <SidebarSection title="workspace">
+        <div style={{ padding: "4px 12px 10px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 0 }}>
+            <span
+              style={{
+                fontSize: 'var(--font-size-md)',
+                color: "var(--text-dimmed)",
+                padding: "7px 6px 7px 8px",
+                background: "var(--bg-tertiary)",
+                border: "1px solid var(--border)",
+                borderRight: "none",
+                borderRadius: 0,
+                fontFamily: "var(--font-mono)",
+                lineHeight: 1,
+              }}
+            >
+              &gt;
+            </span>
+            <input
+              type="text"
+              value={inputPath}
+              onChange={(e) => setInputPath(e.target.value)}
+              placeholder="/path/to/data"
+              onKeyDown={(e) => e.key === "Enter" && handleConfigure()}
+              style={{
+                flex: 1,
+                padding: "7px 8px",
+                fontSize: 'var(--font-size-base)',
+                background: "var(--bg-tertiary)",
+                border: "1px solid var(--border)",
+                borderRadius: 0,
+                color: "var(--text-primary)",
+                outline: "none",
+                fontFamily: "var(--font-mono)",
+                width: "100%",
+                minWidth: 0,
+              }}
+            />
+          </div>
+          <div style={{ display: "flex", gap: 4, marginTop: 6 }}>
+            <button
+              onClick={handleConfigure}
+              disabled={loading}
+              className="medha-btn"
+              style={{ flex: 1 }}
+            >
+              {loading ? "loading..." : "configure"}
+            </button>
+            <button
+              onClick={() => openBrowser(inputPath || "")}
+              className="medha-btn"
+              title="Browse folders"
+              style={{ padding: "4px 8px", flexShrink: 0 }}
+            >
+              📁
+            </button>
+          </div>
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 0 }}>
-          <span
-            style={{
-              fontSize: 'var(--font-size-md)',
-              color: "var(--text-dimmed)",
-              padding: "7px 6px 7px 8px",
-              background: "var(--bg-tertiary)",
-              border: "1px solid var(--border)",
-              borderRight: "none",
-              borderRadius: 0,
-              fontFamily: "var(--font-mono)",
-              lineHeight: 1,
-            }}
-          >
-            &gt;
-          </span>
-          <input
-            type="text"
-            value={inputPath}
-            onChange={(e) => setInputPath(e.target.value)}
-            placeholder="/path/to/data"
-            onKeyDown={(e) => e.key === "Enter" && handleConfigure()}
-            style={{
-              flex: 1,
-              padding: "7px 8px",
-              fontSize: 'var(--font-size-base)',
-              background: "var(--bg-tertiary)",
-              border: "1px solid var(--border)",
-              borderRadius: 0,
-              color: "var(--text-primary)",
-              outline: "none",
-              fontFamily: "var(--font-mono)",
-              width: "100%",
-              minWidth: 0,
-            }}
-          />
-        </div>
-        <div style={{ display: "flex", gap: 4, marginTop: 6 }}>
-          <button
-            onClick={handleConfigure}
-            disabled={loading}
-            className="medha-btn"
-            style={{ flex: 1 }}
-          >
-            {loading ? "loading..." : "configure"}
-          </button>
-          <button
-            onClick={() => openBrowser(inputPath || "")}
-            className="medha-btn"
-            title="Browse folders"
-            style={{ padding: "4px 8px", flexShrink: 0 }}
-          >
-            📁
-          </button>
-        </div>
-      </div>
+      </SidebarSection>
 
       {/* File list */}
       <div
@@ -501,28 +490,22 @@ export default function FileExplorer({ width, onFilePreview }: FileExplorerProps
             })}
 
         {/* History section */}
-        <div style={{ borderTop: "1px solid var(--border)", marginTop: 4 }}>
-          <div
-            onClick={() => setHistoryOpen(!historyOpen)}
-            style={{
-              padding: "8px 12px",
-              fontSize: 'var(--font-size-sm)',
-              fontWeight: 500,
-              textTransform: "uppercase",
-              color: "var(--text-dimmed)",
-              letterSpacing: "0.08em",
-              fontFamily: "var(--font-ui)",
-              cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-              gap: 4,
-              userSelect: "none",
-            }}
-          >
-            <span style={{ fontSize: 'var(--font-size-sm)' }}>{historyOpen ? "\u25BC" : "\u25B6"}</span>
-            history
-          </div>
-          {historyOpen && (
+        <SidebarSection
+          title="history"
+          defaultOpen={false}
+          onToggle={(open) => { if (open) setHistoryOpen(true); else setHistoryOpen(false); }}
+          actions={
+            historyEntries.length > 0 ? (
+              <button
+                onClick={handleClearHistory}
+                className="medha-btn"
+                style={{ fontSize: 'var(--font-size-sm)', padding: "1px 8px" }}
+              >
+                clear
+              </button>
+            ) : undefined
+          }
+        >
             <div>
               {historyEntries.length === 0 && (
                 <div
@@ -577,26 +560,8 @@ export default function FileExplorer({ width, onFilePreview }: FileExplorerProps
                   </div>
                 );
               })}
-              {historyEntries.length > 0 && (
-                <div style={{ padding: "4px 12px 6px", textAlign: "center" }}>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleClearHistory();
-                    }}
-                    className="medha-btn"
-                    style={{
-                      fontSize: 'var(--font-size-sm)',
-                      padding: "4px 10px",
-                    }}
-                  >
-                    clear
-                  </button>
-                </div>
-              )}
             </div>
-          )}
-        </div>
+        </SidebarSection>
       </div>
 
       {/* Folder browser overlay */}

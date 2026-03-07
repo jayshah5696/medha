@@ -166,12 +166,31 @@ function App() {
 
   // SSE: listen for file changes and refresh the file list
   const setFiles = useStore((s) => s.setFiles);
+  const removeActiveFile = useStore((s) => s.removeActiveFile);
+  const addToast = useStore((s) => s.addToast);
+  const activeFilesRef = useRef(useStore.getState().activeFiles);
   useEffect(() => {
-    const es = openEventStream(() => {
+    return useStore.subscribe((s) => { activeFilesRef.current = s.activeFiles; });
+  }, []);
+  useEffect(() => {
+    const es = openEventStream((event) => {
+      // Always refresh file list
       getFiles().then(setFiles).catch(() => {});
+
+      // Differentiated reactions based on change type
+      if (event.change === "added") {
+        addToast(`New file: ${event.path}`);
+      } else if (event.change === "modified") {
+        if (activeFilesRef.current.includes(event.path)) {
+          addToast(`${event.path} was updated externally`);
+        }
+      } else if (event.change === "deleted") {
+        removeActiveFile(event.path);
+        addToast(`${event.path} was removed`);
+      }
     });
     return () => es.close();
-  }, [setFiles]);
+  }, [setFiles, removeActiveFile, addToast]);
 
   const dismissBanner = () => {
     setShowKeyBanner(false);
@@ -488,6 +507,56 @@ function App() {
       {showSettings && (
         <SettingsModal onClose={() => setShowSettings(false)} />
       )}
+
+      {/* Toast notifications (FEAT-8-3) */}
+      <ToastContainer />
+    </div>
+  );
+}
+
+function ToastContainer() {
+  const toasts = useStore((s) => s.toasts);
+  const removeToast = useStore((s) => s.removeToast);
+
+  if (toasts.length === 0) return null;
+
+  return (
+    <div
+      style={{
+        position: "fixed",
+        bottom: 40,
+        right: 16,
+        zIndex: 2000,
+        display: "flex",
+        flexDirection: "column",
+        gap: 6,
+        pointerEvents: "none",
+      }}
+    >
+      {toasts.map((toast) => (
+        <div
+          key={toast.id}
+          style={{
+            padding: "6px 12px",
+            background: "var(--bg-elevated)",
+            border: "1px solid var(--border-strong)",
+            color: "var(--text-primary)",
+            fontSize: "var(--font-size-xs)",
+            fontFamily: "var(--font-mono)",
+            pointerEvents: "auto",
+            cursor: "pointer",
+            maxWidth: 320,
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            whiteSpace: "nowrap",
+            boxShadow: "0 2px 8px rgba(0,0,0,0.3)",
+          }}
+          onClick={() => removeToast(toast.id)}
+          title="Click to dismiss"
+        >
+          {toast.message}
+        </div>
+      ))}
     </div>
   );
 }
