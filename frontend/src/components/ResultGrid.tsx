@@ -176,103 +176,119 @@ function ResultTable({
     ? { height, overflow: "hidden", background: "var(--bg-primary)", display: "flex", flexDirection: "column" }
     : { maxHeight: "40vh", overflow: "hidden", background: "var(--bg-primary)", display: "flex", flexDirection: "column" };
 
+  // Build a CSS grid-template-columns value so header and body share
+  // identical column sizing. Each column gets minmax(120px, 1fr).
+  const colCount = table.getAllColumns().length;
+  const gridColumns = `repeat(${colCount}, minmax(120px, 1fr))`;
+
   return (
     <div style={containerStyle}>
 
-      {/* Scrollable table area */}
+      {/* Sticky header — outside the scroll container so it never scrolls away */}
+      <div
+        role="table"
+        style={{
+          fontSize: 'var(--font-size-md)',
+          fontFamily: "var(--font-mono)",
+        }}
+      >
+        <div role="rowgroup">
+          {table.getHeaderGroups().map((hg) => (
+            <div
+              key={hg.id}
+              role="row"
+              style={{
+                display: "grid",
+                gridTemplateColumns: gridColumns,
+                borderBottom: "1px solid var(--border-strong)",
+                background: "var(--bg-secondary)",
+              }}
+            >
+              {hg.headers.map((header) => (
+                <div
+                  key={header.id}
+                  role="columnheader"
+                  style={{
+                    padding: "6px 14px",
+                    textAlign: "left",
+                    color: "var(--text-dimmed)",
+                    fontWeight: 500,
+                    fontSize: 'var(--font-size-base)',
+                    whiteSpace: "nowrap",
+                    textTransform: "uppercase",
+                    letterSpacing: "0.06em",
+                    fontFamily: "var(--font-ui)",
+                    height: ROW_HEIGHT,
+                    lineHeight: `${ROW_HEIGHT}px`,
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                  }}
+                >
+                  {flexRender(
+                    header.column.columnDef.header,
+                    header.getContext()
+                  )}
+                </div>
+              ))}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Scrollable virtualized body */}
       <div
         ref={scrollContainerRef}
         data-testid="virtual-scroll-container"
         style={{ flex: 1, overflow: "auto" }}
       >
-        <table
+        <div
+          role="rowgroup"
           style={{
-            width: "100%",
-            borderCollapse: "collapse",
+            height: rowVirtualizer.getTotalSize(),
+            position: "relative",
             fontSize: 'var(--font-size-md)',
             fontFamily: "var(--font-mono)",
           }}
         >
-          <thead>
-            {table.getHeaderGroups().map((hg) => (
-              <tr key={hg.id}>
-                {hg.headers.map((header) => (
-                  <th
-                    key={header.id}
+          {rowVirtualizer.getVirtualItems().map((virtualRow) => {
+            const row = rows[virtualRow.index];
+            return (
+              <div
+                key={row.id}
+                role="row"
+                style={{
+                  position: "absolute",
+                  top: 0,
+                  left: 0,
+                  width: "100%",
+                  height: ROW_HEIGHT,
+                  transform: `translateY(${virtualRow.start}px)`,
+                  display: "grid",
+                  gridTemplateColumns: gridColumns,
+                  background: virtualRow.index % 2 === 0 ? "var(--bg-primary)" : "var(--bg-row-alt)",
+                }}
+              >
+                {row.getVisibleCells().map((cell) => (
+                  <div
+                    key={cell.id}
+                    role="cell"
                     style={{
-                      padding: "6px 14px",
-                      textAlign: "left",
-                      borderBottom: "1px solid var(--border-strong)",
-                      color: "var(--text-dimmed)",
-                      fontWeight: 500,
-                      fontSize: 'var(--font-size-base)',
-                      position: "sticky",
-                      top: 0,
-                      zIndex: 1,
-                      background: "var(--bg-secondary)",
+                      padding: "0 10px",
                       whiteSpace: "nowrap",
-                      textTransform: "uppercase",
-                      letterSpacing: "0.06em",
-                      fontFamily: "var(--font-ui)",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
                       height: ROW_HEIGHT,
+                      lineHeight: `${ROW_HEIGHT}px`,
+                      color: "var(--text-primary)",
                     }}
                   >
-                    {flexRender(
-                      header.column.columnDef.header,
-                      header.getContext()
-                    )}
-                  </th>
+                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                  </div>
                 ))}
-              </tr>
-            ))}
-          </thead>
-          <tbody
-            style={{
-              height: rowVirtualizer.getTotalSize(),
-              position: "relative",
-              display: "block",
-            }}
-          >
-            {rowVirtualizer.getVirtualItems().map((virtualRow) => {
-              const row = rows[virtualRow.index];
-              return (
-                <tr
-                  key={row.id}
-                  style={{
-                    position: "absolute",
-                    top: 0,
-                    left: 0,
-                    width: "100%",
-                    height: ROW_HEIGHT,
-                    transform: `translateY(${virtualRow.start}px)`,
-                    display: "flex",
-                    background: virtualRow.index % 2 === 0 ? "var(--bg-primary)" : "var(--bg-row-alt)",
-                  }}
-                >
-                  {row.getVisibleCells().map((cell) => (
-                    <td
-                      key={cell.id}
-                      style={{
-                        padding: "0 10px",
-                        whiteSpace: "nowrap",
-                        maxWidth: 300,
-                        overflow: "hidden",
-                        textOverflow: "ellipsis",
-                        height: ROW_HEIGHT,
-                        lineHeight: `${ROW_HEIGHT}px`,
-                        color: "var(--text-primary)",
-                        flex: 1,
-                        minWidth: 0,
-                      }}
-                    >
-                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                    </td>
-                  ))}
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+              </div>
+            );
+          })}
+        </div>
       </div>
 
       {/* Status bar */}

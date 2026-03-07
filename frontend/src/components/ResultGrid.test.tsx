@@ -159,11 +159,12 @@ describe("ResultGrid", () => {
       const { container } = render(
         <ResultGrid result={largeResult} isQuerying={false} height={400} />
       );
-      // With virtualization, the number of rendered <tr> elements in tbody
+      // With virtualization, the number of rendered row divs in the scroll body
       // should be far fewer than 10,000 (roughly viewport / row-height + overscan)
-      const tbodyRows = container.querySelectorAll("tbody tr");
-      expect(tbodyRows.length).toBeLessThan(200);
-      expect(tbodyRows.length).toBeGreaterThan(0);
+      const scrollContainer = container.querySelector('[data-testid="virtual-scroll-container"]');
+      const bodyRows = scrollContainer!.querySelectorAll('[role="row"]');
+      expect(bodyRows.length).toBeLessThan(200);
+      expect(bodyRows.length).toBeGreaterThan(0);
     });
 
     it("still shows correct status bar info for large datasets", () => {
@@ -200,18 +201,20 @@ describe("ResultGrid", () => {
       const { container } = render(
         <ResultGrid result={baseResult} isQuerying={false} height={400} />
       );
-      const tbodyRows = container.querySelectorAll("tbody tr");
-      expect(tbodyRows.length).toBe(2);
+      const scrollContainer = container.querySelector('[data-testid="virtual-scroll-container"]');
+      const bodyRows = scrollContainer!.querySelectorAll('[role="row"]');
+      expect(bodyRows.length).toBe(2);
     });
 
-    it("tbody has a total height matching all rows for scroll spacing", () => {
+    it("scroll body has a total height matching all rows for scroll spacing", () => {
       const largeResult = makeLargeResult(1000);
       const { container } = render(
         <ResultGrid result={largeResult} isQuerying={false} height={400} />
       );
-      const tbody = container.querySelector("tbody") as HTMLElement;
+      const scrollContainer = container.querySelector('[data-testid="virtual-scroll-container"]');
+      const scrollBody = scrollContainer!.firstElementChild as HTMLElement;
       // 1000 rows * 34px = 34000px total height
-      expect(tbody.style.height).toBe("34000px");
+      expect(scrollBody.style.height).toBe("34000px");
     });
   });
 });
