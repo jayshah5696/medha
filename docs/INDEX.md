@@ -8,6 +8,7 @@
 - **[Phase 7 Bugs & Features](issues/phase7_bugs_and_features.md)** — 4 bugs + 4 feature requests from live UI testing (agent awareness, slug gen, history, resizable panes, multi-tab editor, click-to-preview, chart tabs)
 - **[Phase 7 State Persistence](issues/phase7_state_persistence.md)** — Making Medha stateful across restarts: backend boot restore, `/api/boot` endpoint, Zustand persist middleware
 - **[Phase 7 Typography System](issues/phase7_typography_system.md)** — 92 inline font sizes using 10 different values → unified 5-level CSS variable scale
+- **[Phase 8 Bugs & Features](issues/phase8_bugs_and_features.md)** — Agent recursion limit, `[object Object]` JSON rendering, stale active files, pill overflow, live file watcher, CSV/Parquet export, workspace-scoped state design
 
 ## Session Logs
 - **[2026-03-06: Phase 6 Audit Fixes](sessions/2026-03-06_phase6-audit-fixes.md)** — Complete log of 10 tasks: bug fixes, active-files pipeline, query-result sync, meta config, serialization hardening. 96 backend + 25 frontend tests passing.
