@@ -1,4 +1,5 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useRef } from "react";
+import { useVirtualizer } from "@tanstack/react-virtual";
 import {
   useReactTable,
   getCoreRowModel,
@@ -128,6 +129,9 @@ export default function ResultGrid({ result, isQuerying, height }: ResultGridPro
   return <ResultTable result={result} columns={columns} height={height} />;
 }
 
+// Fixed row height in pixels — must match CSS var(--row-height)
+const ROW_HEIGHT = 34;
+
 function ResultTable({
   result,
   columns,
@@ -139,6 +143,7 @@ function ResultTable({
 }) {
   const editorContent = useStore((s) => s.editorContent);
   const [exporting, setExporting] = useState<string | null>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   const handleExport = async (format: "csv" | "parquet") => {
     setExporting(format);
@@ -157,16 +162,29 @@ function ResultTable({
     getCoreRowModel: getCoreRowModel(),
   });
 
+  const { rows } = table.getRowModel();
+
+  const rowVirtualizer = useVirtualizer({
+    count: rows.length,
+    getScrollElement: () => scrollContainerRef.current,
+    estimateSize: () => ROW_HEIGHT,
+    overscan: 20,
+  });
+
   // FEAT-1: use explicit height if provided
   const containerStyle: React.CSSProperties = height
-    ? { height, overflow: "auto", background: "var(--bg-primary)", display: "flex", flexDirection: "column" }
-    : { maxHeight: "40vh", overflow: "auto", background: "var(--bg-primary)", display: "flex", flexDirection: "column" };
+    ? { height, overflow: "hidden", background: "var(--bg-primary)", display: "flex", flexDirection: "column" }
+    : { maxHeight: "40vh", overflow: "hidden", background: "var(--bg-primary)", display: "flex", flexDirection: "column" };
 
   return (
     <div style={containerStyle}>
 
-      {/* Table */}
-      <div style={{ flex: 1, overflow: "auto" }}>
+      {/* Scrollable table area */}
+      <div
+        ref={scrollContainerRef}
+        data-testid="virtual-scroll-container"
+        style={{ flex: 1, overflow: "auto" }}
+      >
         <table
           style={{
             width: "100%",
@@ -190,12 +208,13 @@ function ResultTable({
                       fontSize: 'var(--font-size-base)',
                       position: "sticky",
                       top: 0,
+                      zIndex: 1,
                       background: "var(--bg-secondary)",
                       whiteSpace: "nowrap",
                       textTransform: "uppercase",
                       letterSpacing: "0.06em",
                       fontFamily: "var(--font-ui)",
-                      height: "var(--row-height)",
+                      height: ROW_HEIGHT,
                     }}
                   >
                     {flexRender(
@@ -207,33 +226,51 @@ function ResultTable({
               </tr>
             ))}
           </thead>
-          <tbody>
-            {table.getRowModel().rows.map((row, rowIdx) => (
-              <tr
-                key={row.id}
-                style={{
-                  background: rowIdx % 2 === 0 ? "var(--bg-primary)" : "var(--bg-row-alt)",
-                }}
-              >
-                {row.getVisibleCells().map((cell) => (
-                  <td
-                    key={cell.id}
-                    style={{
-                      padding: "0 10px",
-                      whiteSpace: "nowrap",
-                      maxWidth: 300,
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                      height: "var(--row-height)",
-                      lineHeight: "var(--row-height)",
-                      color: "var(--text-primary)",
-                    }}
-                  >
-                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                  </td>
-                ))}
-              </tr>
-            ))}
+          <tbody
+            style={{
+              height: rowVirtualizer.getTotalSize(),
+              position: "relative",
+              display: "block",
+            }}
+          >
+            {rowVirtualizer.getVirtualItems().map((virtualRow) => {
+              const row = rows[virtualRow.index];
+              return (
+                <tr
+                  key={row.id}
+                  style={{
+                    position: "absolute",
+                    top: 0,
+                    left: 0,
+                    width: "100%",
+                    height: ROW_HEIGHT,
+                    transform: `translateY(${virtualRow.start}px)`,
+                    display: "flex",
+                    background: virtualRow.index % 2 === 0 ? "var(--bg-primary)" : "var(--bg-row-alt)",
+                  }}
+                >
+                  {row.getVisibleCells().map((cell) => (
+                    <td
+                      key={cell.id}
+                      style={{
+                        padding: "0 10px",
+                        whiteSpace: "nowrap",
+                        maxWidth: 300,
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        height: ROW_HEIGHT,
+                        lineHeight: `${ROW_HEIGHT}px`,
+                        color: "var(--text-primary)",
+                        flex: 1,
+                        minWidth: 0,
+                      }}
+                    >
+                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                    </td>
+                  ))}
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
