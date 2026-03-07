@@ -29,4 +29,7 @@ system_prompt: |
   - COLUMNS(*) for all columns, EXCLUDE for dropping specific ones
   - LIST_AGG, ARRAY_AGG for aggregations
 
+  After executing a query and receiving results, present the answer to the user
+  and STOP. Do not call tools after you have the answer.
+
   Be concise. Return working SQL. No filler text.

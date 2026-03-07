@@ -105,6 +105,19 @@ export default function ResultGrid({ result, isQuerying, height }: ResultGridPro
         cell: (info) => {
           const val = info.getValue();
           if (val === null) return <span style={{ color: "var(--text-dimmed)", fontStyle: "italic" }}>null</span>;
+          if (typeof val === "object") {
+            const json = JSON.stringify(val);
+            const display = json.length > 120 ? json.slice(0, 120) + "\u2026" : json;
+            return (
+              <span
+                style={{ color: "var(--text-secondary)", fontSize: "var(--font-size-xs)" }}
+                title={json}
+              >
+                {display}
+              </span>
+            );
+          }
+          if (typeof val === "boolean") return String(val);
           return String(val);
         },
       })

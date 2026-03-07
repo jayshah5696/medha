@@ -8,11 +8,24 @@ import yaml
 from langchain.agents import create_agent
 from langchain_litellm import ChatLiteLLM
 from langchain_core.messages import HumanMessage, AIMessage
+from langgraph.errors import GraphRecursionError
 from app.ai.tools import get_schema, sample_data, execute_query, _pop_last_query_result
 from app.workspace import scan_files
 from app import db
 
 AGENTS_DIR = Path(__file__).parent.parent.parent / "agents"
+
+
+def _compute_recursion_limit(max_iterations: int) -> int:
+    """Convert agent-level max_iterations to LangGraph recursion_limit.
+
+    LangGraph's recursion_limit counts every graph node transition, not
+    agent turns. A single agent turn = model node + tools node = 2
+    transitions. Plus one final model node to deliver the answer.
+
+    Formula: 2 * max_iterations + 1
+    """
+    return max(2 * max_iterations + 1, 25)
 
 
 def _resolve_active_files(active_files: list[str] | None) -> list[str]:
@@ -149,8 +162,10 @@ async def stream_agent_response(
         "messages": history + [HumanMessage(content=augmented_message)],
     }
 
+    recursion_limit = _compute_recursion_limit(max_iterations)
+
     try:
-        async for chunk in agent.astream(input_data, config={"recursion_limit": max_iterations}):
+        async for chunk in agent.astream(input_data, config={"recursion_limit": recursion_limit}):
             # Each chunk is a dict keyed by the node name that just finished.
             # The 'model' node produces {"messages": [AIMessage(...)]}
             # The 'tools' node produces {"messages": [ToolMessage(...)]}
@@ -174,5 +189,10 @@ async def stream_agent_response(
                     if stashed:
                         yield {"type": "query_result", **stashed}
         yield {"type": "done"}
+    except GraphRecursionError:
+        yield {
+            "type": "error",
+            "message": "Agent reached maximum iterations. Try a simpler question or break it into steps.",
+        }
     except Exception as e:
         yield {"type": "error", "message": str(e)}

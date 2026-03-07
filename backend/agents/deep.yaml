@@ -17,3 +17,6 @@ system_prompt: |
   Use get_schema and sample_data on the active files thoroughly.
   For complex questions, break them into steps and validate each query.
   Explain your reasoning briefly. Return production-quality SQL.
+
+  After executing a query and receiving results, present the answer to the user
+  and STOP. Do not call tools after you have the answer.

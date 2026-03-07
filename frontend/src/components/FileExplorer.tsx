@@ -9,6 +9,153 @@ function formatBytes(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
+// --- File tree types & utilities (BUG-8-6) ---
+
+interface FileTreeNode {
+  name: string;
+  fullPath?: string;
+  size_bytes?: number;
+  children?: FileTreeNode[];
+}
+
+function buildFileTree(files: { name: string; size_bytes: number }[]): FileTreeNode[] {
+  const root: FileTreeNode[] = [];
+  for (const file of files) {
+    const parts = file.name.split("/");
+    let current = root;
+    for (let i = 0; i < parts.length; i++) {
+      const part = parts[i];
+      const isLeaf = i === parts.length - 1;
+      if (isLeaf) {
+        current.push({
+          name: part,
+          fullPath: file.name,
+          size_bytes: file.size_bytes,
+        });
+      } else {
+        let dirNode = current.find((n) => n.name === part && n.children);
+        if (!dirNode) {
+          dirNode = { name: part, children: [] };
+          current.push(dirNode);
+        }
+        current = dirNode.children!;
+      }
+    }
+  }
+  return root;
+}
+
+function hasNesting(files: { name: string }[]): boolean {
+  return files.some((f) => f.name.includes("/"));
+}
+
+function FileTreeItem({
+  node,
+  depth,
+  onFileClick,
+  activeFiles,
+}: {
+  node: FileTreeNode;
+  depth: number;
+  onFileClick: (fullPath: string) => void;
+  activeFiles: string[];
+}) {
+  const [expanded, setExpanded] = useState(true);
+  const indent = depth * 16;
+
+  if (node.children) {
+    return (
+      <>
+        <div
+          onClick={() => setExpanded(!expanded)}
+          style={{
+            padding: "4px 12px",
+            paddingLeft: 12 + indent,
+            fontSize: "var(--font-size-base)",
+            cursor: "pointer",
+            display: "flex",
+            alignItems: "center",
+            gap: 4,
+            fontFamily: "var(--font-mono)",
+            color: "var(--text-secondary)",
+            userSelect: "none",
+          }}
+        >
+          <span style={{ fontSize: "var(--font-size-xs)", width: 12 }}>
+            {expanded ? "\u25BC" : "\u25B6"}
+          </span>
+          <span
+            style={{
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+            }}
+            title={node.name}
+          >
+            {node.name}/
+          </span>
+        </div>
+        {expanded &&
+          node.children.map((child) => (
+            <FileTreeItem
+              key={child.fullPath || child.name}
+              node={child}
+              depth={depth + 1}
+              onFileClick={onFileClick}
+              activeFiles={activeFiles}
+            />
+          ))}
+      </>
+    );
+  }
+
+  // Leaf file
+  const isActive = activeFiles.includes(node.fullPath || "");
+  return (
+    <div
+      onClick={() => onFileClick(node.fullPath!)}
+      style={{
+        padding: "6px 12px",
+        paddingLeft: 12 + indent,
+        fontSize: "var(--font-size-base)",
+        cursor: "pointer",
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center",
+        background: isActive ? "var(--bg-tertiary)" : "transparent",
+        borderLeft: isActive ? "2px solid var(--accent)" : "2px solid transparent",
+        fontFamily: "var(--font-mono)",
+        lineHeight: "24px",
+      }}
+    >
+      <span
+        style={{
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+          whiteSpace: "nowrap",
+          color: isActive ? "var(--text-primary)" : "var(--text-secondary)",
+        }}
+        title={node.fullPath}
+      >
+        {node.name}
+      </span>
+      <span
+        style={{
+          fontSize: "var(--font-size-xs)",
+          color: "var(--text-dimmed)",
+          marginLeft: 8,
+          flexShrink: 0,
+          fontFamily: "var(--font-ui)",
+        }}
+      >
+        {formatBytes(node.size_bytes!)}
+      </span>
+    </div>
+  );
+}
+
+// --- FileExplorer component ---
+
 interface FileExplorerProps {
   width: number;
   onFilePreview?: (query: string) => void;
@@ -22,6 +169,7 @@ export default function FileExplorer({ width, onFilePreview }: FileExplorerProps
     setFiles,
     activeFiles,
     toggleActiveFile,
+    clearActiveFiles,
     setLastError,
     loadHistoryEntry,
     historyVersion,
@@ -73,6 +221,13 @@ export default function FileExplorer({ width, onFilePreview }: FileExplorerProps
     return files.filter((f) => f.name.toLowerCase().includes(lower));
   }, [files, fileFilter]);
 
+  // BUG-8-6: Build tree view when files have nested paths
+  const useTree = useMemo(() => hasNesting(filteredFiles), [filteredFiles]);
+  const fileTree = useMemo(
+    () => (useTree ? buildFileTree(filteredFiles) : []),
+    [useTree, filteredFiles]
+  );
+
   const loadHistory = async () => {
     try {
       const entries = await getHistory();
@@ -121,6 +276,7 @@ export default function FileExplorer({ width, onFilePreview }: FileExplorerProps
     try {
       await configureWorkspace(inputPath.trim());
       setWorkspacePath(inputPath.trim());
+      clearActiveFiles();
       const fileList = await getFiles();
       setFiles(fileList);
       setLastError(null);
@@ -287,51 +443,62 @@ export default function FileExplorer({ width, onFilePreview }: FileExplorerProps
             </div>
           </div>
         )}
-        {filteredFiles.map((f) => {
-          const isActive = activeFiles.includes(f.name);
-          return (
-            <div
-              key={f.name}
-              onClick={() => handleFilePreview(f.name)}
-              style={{
-                padding: "6px 12px",
-                fontSize: 'var(--font-size-base)',
-                cursor: "pointer",
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                background: isActive ? "var(--bg-tertiary)" : "transparent",
-                borderLeft: isActive
-                  ? "2px solid var(--accent)"
-                  : "2px solid transparent",
-                fontFamily: "var(--font-mono)",
-                lineHeight: "24px",
-              }}
-            >
-              <span
-                style={{
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                  whiteSpace: "nowrap",
-                  color: isActive ? "var(--text-primary)" : "var(--text-secondary)",
-                }}
-              >
-                {f.name}
-              </span>
-              <span
-                style={{
-                  fontSize: 'var(--font-size-xs)',
-                  color: "var(--text-dimmed)",
-                  marginLeft: 8,
-                  flexShrink: 0,
-                  fontFamily: "var(--font-ui)",
-                }}
-              >
-                {formatBytes(f.size_bytes)}
-              </span>
-            </div>
-          );
-        })}
+        {useTree
+          ? fileTree.map((node) => (
+              <FileTreeItem
+                key={node.fullPath || node.name}
+                node={node}
+                depth={0}
+                onFileClick={handleFilePreview}
+                activeFiles={activeFiles}
+              />
+            ))
+          : filteredFiles.map((f) => {
+              const isActive = activeFiles.includes(f.name);
+              return (
+                <div
+                  key={f.name}
+                  onClick={() => handleFilePreview(f.name)}
+                  style={{
+                    padding: "6px 12px",
+                    fontSize: 'var(--font-size-base)',
+                    cursor: "pointer",
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    background: isActive ? "var(--bg-tertiary)" : "transparent",
+                    borderLeft: isActive
+                      ? "2px solid var(--accent)"
+                      : "2px solid transparent",
+                    fontFamily: "var(--font-mono)",
+                    lineHeight: "24px",
+                  }}
+                >
+                  <span
+                    style={{
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                      color: isActive ? "var(--text-primary)" : "var(--text-secondary)",
+                    }}
+                    title={f.name}
+                  >
+                    {f.name}
+                  </span>
+                  <span
+                    style={{
+                      fontSize: 'var(--font-size-xs)',
+                      color: "var(--text-dimmed)",
+                      marginLeft: 8,
+                      flexShrink: 0,
+                      fontFamily: "var(--font-ui)",
+                    }}
+                  >
+                    {formatBytes(f.size_bytes)}
+                  </span>
+                </div>
+              );
+            })}
 
         {/* History section */}
         <div style={{ borderTop: "1px solid var(--border)", marginTop: 4 }}>

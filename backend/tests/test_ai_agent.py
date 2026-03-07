@@ -363,3 +363,71 @@ async def test_stream_agent_response_on_llm_error():
     error_chunks = [c for c in chunks if c.get("type") == "error"]
     assert len(error_chunks) >= 1
     assert "rate limit" in error_chunks[0]["message"]
+
+
+# ---------------------------------------------------------------------------
+# BUG-8-1: Recursion limit — tests for fix
+# ---------------------------------------------------------------------------
+
+
+def test_recursion_limit_formula():
+    """max_iterations in YAML should be converted to a higher recursion_limit.
+
+    LangGraph counts every node transition, not agent turns. A single
+    agent turn = model + tools = 2 transitions. So recursion_limit
+    should be at least 2 * max_iterations + 1 to allow the full number
+    of intended agent turns.
+    """
+    config = load_agent_config("default")
+    max_iterations = config.get("max_iterations", 15)
+
+    # The formula in agent.py should convert max_iterations to a higher
+    # recursion_limit. We import the conversion to verify.
+    from app.ai.agent import _compute_recursion_limit
+    limit = _compute_recursion_limit(max_iterations)
+    # Must allow at least max_iterations full agent turns
+    assert limit >= max_iterations * 2 + 1
+
+
+def test_default_profile_max_iterations_reasonable():
+    """Default profile max_iterations should give at least 10 agent turns."""
+    config = load_agent_config("default")
+    max_iterations = config.get("max_iterations", 15)
+    assert max_iterations >= 10, f"default max_iterations={max_iterations} is too low"
+
+
+@pytest.mark.asyncio
+async def test_stream_agent_response_on_recursion_error():
+    """GraphRecursionError yields a user-friendly error, not a raw traceback."""
+    from langgraph.errors import GraphRecursionError
+
+    async def _hit_limit(*args, **kwargs):
+        raise GraphRecursionError(
+            "Recursion limit of 10 reached without hitting a stop condition"
+        )
+        yield  # make it a generator
+
+    mock_agent = MagicMock()
+    mock_agent.astream = MagicMock(side_effect=_hit_limit)
+
+    with patch("app.ai.agent.build_agent", return_value=mock_agent):
+        chunks = []
+        async for chunk in stream_agent_response("complex question", chat_history=[]):
+            chunks.append(chunk)
+
+    error_chunks = [c for c in chunks if c.get("type") == "error"]
+    assert len(error_chunks) >= 1
+    # Should be user-friendly, not the raw exception message
+    assert "maximum iterations" in error_chunks[0]["message"].lower() or \
+           "simpler question" in error_chunks[0]["message"].lower()
+    # Should NOT contain the raw "Recursion limit of N reached" text
+    assert "recursion limit" not in error_chunks[0]["message"].lower()
+
+
+def test_system_prompt_has_stop_condition():
+    """System prompt should instruct the agent to stop after answering."""
+    config = load_agent_config("default")
+    prompt = config["system_prompt"].lower()
+    # Must mention stopping after delivering the answer
+    assert "stop" in prompt or "do not call tools after" in prompt, \
+        "System prompt must include stop-condition guidance"

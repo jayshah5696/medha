@@ -39,9 +39,12 @@ export default function ContextPill({ inputText }: ContextPillProps) {
         padding: "4px 0",
       }}
     >
-      {activeFiles.map((name) => (
+      {activeFiles.map((name) => {
+        const basename = name.includes("/") ? name.split("/").pop() : name;
+        return (
         <span
           key={name}
+          title={`schema: ${name}`}
           style={{
             display: "inline-flex",
             alignItems: "center",
@@ -54,9 +57,12 @@ export default function ContextPill({ inputText }: ContextPillProps) {
             border: "1px solid var(--accent-dimmed)",
             lineHeight: "18px",
             whiteSpace: "nowrap",
+            maxWidth: "100%",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
           }}
         >
-          schema: {name}
+          schema: {basename}
           <button
             onClick={() => removeActiveFile(name)}
             style={{
@@ -73,7 +79,8 @@ export default function ContextPill({ inputText }: ContextPillProps) {
             x
           </button>
         </span>
-      ))}
+        );
+      })}
     </div>
   );
 }
