@@ -5,8 +5,8 @@ import { useStore } from "../store";
 import { getChats, getChat } from "../lib/api";
 import type { ChatMessage as ApiChatMessage } from "../lib/api";
 import ContextPill from "./ContextPill";
-import ToolStep from "./ToolStep";
 import type { ToolStepData } from "./ToolStep";
+import ThinkingBlock from "./ThinkingBlock";
 
 interface ChatSettings {
   model_chat: string;
@@ -375,113 +375,123 @@ export default function ChatSidebar({ width }: { width: number }) {
           </div>
         )}
 
-        {messages.map((msg, i) => (
-          <div
-            key={i}
-            style={{
-              textAlign: msg.role === "user" ? ("right" as const) : ("left" as const),
-            }}
-          >
-            <div
-              style={{
-                fontSize: 'var(--font-size-sm)',
-                textTransform: "uppercase" as const,
-                letterSpacing: "0.15em",
-                marginBottom: 2,
-                fontFamily: "var(--font-mono)",
-                color: msg.role === "user" ? "#00D8FF" : "#555",
-              }}
-            >
-              {msg.role === "user" ? "you" : "medha"}
-            </div>
-            <div
-              style={{
-                padding: "6px 10px",
-                fontSize: 'var(--font-size-md)',
-                lineHeight: 1.5,
-                fontFamily: "var(--font-mono)",
-                borderRadius: 0,
-                ...(msg.role === "user"
-                  ? {
-                      borderLeft: "2px solid #00D8FF",
-                      background: "rgba(0, 216, 255, 0.04)",
-                      color: "var(--text-primary)",
-                    }
-                  : {
-                      borderLeft: "2px solid #1a1a1f",
-                      background: "rgba(255, 255, 255, 0.02)",
-                      color: "var(--text-primary)",
-                    }),
-              }}
-            >
-              {msg.role === "assistant" ? (
-                <ReactMarkdown
-                  remarkPlugins={[remarkGfm]}
-                  components={{
-                    code({ className, children, ...props }) {
-                      const codeText = String(children).replace(/\n$/, "");
-                      const isBlock = className?.startsWith("language-");
-                      if (!isBlock) return <code {...props}>{children}</code>;
-                      return (
-                        <div style={{ position: "relative", marginTop: 4 }}>
-                          <pre style={{
-                            background: "var(--bg-tertiary)",
-                            padding: "8px 10px",
-                            fontSize: 'var(--font-size-xs)',
-                            overflow: "auto",
-                            border: "1px solid var(--border)",
-                          }}>
-                            <code>{codeText}</code>
-                          </pre>
-                          <button
-                            onClick={() => setEditorContent(codeText)}
-                            title="Copy to SQL Editor"
-                            style={{
-                              position: "absolute",
-                              top: 4,
-                              right: 4,
-                              fontSize: 'var(--font-size-xs)',
-                              padding: "2px 6px",
-                              background: "var(--bg-elevated)",
-                              border: "1px solid var(--border)",
-                              color: "var(--accent)",
-                              cursor: "pointer",
-                              fontFamily: "var(--font-mono)",
-                              textTransform: "uppercase" as const,
-                              letterSpacing: "0.08em",
-                            }}
-                          >
-                            → editor
-                          </button>
-                        </div>
-                      );
-                    },
+        {messages.map((msg, i) => {
+          // Determine if the thinking block should render before this message.
+          // It goes right before the LAST assistant message (the response that
+          // follows the tool calls). During streaming, it goes before the
+          // currently-streaming assistant message.
+          const isLastAssistant =
+            msg.role === "assistant" &&
+            toolSteps.length > 0 &&
+            // Only show before the last assistant message in the sequence
+            (i === messages.length - 1 ||
+              !messages.slice(i + 1).some((m) => m.role === "assistant"));
+
+          return (
+            <div key={i}>
+              {/* ThinkingBlock renders before the assistant response */}
+              {isLastAssistant && (
+                <ThinkingBlock steps={toolSteps} isStreaming={isStreaming} />
+              )}
+
+              <div
+                style={{
+                  textAlign: msg.role === "user" ? ("right" as const) : ("left" as const),
+                }}
+              >
+                <div
+                  style={{
+                    fontSize: 'var(--font-size-sm)',
+                    textTransform: "uppercase" as const,
+                    letterSpacing: "0.15em",
+                    marginBottom: 2,
+                    fontFamily: "var(--font-mono)",
+                    color: msg.role === "user" ? "#00D8FF" : "#555",
                   }}
                 >
-                  {msg.content}
-                </ReactMarkdown>
-              ) : (
-                msg.content
-              )}
+                  {msg.role === "user" ? "you" : "medha"}
+                </div>
+                <div
+                  style={{
+                    padding: "6px 10px",
+                    fontSize: 'var(--font-size-md)',
+                    lineHeight: 1.5,
+                    fontFamily: "var(--font-mono)",
+                    borderRadius: 0,
+                    ...(msg.role === "user"
+                      ? {
+                          borderLeft: "2px solid #00D8FF",
+                          background: "rgba(0, 216, 255, 0.04)",
+                          color: "var(--text-primary)",
+                        }
+                      : {
+                          borderLeft: "2px solid #1a1a1f",
+                          background: "rgba(255, 255, 255, 0.02)",
+                          color: "var(--text-primary)",
+                        }),
+                  }}
+                >
+                  {msg.role === "assistant" ? (
+                    <ReactMarkdown
+                      remarkPlugins={[remarkGfm]}
+                      components={{
+                        code({ className, children, ...props }) {
+                          const codeText = String(children).replace(/\n$/, "");
+                          const isBlock = className?.startsWith("language-");
+                          if (!isBlock) return <code {...props}>{children}</code>;
+                          return (
+                            <div style={{ position: "relative", marginTop: 4 }}>
+                              <pre style={{
+                                background: "var(--bg-tertiary)",
+                                padding: "8px 10px",
+                                fontSize: 'var(--font-size-xs)',
+                                overflow: "auto",
+                                border: "1px solid var(--border)",
+                              }}>
+                                <code>{codeText}</code>
+                              </pre>
+                              <button
+                                onClick={() => setEditorContent(codeText)}
+                                title="Copy to SQL Editor"
+                                style={{
+                                  position: "absolute",
+                                  top: 4,
+                                  right: 4,
+                                  fontSize: 'var(--font-size-xs)',
+                                  padding: "2px 6px",
+                                  background: "var(--bg-elevated)",
+                                  border: "1px solid var(--border)",
+                                  color: "var(--accent)",
+                                  cursor: "pointer",
+                                  fontFamily: "var(--font-mono)",
+                                  textTransform: "uppercase" as const,
+                                  letterSpacing: "0.08em",
+                                }}
+                              >
+                                → editor
+                              </button>
+                            </div>
+                          );
+                        },
+                      }}
+                    >
+                      {msg.content}
+                    </ReactMarkdown>
+                  ) : (
+                    msg.content
+                  )}
+                </div>
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
 
-        {/* Tool activity steps (accumulated) */}
-        {toolSteps.length > 0 && (
-          <div
-            style={{
-              borderLeft: "1px solid var(--border)",
-              marginLeft: 12,
-              marginTop: 4,
-              marginBottom: 4,
-            }}
-          >
-            {toolSteps.map((step) => (
-              <ToolStep key={step.id} step={step} />
-            ))}
-          </div>
-        )}
+        {/* Show thinking block at the end when tools are running but no assistant message yet */}
+        {toolSteps.length > 0 &&
+          !messages.some((m) => m.role === "assistant") &&
+          isStreaming && (
+            <ThinkingBlock steps={toolSteps} isStreaming={isStreaming} />
+          )}
 
         <div ref={messagesEndRef} />
       </div>
