@@ -17,6 +17,7 @@ from app.routers import history as history_router
 from app.routers import chats as chats_router
 from app.routers import events as events_router
 from app.routers import models as models_router
+from app.routers import queries as queries_router
 
 
 def _apply_api_keys(settings) -> None:
@@ -81,6 +82,7 @@ app.include_router(history_router.router)
 app.include_router(chats_router.router)
 app.include_router(events_router.router)
 app.include_router(models_router.router)
+app.include_router(queries_router.router)
 
 
 @app.get("/health")
