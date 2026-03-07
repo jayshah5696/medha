@@ -5,6 +5,8 @@ import { useStore } from "../store";
 import { getChats, getChat } from "../lib/api";
 import type { ChatMessage as ApiChatMessage } from "../lib/api";
 import ContextPill from "./ContextPill";
+import ToolStep from "./ToolStep";
+import type { ToolStepData } from "./ToolStep";
 
 interface ChatSettings {
   model_chat: string;
@@ -16,18 +18,14 @@ interface ChatMessage {
   content: string;
 }
 
-interface ToolStatus {
-  tool: string;
-  status: string;
-}
-
 export default function ChatSidebar({ width }: { width: number }) {
   const { activeFiles, currentThreadId, setThreadId, chatHistory, setChatHistory, setEditorContent, setQueryResult, setLastError, setAgentLastQuery, bumpHistoryVersion } = useStore();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [isStreaming, setIsStreaming] = useState(false);
-  const [toolStatuses, setToolStatuses] = useState<ToolStatus[]>([]);
+  const [toolSteps, setToolSteps] = useState<ToolStepData[]>([]);
   const [hitlWarning, setHitlWarning] = useState<string | null>(null);
+  const toolStartTimes = useRef<Record<string, number>>({});
   const [threadsOpen, setThreadsOpen] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [chatSettings, setChatSettings] = useState<ChatSettings>({
@@ -50,7 +48,7 @@ export default function ChatSidebar({ width }: { width: number }) {
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, toolStatuses]);
+  }, [messages, toolSteps]);
 
   const loadThreadList = async () => {
     try {
@@ -96,7 +94,8 @@ export default function ChatSidebar({ width }: { width: number }) {
     setMessages((prev) => [...prev, userMsg]);
     setInput("");
     setIsStreaming(true);
-    setToolStatuses([]);
+    setToolSteps([]);
+    toolStartTimes.current = {};
 
     let assistantContent = "";
 
@@ -158,10 +157,25 @@ export default function ChatSidebar({ width }: { width: number }) {
                 return updated;
               });
             } else if (event.type === "tool_call") {
-              setToolStatuses((prev) => [
-                ...prev.filter((t) => t.tool !== event.tool),
-                { tool: event.tool, status: event.status },
-              ]);
+              if (event.status === "start") {
+                const stepId = `${event.tool}-${Date.now()}`;
+                toolStartTimes.current[event.tool] = Date.now();
+                setToolSteps((prev) => [
+                  ...prev,
+                  { id: stepId, tool: event.tool, status: "running" },
+                ]);
+              } else if (event.status === "end") {
+                const startTime = toolStartTimes.current[event.tool];
+                const durationMs = startTime ? Date.now() - startTime : undefined;
+                delete toolStartTimes.current[event.tool];
+                setToolSteps((prev) =>
+                  prev.map((s) =>
+                    s.tool === event.tool && s.status === "running"
+                      ? { ...s, status: "done" as const, durationMs }
+                      : s
+                  )
+                );
+              }
             } else if (event.type === "hitl") {
               setHitlWarning(event.message);
             } else if (event.type === "query_result") {
@@ -209,7 +223,12 @@ export default function ChatSidebar({ width }: { width: number }) {
       ]);
     } finally {
       setIsStreaming(false);
-      setToolStatuses([]);
+      // Mark any remaining running steps as done
+      setToolSteps((prev) =>
+        prev.map((s) =>
+          s.status === "running" ? { ...s, status: "done" as const } : s
+        )
+      );
     }
   };
 
@@ -448,25 +467,21 @@ export default function ChatSidebar({ width }: { width: number }) {
           </div>
         ))}
 
-        {toolStatuses
-          .filter((t) => t.status === "start")
-          .map((t) => (
-            <div
-              key={t.tool}
-              style={{
-                fontSize: 'var(--font-size-xs)',
-                fontStyle: "italic",
-                color: "#444",
-                padding: "4px 8px",
-                fontFamily: "var(--font-mono)",
-                textAlign: "left",
-              }}
-            >
-              {"[ "}
-              {t.tool}
-              {" \u00B7 running ]"}
-            </div>
-          ))}
+        {/* Tool activity steps (accumulated) */}
+        {toolSteps.length > 0 && (
+          <div
+            style={{
+              borderLeft: "1px solid var(--border)",
+              marginLeft: 12,
+              marginTop: 4,
+              marginBottom: 4,
+            }}
+          >
+            {toolSteps.map((step) => (
+              <ToolStep key={step.id} step={step} />
+            ))}
+          </div>
+        )}
 
         <div ref={messagesEndRef} />
       </div>
