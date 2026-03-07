@@ -107,8 +107,11 @@ export interface Toast {
 const initialTab = createUntitledTab(1);
 
 export const useStore = create<MedhaStore>((set) => ({
-  workspacePath: "",
-  setWorkspacePath: (path) => set({ workspacePath: path }),
+  workspacePath: localStorage.getItem("medha_workspace") || "",
+  setWorkspacePath: (path) => {
+    localStorage.setItem("medha_workspace", path);
+    set({ workspacePath: path });
+  },
 
   files: [],
   setFiles: (files) => set({ files }),

@@ -432,51 +432,53 @@ export default function ChatSidebar({ width }: { width: number }) {
                   }}
                 >
                   {msg.role === "assistant" ? (
-                    <ReactMarkdown
-                      remarkPlugins={[remarkGfm]}
-                      components={{
-                        code({ className, children, ...props }) {
-                          const codeText = String(children).replace(/\n$/, "");
-                          const isBlock = className?.startsWith("language-");
-                          if (!isBlock) return <code {...props}>{children}</code>;
-                          return (
-                            <div style={{ position: "relative", marginTop: 4 }}>
-                              <pre style={{
-                                background: "var(--bg-tertiary)",
-                                padding: "8px 10px",
-                                fontSize: 'var(--font-size-xs)',
-                                overflow: "auto",
-                                border: "1px solid var(--border)",
-                              }}>
-                                <code>{codeText}</code>
-                              </pre>
-                              <button
-                                onClick={() => setEditorContent(codeText)}
-                                title="Copy to SQL Editor"
-                                style={{
-                                  position: "absolute",
-                                  top: 4,
-                                  right: 4,
+                    <div className="markdown-body">
+                      <ReactMarkdown
+                        remarkPlugins={[remarkGfm]}
+                        components={{
+                          code({ className, children, ...props }) {
+                            const codeText = String(children).replace(/\n$/, "");
+                            const isBlock = className?.startsWith("language-");
+                            if (!isBlock) return <code {...props}>{children}</code>;
+                            return (
+                              <div style={{ position: "relative", marginTop: 4 }}>
+                                <pre style={{
+                                  background: "var(--bg-tertiary)",
+                                  padding: "8px 10px",
                                   fontSize: 'var(--font-size-xs)',
-                                  padding: "2px 6px",
-                                  background: "var(--bg-elevated)",
+                                  overflow: "auto",
                                   border: "1px solid var(--border)",
-                                  color: "var(--accent)",
-                                  cursor: "pointer",
-                                  fontFamily: "var(--font-mono)",
-                                  textTransform: "uppercase" as const,
-                                  letterSpacing: "0.08em",
-                                }}
-                              >
-                                → editor
-                              </button>
-                            </div>
-                          );
-                        },
-                      }}
-                    >
-                      {msg.content}
-                    </ReactMarkdown>
+                                }}>
+                                  <code>{codeText}</code>
+                                </pre>
+                                <button
+                                  onClick={() => setEditorContent(codeText)}
+                                  title="Copy to SQL Editor"
+                                  style={{
+                                    position: "absolute",
+                                    top: 4,
+                                    right: 4,
+                                    fontSize: 'var(--font-size-xs)',
+                                    padding: "2px 6px",
+                                    background: "var(--bg-elevated)",
+                                    border: "1px solid var(--border)",
+                                    color: "var(--accent)",
+                                    cursor: "pointer",
+                                    fontFamily: "var(--font-mono)",
+                                    textTransform: "uppercase" as const,
+                                    letterSpacing: "0.08em",
+                                  }}
+                                >
+                                  → editor
+                                </button>
+                              </div>
+                            );
+                          },
+                        }}
+                      >
+                        {msg.content}
+                      </ReactMarkdown>
+                    </div>
                   ) : (
                     msg.content
                   )}

@@ -58,7 +58,7 @@ function FileTreeItem({
 }: {
   node: FileTreeNode;
   depth: number;
-  onFileClick: (fullPath: string) => void;
+  onFileClick: (fullPath: string, e: React.MouseEvent) => void;
   activeFiles: string[];
 }) {
   const [expanded, setExpanded] = useState(true);
@@ -114,7 +114,7 @@ function FileTreeItem({
   const isActive = activeFiles.includes(node.fullPath || "");
   return (
     <div
-      onClick={() => onFileClick(node.fullPath!)}
+      onClick={(e) => onFileClick(node.fullPath!, e)}
       style={{
         padding: "6px 12px",
         paddingLeft: 12 + indent,
@@ -123,8 +123,8 @@ function FileTreeItem({
         display: "flex",
         justifyContent: "space-between",
         alignItems: "center",
-        background: isActive ? "var(--bg-tertiary)" : "transparent",
-        borderLeft: isActive ? "2px solid var(--accent)" : "2px solid transparent",
+        background: isActive ? "rgba(0, 216, 255, 0.1)" : "transparent",
+        borderLeft: isActive ? "3px solid var(--accent)" : "3px solid transparent",
         fontFamily: "var(--font-mono)",
         lineHeight: "24px",
       }}
@@ -134,7 +134,8 @@ function FileTreeItem({
           overflow: "hidden",
           textOverflow: "ellipsis",
           whiteSpace: "nowrap",
-          color: isActive ? "var(--text-primary)" : "var(--text-secondary)",
+          color: isActive ? "#ffffff" : "var(--text-primary)",
+          fontWeight: isActive ? 600 : 400,
         }}
         title={node.fullPath}
       >
@@ -200,6 +201,16 @@ export default function FileExplorer({ width, onFilePreview }: FileExplorerProps
     }
   };
 
+  // Auto-configure workspace on mount if path exists in store
+  useEffect(() => {
+    if (workspacePath && files.length === 0) {
+      configureWorkspace(workspacePath)
+        .then(() => getFiles())
+        .then(setFiles)
+        .catch((e) => setLastError(e instanceof Error ? e.message : String(e)));
+    }
+  }, []);
+
   // Folder browser state
   const [browseOpen, setBrowseOpen] = useState(false);
   const [browsePath, setBrowsePath] = useState("");
@@ -227,8 +238,8 @@ export default function FileExplorer({ width, onFilePreview }: FileExplorerProps
     setBrowseOpen(false);
   };
 
-  // Only show the filter input when there are more than 10 files
-  const showFilter = files.length > 10;
+  // Show the filter input always
+  const showFilter = true;
 
   const filteredFiles = useMemo(() => {
     if (!fileFilter.trim()) return files;
@@ -260,10 +271,15 @@ export default function FileExplorer({ width, onFilePreview }: FileExplorerProps
   }, [historyOpen, historyVersion]);
 
   // FEAT-2: Click file → auto-preview data in result grid
-  const handleFilePreview = async (filename: string) => {
+  const handleFilePreview = async (filename: string, e?: React.MouseEvent) => {
     const query = `SELECT * FROM '${filename}' LIMIT 100;`;
     setEditorContent(query);
-    toggleActiveFile(filename);
+    
+    // Only toggle active file if shift key is pressed
+    if (e?.shiftKey) {
+      toggleActiveFile(filename);
+      return;
+    }
 
     if (onFilePreview) {
       onFilePreview(query);
@@ -412,6 +428,27 @@ export default function FileExplorer({ width, onFilePreview }: FileExplorerProps
           padding: "4px 0",
         }}
       >
+        <div style={{ padding: "4px 12px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <span style={{ fontSize: "var(--font-size-xs)", textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--text-dimmed)" }}>
+            Files
+          </span>
+          {activeFiles.length > 0 && (
+            <button
+              onClick={clearActiveFiles}
+              style={{
+                fontSize: "var(--font-size-xs)",
+                color: "var(--accent)",
+                background: "none",
+                border: "1px solid var(--accent)",
+                cursor: "pointer",
+                padding: "2px 6px",
+              }}
+            >
+              Clear selected
+            </button>
+          )}
+        </div>
+
         {/* File filter input (only shown when >10 files) */}
         {showFilter && (
           <div style={{ padding: "4px 12px 4px" }}>
@@ -471,7 +508,7 @@ export default function FileExplorer({ width, onFilePreview }: FileExplorerProps
               return (
                 <div
                   key={f.name}
-                  onClick={() => handleFilePreview(f.name)}
+                  onClick={(e) => handleFilePreview(f.name, e)}
                   style={{
                     padding: "6px 12px",
                     fontSize: 'var(--font-size-base)',
@@ -479,10 +516,10 @@ export default function FileExplorer({ width, onFilePreview }: FileExplorerProps
                     display: "flex",
                     justifyContent: "space-between",
                     alignItems: "center",
-                    background: isActive ? "var(--bg-tertiary)" : "transparent",
+                    background: isActive ? "rgba(0, 216, 255, 0.1)" : "transparent",
                     borderLeft: isActive
-                      ? "2px solid var(--accent)"
-                      : "2px solid transparent",
+                      ? "3px solid var(--accent)"
+                      : "3px solid transparent",
                     fontFamily: "var(--font-mono)",
                     lineHeight: "24px",
                   }}
@@ -492,7 +529,8 @@ export default function FileExplorer({ width, onFilePreview }: FileExplorerProps
                       overflow: "hidden",
                       textOverflow: "ellipsis",
                       whiteSpace: "nowrap",
-                      color: isActive ? "var(--text-primary)" : "var(--text-secondary)",
+                      color: isActive ? "#ffffff" : "var(--text-primary)",
+                      fontWeight: isActive ? 600 : 400,
                     }}
                     title={f.name}
                   >
