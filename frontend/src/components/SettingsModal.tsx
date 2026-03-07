@@ -79,7 +79,7 @@ const defaultSettings: SettingsData = {
 
 const label: React.CSSProperties = {
   display: "block",
-  fontSize: 10,
+  fontSize: 'var(--font-size-sm)',
   color: "var(--text-dimmed)",
   fontFamily: "var(--font-mono)",
   textTransform: "uppercase",
@@ -90,7 +90,7 @@ const label: React.CSSProperties = {
 const input: React.CSSProperties = {
   width: "100%",
   padding: "5px 8px",
-  fontSize: 12,
+  fontSize: 'var(--font-size-base)',
   background: "var(--bg-tertiary)",
   border: "1px solid var(--border)",
   borderRadius: 0,
@@ -103,7 +103,7 @@ const input: React.CSSProperties = {
 const select: React.CSSProperties = { ...input };
 
 const sectionTitle: React.CSSProperties = {
-  fontSize: 10,
+  fontSize: 'var(--font-size-sm)',
   fontWeight: 600,
   color: "var(--text-primary)",
   fontFamily: "var(--font-mono)",
@@ -203,7 +203,7 @@ function ModelPicker({
           onClick={fetchModels}
           disabled={fetching}
           className="medha-btn"
-          style={{ flexShrink: 0, fontSize: 10, padding: "4px 10px", opacity: fetching ? 0.5 : 1 }}
+          style={{ flexShrink: 0, fontSize: 'var(--font-size-sm)', padding: "4px 10px", opacity: fetching ? 0.5 : 1 }}
           title="Fetch model list from provider"
         >
           {fetching ? "..." : "fetch"}
@@ -245,7 +245,7 @@ function ModelPicker({
       )}
 
       {fetchStatus === "err" && (
-        <div style={{ fontSize: 10, color: "var(--error)", marginTop: 4, fontFamily: "var(--font-mono)" }}>
+        <div style={{ fontSize: 'var(--font-size-xs)', color: "var(--error)", marginTop: 4, fontFamily: "var(--font-mono)" }}>
           {errMsg}
         </div>
       )}
@@ -271,7 +271,7 @@ function ProviderCredentialField({ provider, settings }: CredFieldProps) {
   if (!val) {
     return (
       <div style={{
-        fontSize: 10, color: "var(--warning)", fontFamily: "var(--font-mono)",
+        fontSize: 'var(--font-size-xs)', color: "var(--warning)", fontFamily: "var(--font-mono)",
         marginBottom: 6, padding: "3px 6px",
         background: "rgba(245,166,35,0.06)", border: "1px solid rgba(245,166,35,0.15)",
       }}>
@@ -336,13 +336,13 @@ export default function SettingsModal({ onClose }: { onClose: () => void }) {
       >
         {/* Header */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18 }}>
-          <span style={{ fontSize: 11, fontWeight: 500, color: "var(--accent)", fontFamily: "var(--font-mono)", textTransform: "uppercase", letterSpacing: "0.1em" }}>
+          <span style={{ fontSize: 'var(--font-size-sm)', fontWeight: 500, color: "var(--accent)", fontFamily: "var(--font-mono)", textTransform: "uppercase", letterSpacing: "0.1em" }}>
             settings
           </span>
           <button
             onClick={onClose}
             aria-label="Close settings"
-            style={{ background: "none", border: "none", color: "var(--text-dimmed)", cursor: "pointer", fontSize: 16, lineHeight: 1, padding: 2 }}
+            style={{ background: "none", border: "none", color: "var(--text-dimmed)", cursor: "pointer", fontSize: 'var(--font-size-lg)', lineHeight: 1, padding: 2 }}
           >
             ×
           </button>
@@ -425,7 +425,7 @@ export default function SettingsModal({ onClose }: { onClose: () => void }) {
             save
           </button>
           {status && (
-            <span style={{ fontSize: 11, fontFamily: "var(--font-mono)", color: status === "saved" ? "var(--success)" : "var(--error)" }}>
+            <span style={{ fontSize: 'var(--font-size-xs)', fontFamily: "var(--font-mono)", color: status === "saved" ? "var(--success)" : "var(--error)" }}>
               {status}
             </span>
           )}

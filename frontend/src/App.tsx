@@ -246,7 +246,7 @@ function App() {
         </svg>
         <span
           style={{
-            fontSize: 15,
+            fontSize: 'var(--font-size-md)',
             color: "var(--text-dimmed)",
             fontFamily: "var(--font-ui)",
           }}
@@ -262,7 +262,7 @@ function App() {
               border: "none",
               color: "var(--text-secondary)",
               cursor: "pointer",
-              fontSize: 16,
+              fontSize: 'var(--font-size-lg)',
               padding: "2px 6px",
               lineHeight: 1,
             }}
@@ -277,7 +277,7 @@ function App() {
               border: "none",
               color: "var(--text-dimmed)",
               cursor: "pointer",
-              fontSize: 16,
+              fontSize: 'var(--font-size-lg)',
               fontFamily: "var(--font-mono)",
               padding: "2px 6px",
               lineHeight: 1,
@@ -287,7 +287,7 @@ function App() {
           </button>
           <span
             style={{
-              fontSize: 14,
+              fontSize: 'var(--font-size-base)',
               color: "var(--text-dimmed)",
               fontFamily: "var(--font-ui)",
             }}
@@ -308,7 +308,7 @@ function App() {
             alignItems: "center",
             justifyContent: "space-between",
             gap: 10,
-            fontSize: 14,
+            fontSize: 'var(--font-size-base)',
             fontFamily: "var(--font-ui)",
             color: "var(--text-secondary)",
           }}
@@ -324,7 +324,7 @@ function App() {
               }}
               style={{
                 padding: "5px 14px",
-                fontSize: 13,
+                fontSize: 'var(--font-size-sm)',
                 fontFamily: "var(--font-ui)",
                 fontWeight: 500,
                 textTransform: "uppercase",
@@ -344,7 +344,7 @@ function App() {
                 border: "none",
                 color: "var(--text-dimmed)",
                 cursor: "pointer",
-                fontSize: 12,
+                fontSize: 'var(--font-size-sm)',
                 fontFamily: "var(--font-mono)",
                 padding: "0 4px",
               }}
@@ -456,7 +456,7 @@ function App() {
           alignItems: "center",
           padding: "0 12px",
           gap: 8,
-          fontSize: 13,
+          fontSize: 'var(--font-size-sm)',
           color: "var(--text-dimmed)",
           fontFamily: "var(--font-ui)",
         }}
@@ -472,7 +472,7 @@ function App() {
           }}
         />
         <span>{workspacePath || "no workspace"}</span>
-        <span style={{ marginLeft: "auto", fontSize: 13 }}>medha v0.1</span>
+        <span style={{ marginLeft: "auto", fontSize: 'var(--font-size-sm)' }}>medha v0.1</span>
       </div>
 
       {/* Cmd+K Diff Overlay */}

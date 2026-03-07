@@ -171,11 +171,11 @@ export default function SqlEditor({
           backgroundColor: "var(--bg-primary)",
           color: "var(--text-primary)",
           height: "100%",
-          fontSize: "16px",
+          fontSize: "var(--font-size-editor)",
         },
         ".cm-content": {
           fontFamily: "var(--font-mono)",
-          fontSize: "17px",
+          fontSize: "var(--font-size-editor)",
           caretColor: "var(--accent)",
           padding: "8px 0",
         },
@@ -185,7 +185,7 @@ export default function SqlEditor({
           border: "none",
           borderRight: "1px solid var(--border)",
           fontFamily: "var(--font-mono)",
-          fontSize: "13px",
+          fontSize: "var(--font-size-gutter)",
           minWidth: "40px",
         },
         ".cm-gutter": {
@@ -247,7 +247,7 @@ export default function SqlEditor({
           color: "var(--text-primary)",
           borderRadius: "0",
           fontFamily: "var(--font-mono)",
-          fontSize: "14px",
+          fontSize: "var(--font-size-base)",
         },
         ".cm-panel.cm-search button": {
           background: "var(--bg-tertiary)",
@@ -255,7 +255,7 @@ export default function SqlEditor({
           color: "var(--text-secondary)",
           borderRadius: "0",
           fontFamily: "var(--font-mono)",
-          fontSize: "13px",
+          fontSize: "var(--font-size-sm)",
         },
         ".cm-error-line": {
           backgroundColor: "rgba(255, 60, 60, 0.08)",
@@ -357,7 +357,7 @@ export default function SqlEditor({
           background: "var(--bg-secondary)",
           borderBottom: "1px solid var(--border)",
           fontFamily: "var(--font-ui)",
-          fontSize: 14,
+          fontSize: 'var(--font-size-base)',
         }}
       >
         <span style={{ color: "var(--text-secondary)", fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.06em" }}>
@@ -410,7 +410,7 @@ export default function SqlEditor({
         }
         .medha-toolbar-btn {
           color: #444;
-          font-size: 14px;
+          font-size: var(--font-size-base);
           font-family: var(--font-mono);
           padding: 0 10px;
           transition: color 0.15s;
@@ -442,7 +442,7 @@ export default function SqlEditor({
         >
           <span
             style={{
-              fontSize: 15,
+              fontSize: 'var(--font-size-md)',
               fontFamily: "var(--font-mono)",
               color: "#ff3c3c",
               overflow: "hidden",
@@ -459,7 +459,7 @@ export default function SqlEditor({
               border: "none",
               color: "#ff3c3c",
               cursor: "pointer",
-              fontSize: 12,
+              fontSize: 'var(--font-size-sm)',
               fontFamily: "var(--font-mono)",
               padding: "0 4px",
               flexShrink: 0,
@@ -504,7 +504,7 @@ export default function SqlEditor({
               display: "flex",
               alignItems: "center",
               justifyContent: "space-between",
-              fontSize: 14,
+              fontSize: 'var(--font-size-base)',
               fontFamily: "var(--font-ui)",
               textTransform: "uppercase",
               letterSpacing: "0.06em",
@@ -519,7 +519,7 @@ export default function SqlEditor({
                 border: "none",
                 color: "var(--text-dimmed)",
                 cursor: "pointer",
-                fontSize: 15,
+                fontSize: 'var(--font-size-base)',
                 padding: "0 2px",
                 fontFamily: "var(--font-mono)",
               }}
@@ -529,12 +529,12 @@ export default function SqlEditor({
           </div>
           <div style={{ flex: 1, overflow: "auto" }}>
             {historyLoading && (
-              <div style={{ padding: 14, fontSize: 15, color: "var(--text-dimmed)", textAlign: "center", fontFamily: "var(--font-ui)" }}>
+              <div style={{ padding: 14, fontSize: 'var(--font-size-base)', color: "var(--text-dimmed)", textAlign: "center", fontFamily: "var(--font-ui)" }}>
                 loading...
               </div>
             )}
             {!historyLoading && historyEntries.length === 0 && (
-              <div style={{ padding: 14, fontSize: 15, color: "var(--text-dimmed)", textAlign: "center", fontFamily: "var(--font-ui)" }}>
+              <div style={{ padding: 14, fontSize: 'var(--font-size-base)', color: "var(--text-dimmed)", textAlign: "center", fontFamily: "var(--font-ui)" }}>
                 no history
               </div>
             )}
@@ -555,7 +555,7 @@ export default function SqlEditor({
                     gap: 8,
                     alignItems: "baseline",
                     borderBottom: "1px solid var(--border)",
-                    fontSize: 15,
+                    fontSize: 'var(--font-size-md)',
                     fontFamily: "var(--font-mono)",
                   }}
                   onMouseEnter={(e) => {
@@ -565,10 +565,10 @@ export default function SqlEditor({
                     (e.currentTarget as HTMLDivElement).style.background = "transparent";
                   }}
                 >
-                  <span style={{ flexShrink: 0, fontSize: 12 }}>
+                  <span style={{ flexShrink: 0, fontSize: 'var(--font-size-xs)' }}>
                     {sourceIcon}
                   </span>
-                  <span style={{ color: "var(--accent)", flexShrink: 0, fontSize: 14 }}>
+                  <span style={{ color: "var(--accent)", flexShrink: 0, fontSize: 'var(--font-size-xs)' }}>
                     {timePart}
                   </span>
                   <span

@@ -36,6 +36,17 @@
   --font-mono: 'JetBrains Mono', monospace;
   --font-ui: 'DM Mono', monospace;
 
+  /* Font scale — 5 levels */
+  --font-size-xs: 11px;    /* Metadata, timestamps, secondary info */
+  --font-size-sm: 12px;    /* Labels, section headers, buttons, captions */
+  --font-size-base: 14px;  /* Body text, file names, inputs, cells */
+  --font-size-md: 15px;    /* Primary content — chat messages, result cells */
+  --font-size-lg: 16px;    /* Editor code, emphasis, empty states */
+
+  /* Editor-specific */
+  --font-size-editor: 16px;
+  --font-size-gutter: 13px;
+
   /* Sizes */
   --header-height: 48px;
   --status-height: 30px;
@@ -87,7 +98,7 @@ body {
   font-family: var(--font-mono);
   background: var(--bg-primary);
   color: var(--text-primary);
-  font-size: 16px;
+  font-size: var(--font-size-lg);
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -177,7 +188,7 @@ button:disabled {
   border: 1px solid #00D8FF;
   color: #00D8FF;
   font-family: var(--font-mono);
-  font-size: 13px;
+  font-size: var(--font-size-sm);
   text-transform: uppercase;
   letter-spacing: 0.1em;
   padding: 7px 16px;

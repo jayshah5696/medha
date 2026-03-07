@@ -166,7 +166,7 @@ export default function FileExplorer({ width, onFilePreview }: FileExplorerProps
       <div style={{ padding: "12px 12px 10px", borderBottom: "1px solid var(--border)" }}>
         <div
           style={{
-            fontSize: 14,
+            fontSize: 'var(--font-size-sm)',
             fontWeight: 500,
             textTransform: "uppercase",
             color: "var(--text-dimmed)",
@@ -181,7 +181,7 @@ export default function FileExplorer({ width, onFilePreview }: FileExplorerProps
         <div style={{ display: "flex", alignItems: "center", gap: 0 }}>
           <span
             style={{
-              fontSize: 16,
+              fontSize: 'var(--font-size-md)',
               color: "var(--text-dimmed)",
               padding: "7px 6px 7px 8px",
               background: "var(--bg-tertiary)",
@@ -203,7 +203,7 @@ export default function FileExplorer({ width, onFilePreview }: FileExplorerProps
             style={{
               flex: 1,
               padding: "7px 8px",
-              fontSize: 15,
+              fontSize: 'var(--font-size-base)',
               background: "var(--bg-tertiary)",
               border: "1px solid var(--border)",
               borderRadius: 0,
@@ -254,7 +254,7 @@ export default function FileExplorer({ width, onFilePreview }: FileExplorerProps
               style={{
                 width: "100%",
                 padding: "5px 8px",
-                fontSize: 14,
+                fontSize: 'var(--font-size-base)',
                 background: "var(--bg-tertiary)",
                 border: "1px solid var(--border)",
                 borderRadius: 0,
@@ -270,7 +270,7 @@ export default function FileExplorer({ width, onFilePreview }: FileExplorerProps
           <div
             style={{
               padding: "24px 16px",
-              fontSize: 15,
+              fontSize: 'var(--font-size-base)',
               color: "#333",
               textAlign: "center",
               fontFamily: "var(--font-mono)",
@@ -295,7 +295,7 @@ export default function FileExplorer({ width, onFilePreview }: FileExplorerProps
               onClick={() => handleFilePreview(f.name)}
               style={{
                 padding: "6px 12px",
-                fontSize: 15,
+                fontSize: 'var(--font-size-base)',
                 cursor: "pointer",
                 display: "flex",
                 justifyContent: "space-between",
@@ -320,7 +320,7 @@ export default function FileExplorer({ width, onFilePreview }: FileExplorerProps
               </span>
               <span
                 style={{
-                  fontSize: 13,
+                  fontSize: 'var(--font-size-xs)',
                   color: "var(--text-dimmed)",
                   marginLeft: 8,
                   flexShrink: 0,
@@ -339,7 +339,7 @@ export default function FileExplorer({ width, onFilePreview }: FileExplorerProps
             onClick={() => setHistoryOpen(!historyOpen)}
             style={{
               padding: "8px 12px",
-              fontSize: 14,
+              fontSize: 'var(--font-size-sm)',
               fontWeight: 500,
               textTransform: "uppercase",
               color: "var(--text-dimmed)",
@@ -352,7 +352,7 @@ export default function FileExplorer({ width, onFilePreview }: FileExplorerProps
               userSelect: "none",
             }}
           >
-            <span style={{ fontSize: 12 }}>{historyOpen ? "\u25BC" : "\u25B6"}</span>
+            <span style={{ fontSize: 'var(--font-size-sm)' }}>{historyOpen ? "\u25BC" : "\u25B6"}</span>
             history
           </div>
           {historyOpen && (
@@ -361,7 +361,7 @@ export default function FileExplorer({ width, onFilePreview }: FileExplorerProps
                 <div
                   style={{
                     padding: "8px 12px",
-                    fontSize: 14,
+                    fontSize: 'var(--font-size-base)',
                     color: "var(--text-dimmed)",
                     fontFamily: "var(--font-ui)",
                     textAlign: "center",
@@ -380,7 +380,7 @@ export default function FileExplorer({ width, onFilePreview }: FileExplorerProps
                     onClick={() => handleHistoryClick(entry)}
                     style={{
                       padding: "5px 12px",
-                      fontSize: 14,
+                      fontSize: 'var(--font-size-base)',
                       cursor: "pointer",
                       display: "flex",
                       justifyContent: "space-between",
@@ -390,10 +390,10 @@ export default function FileExplorer({ width, onFilePreview }: FileExplorerProps
                     }}
                     title={`${sourceIcon} ${entry.preview}`}
                   >
-                    <span style={{ flexShrink: 0, fontSize: 11 }}>
+                    <span style={{ flexShrink: 0, fontSize: 'var(--font-size-xs)' }}>
                       {sourceIcon}
                     </span>
-                    <span style={{ color: "var(--text-secondary)", flexShrink: 0, fontSize: 13 }}>
+                    <span style={{ color: "var(--text-secondary)", flexShrink: 0, fontSize: 'var(--font-size-xs)' }}>
                       {timePart}
                     </span>
                     <span
@@ -402,7 +402,7 @@ export default function FileExplorer({ width, onFilePreview }: FileExplorerProps
                         overflow: "hidden",
                         textOverflow: "ellipsis",
                         whiteSpace: "nowrap",
-                        fontSize: 13,
+                        fontSize: 'var(--font-size-xs)',
                       }}
                     >
                       {previewText}
@@ -419,7 +419,7 @@ export default function FileExplorer({ width, onFilePreview }: FileExplorerProps
                     }}
                     className="medha-btn"
                     style={{
-                      fontSize: 12,
+                      fontSize: 'var(--font-size-sm)',
                       padding: "4px 10px",
                     }}
                   >
@@ -467,7 +467,7 @@ export default function FileExplorer({ width, onFilePreview }: FileExplorerProps
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "space-between",
-                fontSize: 13,
+                fontSize: 'var(--font-size-sm)',
                 fontFamily: "var(--font-ui)",
                 textTransform: "uppercase",
                 letterSpacing: "0.06em",
@@ -482,7 +482,7 @@ export default function FileExplorer({ width, onFilePreview }: FileExplorerProps
                   border: "none",
                   color: "var(--text-dimmed)",
                   cursor: "pointer",
-                  fontSize: 14,
+                  fontSize: 'var(--font-size-base)',
                   fontFamily: "var(--font-mono)",
                   padding: "0 2px",
                 }}
@@ -495,7 +495,7 @@ export default function FileExplorer({ width, onFilePreview }: FileExplorerProps
             <div
               style={{
                 padding: "8px 14px",
-                fontSize: 14,
+                fontSize: 'var(--font-size-base)',
                 fontFamily: "var(--font-mono)",
                 color: "var(--accent)",
                 borderBottom: "1px solid var(--border)",
@@ -511,7 +511,7 @@ export default function FileExplorer({ width, onFilePreview }: FileExplorerProps
             {/* Directory list */}
             <div style={{ flex: 1, overflow: "auto" }}>
               {browseLoading && (
-                <div style={{ padding: 16, fontSize: 14, color: "var(--text-dimmed)", textAlign: "center", fontFamily: "var(--font-ui)" }}>
+                <div style={{ padding: 16, fontSize: 'var(--font-size-base)', color: "var(--text-dimmed)", textAlign: "center", fontFamily: "var(--font-ui)" }}>
                   loading...
                 </div>
               )}
@@ -521,7 +521,7 @@ export default function FileExplorer({ width, onFilePreview }: FileExplorerProps
                   onClick={() => openBrowser(browseParent!)}
                   style={{
                     padding: "6px 14px",
-                    fontSize: 15,
+                    fontSize: 'var(--font-size-base)',
                     cursor: "pointer",
                     fontFamily: "var(--font-mono)",
                     color: "var(--text-secondary)",
@@ -537,7 +537,7 @@ export default function FileExplorer({ width, onFilePreview }: FileExplorerProps
                     (e.currentTarget as HTMLDivElement).style.background = "transparent";
                   }}
                 >
-                  <span style={{ fontSize: 16 }}>↑</span>
+                  <span style={{ fontSize: 'var(--font-size-md)' }}>↑</span>
                   <span>..</span>
                 </div>
               )}
@@ -553,7 +553,7 @@ export default function FileExplorer({ width, onFilePreview }: FileExplorerProps
                     }}
                     style={{
                       padding: "5px 14px",
-                      fontSize: 15,
+                      fontSize: 'var(--font-size-base)',
                       cursor: entry.is_dir ? "pointer" : "default",
                       fontFamily: "var(--font-mono)",
                       color: entry.is_dir ? "var(--text-primary)" : "var(--text-dimmed)",
@@ -568,7 +568,7 @@ export default function FileExplorer({ width, onFilePreview }: FileExplorerProps
                       (e.currentTarget as HTMLDivElement).style.background = "transparent";
                     }}
                   >
-                    <span style={{ fontSize: 15, width: 20, textAlign: "center", flexShrink: 0 }}>
+                    <span style={{ fontSize: 'var(--font-size-base)', width: 20, textAlign: "center", flexShrink: 0 }}>
                       {entry.is_dir ? "📁" : "📄"}
                     </span>
                     <span
@@ -584,7 +584,7 @@ export default function FileExplorer({ width, onFilePreview }: FileExplorerProps
                 ))}
 
               {!browseLoading && browseEntries.length === 0 && (
-                <div style={{ padding: 16, fontSize: 14, color: "var(--text-dimmed)", textAlign: "center", fontFamily: "var(--font-ui)" }}>
+                <div style={{ padding: 16, fontSize: 'var(--font-size-base)', color: "var(--text-dimmed)", textAlign: "center", fontFamily: "var(--font-ui)" }}>
                   empty directory
                 </div>
               )}
@@ -603,7 +603,7 @@ export default function FileExplorer({ width, onFilePreview }: FileExplorerProps
               <button
                 onClick={() => setBrowseOpen(false)}
                 className="medha-btn"
-                style={{ fontSize: 13, padding: "5px 12px" }}
+                style={{ fontSize: 'var(--font-size-sm)', padding: "5px 12px" }}
               >
                 cancel
               </button>
@@ -611,7 +611,7 @@ export default function FileExplorer({ width, onFilePreview }: FileExplorerProps
                 onClick={() => handleBrowseSelect(browsePath)}
                 className="medha-btn"
                 style={{
-                  fontSize: 13,
+                  fontSize: 'var(--font-size-sm)',
                   padding: "5px 12px",
                   background: "var(--accent)",
                   color: "var(--bg-primary)",

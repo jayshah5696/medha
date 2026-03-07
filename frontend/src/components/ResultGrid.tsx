@@ -32,7 +32,7 @@ export default function ResultGrid({ result, isQuerying, height }: ResultGridPro
           alignItems: "center",
           justifyContent: "center",
           color: "var(--text-dimmed)",
-          fontSize: 16,
+          fontSize: 'var(--font-size-lg)',
           padding: 24,
           background: "var(--bg-primary)",
           fontFamily: "var(--font-ui)",
@@ -52,7 +52,7 @@ export default function ResultGrid({ result, isQuerying, height }: ResultGridPro
           alignItems: "center",
           justifyContent: "center",
           color: "var(--text-dimmed)",
-          fontSize: 16,
+          fontSize: 'var(--font-size-lg)',
           padding: 24,
           background: "var(--bg-primary)",
           fontFamily: "var(--font-ui)",
@@ -73,7 +73,7 @@ export default function ResultGrid({ result, isQuerying, height }: ResultGridPro
           alignItems: "center",
           justifyContent: "center",
           color: "#333",
-          fontSize: 16,
+          fontSize: 'var(--font-size-lg)',
           padding: 24,
           background: "var(--bg-primary)",
           fontFamily: "var(--font-mono)",
@@ -83,7 +83,7 @@ export default function ResultGrid({ result, isQuerying, height }: ResultGridPro
         <div
           style={{
             marginTop: 4,
-            fontSize: 14,
+            fontSize: 'var(--font-size-base)',
             color: "var(--text-dimmed)",
             fontFamily: "var(--font-ui)",
           }}
@@ -143,7 +143,7 @@ function ResultTable({
           style={{
             width: "100%",
             borderCollapse: "collapse",
-            fontSize: 15,
+            fontSize: 'var(--font-size-md)',
             fontFamily: "var(--font-mono)",
           }}
         >
@@ -159,7 +159,7 @@ function ResultTable({
                       borderBottom: "1px solid var(--border-strong)",
                       color: "var(--text-dimmed)",
                       fontWeight: 500,
-                      fontSize: 14,
+                      fontSize: 'var(--font-size-base)',
                       position: "sticky",
                       top: 0,
                       background: "var(--bg-secondary)",
@@ -214,7 +214,7 @@ function ResultTable({
       <div
         style={{
           padding: "0 14px",
-          fontSize: 14,
+          fontSize: 'var(--font-size-base)',
           color: "var(--text-dimmed)",
           display: "flex",
           alignItems: "center",
@@ -235,7 +235,7 @@ function ResultTable({
             style={{
               color: "var(--accent)",
               fontWeight: 500,
-              fontSize: 14,
+              fontSize: 'var(--font-size-base)',
               letterSpacing: "0.04em",
             }}
           >

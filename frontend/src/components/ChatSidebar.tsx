@@ -229,7 +229,7 @@ export default function ChatSidebar({ width }: { width: number }) {
           height: 28,
           minHeight: 28,
           borderBottom: "1px solid var(--border)",
-          fontSize: 10,
+          fontSize: 'var(--font-size-sm)',
           fontWeight: 500,
           textTransform: "uppercase",
           color: "var(--text-dimmed)",
@@ -241,12 +241,12 @@ export default function ChatSidebar({ width }: { width: number }) {
           justifyContent: "space-between",
         }}
       >
-        <span style={{ fontSize: 9, letterSpacing: "0.15em", color: "#444" }}>assistant</span>
+        <span style={{ fontSize: 'var(--font-size-sm)', letterSpacing: "0.15em", color: "#444" }}>assistant</span>
         <button
           onClick={handleNewChat}
           className="medha-btn"
           style={{
-            fontSize: 9,
+            fontSize: 'var(--font-size-sm)',
             padding: "1px 8px",
             lineHeight: 1.4,
           }}
@@ -261,7 +261,7 @@ export default function ChatSidebar({ width }: { width: number }) {
           onClick={() => setThreadsOpen(!threadsOpen)}
           style={{
             padding: "5px 10px",
-            fontSize: 10,
+            fontSize: 'var(--font-size-sm)',
             fontWeight: 500,
             textTransform: "uppercase",
             color: "var(--text-dimmed)",
@@ -274,8 +274,8 @@ export default function ChatSidebar({ width }: { width: number }) {
             userSelect: "none",
           }}
         >
-          <span style={{ fontSize: 8 }}>{threadsOpen ? "\u25BC" : "\u25B6"}</span>
-          <span style={{ fontSize: 9, letterSpacing: "0.15em", color: "#444" }}>threads</span>
+          <span style={{ fontSize: 'var(--font-size-xs)' }}>{threadsOpen ? "\u25BC" : "\u25B6"}</span>
+          <span style={{ fontSize: 'var(--font-size-sm)', letterSpacing: "0.15em", color: "#444" }}>threads</span>
         </div>
         {threadsOpen && (
           <div style={{ maxHeight: 160, overflow: "auto" }}>
@@ -283,7 +283,7 @@ export default function ChatSidebar({ width }: { width: number }) {
               <div
                 style={{
                   padding: "10px 10px",
-                  fontSize: 11,
+                  fontSize: 'var(--font-size-base)',
                   color: "#333",
                   fontFamily: "var(--font-mono)",
                   textAlign: "center",
@@ -305,7 +305,7 @@ export default function ChatSidebar({ width }: { width: number }) {
               >
                 <div
                   style={{
-                    fontSize: 11,
+                    fontSize: 'var(--font-size-base)',
                     fontWeight: 600,
                     color: "var(--text-primary)",
                     fontFamily: "var(--font-mono)",
@@ -315,7 +315,7 @@ export default function ChatSidebar({ width }: { width: number }) {
                 </div>
                 <div
                   style={{
-                    fontSize: 9,
+                    fontSize: 'var(--font-size-xs)',
                     color: "var(--text-dimmed)",
                     fontFamily: "var(--font-ui)",
                   }}
@@ -343,7 +343,7 @@ export default function ChatSidebar({ width }: { width: number }) {
           <div
             style={{
               color: "#333",
-              fontSize: 11,
+              fontSize: 'var(--font-size-base)',
               textAlign: "center",
               marginTop: 24,
               fontFamily: "var(--font-mono)",
@@ -362,7 +362,7 @@ export default function ChatSidebar({ width }: { width: number }) {
           >
             <div
               style={{
-                fontSize: 8,
+                fontSize: 'var(--font-size-sm)',
                 textTransform: "uppercase" as const,
                 letterSpacing: "0.15em",
                 marginBottom: 2,
@@ -375,7 +375,7 @@ export default function ChatSidebar({ width }: { width: number }) {
             <div
               style={{
                 padding: "6px 10px",
-                fontSize: 12,
+                fontSize: 'var(--font-size-md)',
                 lineHeight: 1.5,
                 fontFamily: "var(--font-mono)",
                 borderRadius: 0,
@@ -405,7 +405,7 @@ export default function ChatSidebar({ width }: { width: number }) {
                           <pre style={{
                             background: "var(--bg-tertiary)",
                             padding: "8px 10px",
-                            fontSize: 11,
+                            fontSize: 'var(--font-size-xs)',
                             overflow: "auto",
                             border: "1px solid var(--border)",
                           }}>
@@ -418,7 +418,7 @@ export default function ChatSidebar({ width }: { width: number }) {
                               position: "absolute",
                               top: 4,
                               right: 4,
-                              fontSize: 8,
+                              fontSize: 'var(--font-size-xs)',
                               padding: "2px 6px",
                               background: "var(--bg-elevated)",
                               border: "1px solid var(--border)",
@@ -451,7 +451,7 @@ export default function ChatSidebar({ width }: { width: number }) {
             <div
               key={t.tool}
               style={{
-                fontSize: 11,
+                fontSize: 'var(--font-size-xs)',
                 fontStyle: "italic",
                 color: "#444",
                 padding: "4px 8px",
@@ -486,7 +486,7 @@ export default function ChatSidebar({ width }: { width: number }) {
           style={{
             width: "100%",
             padding: "6px 8px",
-            fontSize: 12,
+            fontSize: 'var(--font-size-base)',
             background: "var(--bg-tertiary)",
             border: "1px solid var(--border)",
             borderRadius: 0,

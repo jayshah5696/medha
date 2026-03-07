@@ -134,7 +134,7 @@ export default function DiffOverlay({
         {/* Title */}
         <div
           style={{
-            fontSize: 11,
+            fontSize: 'var(--font-size-sm)',
             fontWeight: 500,
             marginBottom: 12,
             color: "var(--accent)",
@@ -158,7 +158,7 @@ export default function DiffOverlay({
             style={{
               flex: 1,
               padding: "6px 8px",
-              fontSize: 12,
+              fontSize: 'var(--font-size-base)',
               background: "var(--bg-tertiary)",
               border: "1px solid var(--border)",
               borderRadius: 0,
@@ -172,7 +172,7 @@ export default function DiffOverlay({
             disabled={loading || !instruction.trim()}
             style={{
               padding: "6px 12px",
-              fontSize: 11,
+              fontSize: 'var(--font-size-sm)',
               background: "transparent",
               color: "var(--accent)",
               border: "1px solid var(--border)",
@@ -194,7 +194,7 @@ export default function DiffOverlay({
               background: "var(--diff-remove-bg)",
               color: "var(--error)",
               borderRadius: 0,
-              fontSize: 12,
+              fontSize: 'var(--font-size-xs)',
               marginBottom: 12,
               fontFamily: "var(--font-mono)",
             }}
@@ -209,7 +209,7 @@ export default function DiffOverlay({
             <div
               style={{
                 fontFamily: "var(--font-mono)",
-                fontSize: 12,
+                fontSize: 'var(--font-size-sm)',
                 lineHeight: 1.6,
                 background: "var(--bg-secondary)",
                 borderRadius: 0,
@@ -257,7 +257,7 @@ export default function DiffOverlay({
                 onClick={onClose}
                 style={{
                   padding: "5px 12px",
-                  fontSize: 11,
+                  fontSize: 'var(--font-size-sm)',
                   background: "transparent",
                   color: "var(--text-dimmed)",
                   border: "1px solid var(--border)",
@@ -272,7 +272,7 @@ export default function DiffOverlay({
                 onClick={handleAccept}
                 style={{
                   padding: "5px 12px",
-                  fontSize: 11,
+                  fontSize: 'var(--font-size-sm)',
                   background: "transparent",
                   color: "var(--accent)",
                   border: "1px solid var(--border)",
