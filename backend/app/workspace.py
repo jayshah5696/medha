@@ -62,8 +62,10 @@ def set_workspace(path: str) -> None:
 
     Also sets DuckDB's FILE_SEARCH_PATH so that bare filenames like
     'sample.csv' resolve against the workspace root rather than the
-    process CWD.
+    process CWD. Creates/touches workspace-scoped storage.
     """
+    from app.workspace_store import WorkspaceStore
+
     p = Path(path).resolve()
     if not p.exists():
         raise FileNotFoundError(f"Workspace path does not exist: {path}")
@@ -73,6 +75,11 @@ def set_workspace(path: str) -> None:
     # Tell DuckDB to resolve relative file paths against workspace root
     db.conn.execute(f"SET FILE_SEARCH_PATH='{p}'")
     schema_cache.clear()
+
+    # Create/touch workspace-scoped storage
+    store = WorkspaceStore(str(p))
+    store.ensure()
+
     start_watcher()
 
 

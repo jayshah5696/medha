@@ -276,3 +276,15 @@ async def boot():
             "last_workspace": settings.last_workspace,
         },
     }
+
+
+# --- Recent workspaces (FEAT-8-2) ---
+
+
+@router.get("/api/workspaces/recent")
+async def recent_workspaces():
+    """List recently opened workspaces, sorted by last_opened descending."""
+    from app.workspace_store import list_recent_workspaces
+
+    entries = await asyncio.to_thread(list_recent_workspaces)
+    return entries
