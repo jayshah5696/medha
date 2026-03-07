@@ -62,6 +62,56 @@ describe("store", () => {
     useStore.getState().loadHistoryEntry("SELECT * FROM foo;");
     expect(useStore.getState().editorContent).toBe("SELECT * FROM foo;");
   });
+
+  // Phase 2: pagination store tests
+
+  it("appendQueryRows appends rows and updates pagination state", () => {
+    // Set initial result (first page)
+    useStore.getState().setQueryResult({
+      columns: ["id", "name"],
+      rows: [[1, "Alice"], [2, "Bob"]],
+      truncated: false,
+      row_count: 2,
+      duration_ms: 10,
+      total_row_count: 5,
+      has_more: true,
+      offset: 0,
+    });
+
+    // Append second page
+    useStore.getState().appendQueryRows({
+      columns: ["id", "name"],
+      rows: [[3, "Charlie"], [4, "Diana"], [5, "Eve"]],
+      truncated: false,
+      row_count: 3,
+      duration_ms: 5,
+      total_row_count: 5,
+      has_more: false,
+      offset: 2,
+    });
+
+    const result = useStore.getState().queryResult!;
+    expect(result.rows.length).toBe(5);
+    expect(result.has_more).toBe(false);
+    expect(result.rows[0]).toEqual([1, "Alice"]);
+    expect(result.rows[4]).toEqual([5, "Eve"]);
+  });
+
+  it("appendQueryRows does nothing when queryResult is null", () => {
+    useStore.getState().setQueryResult(null);
+    useStore.getState().appendQueryRows({
+      columns: ["id"],
+      rows: [[1]],
+      truncated: false,
+      row_count: 1,
+      duration_ms: 1,
+    });
+    expect(useStore.getState().queryResult).toBeNull();
+  });
+
+  it("isLoadingMore defaults to false", () => {
+    expect(useStore.getState().isLoadingMore).toBe(false);
+  });
 });
 
 describe("tab management", () => {

@@ -1,4 +1,4 @@
-import { useMemo, useState, useRef } from "react";
+import { useMemo, useState, useRef, useEffect, useCallback } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import {
   useReactTable,
@@ -13,13 +13,15 @@ interface ResultGridProps {
   result: QueryResult | null;
   isQuerying: boolean;
   height?: number;
+  onLoadMore?: () => void;
+  isLoadingMore?: boolean;
 }
 
 function formatRowCount(n: number): string {
   return n.toLocaleString();
 }
 
-export default function ResultGrid({ result, isQuerying, height }: ResultGridProps) {
+export default function ResultGrid({ result, isQuerying, height, onLoadMore, isLoadingMore }: ResultGridProps) {
   // FEAT-1: use explicit height if provided, otherwise fall back to maxHeight
   const paneStyle: React.CSSProperties = height
     ? { height, minHeight: 100 }
@@ -126,7 +128,7 @@ export default function ResultGrid({ result, isQuerying, height }: ResultGridPro
     );
   }, [result.columns]);
 
-  return <ResultTable result={result} columns={columns} height={height} />;
+  return <ResultTable result={result} columns={columns} height={height} onLoadMore={onLoadMore} isLoadingMore={isLoadingMore} />;
 }
 
 // Fixed row height in pixels — must match CSS var(--row-height)
@@ -136,10 +138,14 @@ function ResultTable({
   result,
   columns,
   height,
+  onLoadMore,
+  isLoadingMore,
 }: {
   result: QueryResult;
   columns: ReturnType<ReturnType<typeof createColumnHelper<unknown[]>>["accessor"]>[];
   height?: number;
+  onLoadMore?: () => void;
+  isLoadingMore?: boolean;
 }) {
   const editorContent = useStore((s) => s.editorContent);
   const [exporting, setExporting] = useState<string | null>(null);
@@ -170,6 +176,25 @@ function ResultTable({
     estimateSize: () => ROW_HEIGHT,
     overscan: 20,
   });
+
+  // Infinite scroll: trigger onLoadMore when user scrolls near the bottom
+  const handleScroll = useCallback(() => {
+    if (!onLoadMore || isLoadingMore || !result.has_more) return;
+    const el = scrollContainerRef.current;
+    if (!el) return;
+    const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
+    // Trigger load when within 5 rows of the bottom
+    if (distanceFromBottom < ROW_HEIGHT * 5) {
+      onLoadMore();
+    }
+  }, [onLoadMore, isLoadingMore, result.has_more]);
+
+  useEffect(() => {
+    const el = scrollContainerRef.current;
+    if (!el) return;
+    el.addEventListener("scroll", handleScroll, { passive: true });
+    return () => el.removeEventListener("scroll", handleScroll);
+  }, [handleScroll]);
 
   // FEAT-1: use explicit height if provided
   const containerStyle: React.CSSProperties = height
@@ -308,9 +333,18 @@ function ResultTable({
           flexShrink: 0,
         }}
       >
-        <span>{formatRowCount(result.row_count)} rows</span>
+        <span>
+          {result.total_row_count != null
+            ? `${formatRowCount(result.rows.length)} / ${formatRowCount(result.total_row_count)} rows`
+            : `${formatRowCount(result.row_count)} rows`}
+        </span>
         <span style={{ color: "var(--text-dimmed)" }}>{"\u00B7"}</span>
         <span>{result.duration_ms}ms</span>
+        {isLoadingMore && (
+          <span style={{ color: "var(--text-dimmed)", fontSize: "var(--font-size-xs)" }}>
+            loading...
+          </span>
+        )}
         {result.truncated && (
           <span
             style={{

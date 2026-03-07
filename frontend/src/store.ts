@@ -46,9 +46,13 @@ interface MedhaStore {
 
   queryResult: QueryResult | null;
   setQueryResult: (result: QueryResult | null) => void;
+  appendQueryRows: (result: QueryResult) => void;
 
   isQuerying: boolean;
   setIsQuerying: (v: boolean) => void;
+
+  isLoadingMore: boolean;
+  setIsLoadingMore: (v: boolean) => void;
 
   lastError: string | null;
   setLastError: (err: string | null) => void;
@@ -138,9 +142,25 @@ export const useStore = create<MedhaStore>((set) => ({
 
   queryResult: null,
   setQueryResult: (result) => set({ queryResult: result }),
+  appendQueryRows: (result) =>
+    set((state) => {
+      if (!state.queryResult) return state;
+      return {
+        queryResult: {
+          ...state.queryResult,
+          rows: [...state.queryResult.rows, ...result.rows],
+          row_count: state.queryResult.rows.length + result.rows.length,
+          has_more: result.has_more,
+          offset: result.offset,
+        },
+      };
+    }),
 
   isQuerying: false,
   setIsQuerying: (v) => set({ isQuerying: v }),
+
+  isLoadingMore: false,
+  setIsLoadingMore: (v) => set({ isLoadingMore: v }),
 
   lastError: null,
   setLastError: (err) => set({ lastError: err }),

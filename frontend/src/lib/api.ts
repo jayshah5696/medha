@@ -18,6 +18,10 @@ export interface QueryResult {
   truncated: boolean;
   row_count: number;
   duration_ms: number;
+  // Pagination fields (Phase 2)
+  total_row_count?: number;
+  has_more?: boolean;
+  offset?: number;
 }
 
 export interface InlineEditResult {
@@ -97,12 +101,16 @@ export async function getSchema(
 export async function runQuery(
   query: string,
   queryId: string,
-  format: string = "json"
+  format: string = "json",
+  offset: number = 0,
+  limit?: number,
 ): Promise<QueryResult> {
+  const payload: Record<string, unknown> = { query, query_id: queryId, format, offset };
+  if (limit !== undefined) payload.limit = limit;
   return fetchJSON("/api/db/query", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ query, query_id: queryId, format }),
+    body: JSON.stringify(payload),
   });
 }
 

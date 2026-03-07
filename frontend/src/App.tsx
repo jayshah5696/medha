@@ -22,11 +22,15 @@ function App() {
     lastError,
     isChatOpen,
     setQueryResult,
+    appendQueryRows,
     setIsQuerying,
     setLastError,
     bumpHistoryVersion,
     resultPaneHeight,
     setResultPaneHeight,
+    isLoadingMore,
+    setIsLoadingMore,
+    editorContent,
   } = useStore();
 
   const [diffState, setDiffState] = useState<{
@@ -197,13 +201,15 @@ function App() {
     localStorage.setItem(BANNER_DISMISSED_KEY, "true");
   };
 
+  const PAGE_SIZE = 500;
+
   const handleExecute = useCallback(
     async (query: string) => {
       setIsQuerying(true);
       setLastError(null);
       try {
         const qid = crypto.randomUUID();
-        const result = await runQuery(query, qid);
+        const result = await runQuery(query, qid, "json", 0, PAGE_SIZE);
         setQueryResult(result);
         bumpHistoryVersion(); // BUG-4: trigger sidebar history refresh
       } catch (e) {
@@ -215,6 +221,21 @@ function App() {
     },
     [setIsQuerying, setLastError, setQueryResult, bumpHistoryVersion]
   );
+
+  const handleLoadMore = useCallback(async () => {
+    if (!queryResult?.has_more || isLoadingMore) return;
+    setIsLoadingMore(true);
+    try {
+      const nextOffset = queryResult.rows.length;
+      const qid = crypto.randomUUID();
+      const result = await runQuery(editorContent, qid, "json", nextOffset, PAGE_SIZE);
+      appendQueryRows(result);
+    } catch (e) {
+      console.error("Failed to load more rows:", e);
+    } finally {
+      setIsLoadingMore(false);
+    }
+  }, [queryResult, isLoadingMore, editorContent, setIsLoadingMore, appendQueryRows]);
 
   const handleCmdK = useCallback(
     (selectedText: string, view: EditorView) => {
@@ -436,6 +457,8 @@ function App() {
             result={queryResult}
             isQuerying={isQuerying}
             height={resultPaneHeight}
+            onLoadMore={handleLoadMore}
+            isLoadingMore={isLoadingMore}
           />
         </div>
 

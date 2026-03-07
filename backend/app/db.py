@@ -113,33 +113,69 @@ def _auto_limit(sql: str) -> str:
     return stripped
 
 
-def _execute_sync(sql: str, params: list | None = None) -> dict[str, Any]:
-    """Run a query synchronously (called via asyncio.to_thread)."""
+PAGE_SIZE_DEFAULT = 500
+PAGE_SIZE_MAX = 10000
+
+
+def _execute_sync(
+    sql: str,
+    params: list | None = None,
+    offset: int = 0,
+    limit: int | None = None,
+) -> dict[str, Any]:
+    """Run a query synchronously with server-side pagination.
+
+    Wraps the user's SQL (with safety LIMIT applied) in a subquery,
+    then counts total rows and fetches the requested page via
+    LIMIT/OFFSET on the outer query.
+    """
     _check_path_safety(sql)
     safe_sql = _auto_limit(sql)
 
+    page_limit = min(limit or PAGE_SIZE_DEFAULT, PAGE_SIZE_MAX)
+
     start = time.perf_counter()
+
+    # 1. Get total row count via COUNT(*) on the limited query
+    count_sql = f"SELECT COUNT(*) FROM ({safe_sql}) AS _medha_count"
+    count_result = conn.execute(count_sql)
+    total_row_count = count_result.fetchone()[0]
+
+    # 2. Fetch the requested page by wrapping in a subquery
+    paged_sql = (
+        f"SELECT * FROM ({safe_sql}) AS _medha_page "
+        f"LIMIT {page_limit} OFFSET {offset}"
+    )
     if params:
-        result = conn.execute(safe_sql, params)
+        result = conn.execute(paged_sql, params)
     else:
-        result = conn.execute(safe_sql)
+        result = conn.execute(paged_sql)
 
     columns = [desc[0] for desc in result.description] if result.description else []
     rows = result.fetchall()
     duration_ms = round((time.perf_counter() - start) * 1000, 2)
 
-    truncated = len(rows) >= MAX_ROWS
+    row_count = len(rows)
+    has_more = (offset + row_count) < total_row_count
+    truncated = total_row_count >= MAX_ROWS
+
     return {
         "columns": columns,
         "rows": [list(r) for r in rows],
         "truncated": truncated,
-        "row_count": len(rows),
+        "row_count": row_count,
+        "total_row_count": total_row_count,
+        "has_more": has_more,
+        "offset": offset,
         "duration_ms": duration_ms,
     }
 
 
 async def async_execute(
-    sql: str, params: list | None = None
+    sql: str,
+    params: list | None = None,
+    offset: int = 0,
+    limit: int | None = None,
 ) -> dict[str, Any]:
     """Run a DuckDB query off the event loop.
 
@@ -148,7 +184,7 @@ async def async_execute(
     """
     _check_sql_safety(sql)
     async with _get_db_lock():
-        return await asyncio.to_thread(_execute_sync, sql, params)
+        return await asyncio.to_thread(_execute_sync, sql, params, offset, limit)
 
 
 def _execute_sync_arrow(sql: str, params: list | None = None) -> bytes:

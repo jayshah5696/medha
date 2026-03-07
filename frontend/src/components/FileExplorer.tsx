@@ -289,7 +289,7 @@ export default function FileExplorer({ width, onFilePreview }: FileExplorerProps
       setLastError(null);
       try {
         const qid = crypto.randomUUID();
-        const result = await runQuery(query, qid);
+        const result = await runQuery(query, qid, "json", 0, 500);
         setQueryResult(result);
         bumpHistoryVersion();
       } catch (e) {

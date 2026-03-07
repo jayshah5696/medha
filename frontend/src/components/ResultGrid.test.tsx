@@ -103,6 +103,17 @@ describe("ResultGrid", () => {
     expect(screen.getByText("42ms")).toBeInTheDocument();
   });
 
+  it("shows loaded/total row count when pagination fields present", () => {
+    const paginatedResult = {
+      ...baseResult,
+      total_row_count: 1000,
+      has_more: true,
+      offset: 0,
+    };
+    render(<ResultGrid result={paginatedResult} isQuerying={false} height={400} />);
+    expect(screen.getByText("2 / 1,000 rows")).toBeInTheDocument();
+  });
+
   it("no truncation badge when truncated=false", () => {
     render(<ResultGrid result={baseResult} isQuerying={false} height={400} />);
     expect(screen.queryByText("TRUNCATED")).not.toBeInTheDocument();
