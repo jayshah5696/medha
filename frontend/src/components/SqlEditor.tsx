@@ -3,9 +3,10 @@ import { EditorState, StateField, StateEffect, Prec } from "@codemirror/state";
 import { EditorView, keymap, Decoration, type DecorationSet } from "@codemirror/view";
 import { sql } from "@codemirror/lang-sql";
 import { basicSetup } from "codemirror";
-import { getHistory, getHistoryEntry } from "../lib/api";
+import { getHistory, getHistoryEntry, saveQuery } from "../lib/api";
 import type { HistoryEntry } from "../lib/api";
 import { useStore } from "../store";
+import TabBar from "./TabBar";
 
 // Error line decoration effect and field
 const setErrorLine = StateEffect.define<number | null>();
@@ -313,11 +314,38 @@ export default function SqlEditor({
                 return true;
               },
             },
+            {
+              key: "Mod-s",
+              preventDefault: true,
+              run: () => {
+                const store = useStore.getState();
+                const tab = store.tabs.find((t) => t.id === store.activeTabId);
+                if (!tab) return true;
+                const content = store.editorContent;
+                saveQuery(tab.filename, content)
+                  .then(() => {
+                    store.markTabSaved(tab.id);
+                    store.addToast(`Saved ${tab.filename}`);
+                  })
+                  .catch((err) => {
+                    store.addToast(
+                      `Save failed: ${err instanceof Error ? err.message : String(err)}`
+                    );
+                  });
+                return true;
+              },
+            },
           ])
         ),
         EditorView.updateListener.of((update) => {
           if (update.docChanged) {
-            onChangeRef.current?.(update.state.doc.toString());
+            const text = update.state.doc.toString();
+            onChangeRef.current?.(text);
+            // Sync typed content to the active tab and store editorContent
+            const store = useStore.getState();
+            store.updateTabContent(store.activeTabId, text);
+            store.setEditorContent(text);
+            prevContentRef.current = text;
           }
         }),
       ],
@@ -373,6 +401,8 @@ export default function SqlEditor({
             ⌘H History
           </span>
           <span className="medha-toolbar-sep" />
+          <span className="medha-toolbar-btn">⌘S Save</span>
+          <span className="medha-toolbar-sep" />
           <span className="medha-toolbar-btn">⌘K Edit</span>
           <span className="medha-toolbar-sep" />
           <span className="medha-toolbar-btn">⌘L Chat</span>
@@ -426,6 +456,9 @@ export default function SqlEditor({
           flex-shrink: 0;
         }
       `}</style>
+
+      {/* Tab bar */}
+      <TabBar />
 
       {/* Error banner below toolbar */}
       {queryError && (

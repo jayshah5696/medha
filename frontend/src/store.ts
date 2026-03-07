@@ -1,6 +1,36 @@
 import { create } from "zustand";
 import type { FileInfo, QueryResult, ChatThreadSummary } from "./lib/api";
 
+export interface SqlTab {
+  id: string;
+  filename: string;
+  content: string;
+  savedContent: string;
+  isDirty: boolean;
+  isNew: boolean;
+}
+
+function createUntitledTab(n: number): SqlTab {
+  return {
+    id: crypto.randomUUID(),
+    filename: `untitled-${n}.sql`,
+    content: "SELECT 1;",
+    savedContent: "",
+    isDirty: true,
+    isNew: true,
+  };
+}
+
+function nextUntitledNumber(tabs: SqlTab[]): number {
+  const nums = tabs
+    .map((t) => {
+      const m = t.filename.match(/^untitled-(\d+)\.sql$/);
+      return m ? parseInt(m[1], 10) : 0;
+    })
+    .filter((n) => n > 0);
+  return nums.length === 0 ? 1 : Math.max(...nums) + 1;
+}
+
 interface MedhaStore {
   workspacePath: string;
   setWorkspacePath: (path: string) => void;
@@ -53,6 +83,15 @@ interface MedhaStore {
   agentLastQuery: string | null;
   setAgentLastQuery: (sql: string | null) => void;
 
+  // Multi-tab SQL editor
+  tabs: SqlTab[];
+  activeTabId: string;
+  openTab: (filename?: string, content?: string) => void;
+  closeTab: (id: string) => void;
+  setActiveTab: (id: string) => void;
+  updateTabContent: (id: string, content: string) => void;
+  markTabSaved: (id: string, filename?: string) => void;
+
   // FEAT-8-3: Toast notifications
   toasts: Toast[];
   addToast: (message: string) => void;
@@ -64,6 +103,8 @@ export interface Toast {
   message: string;
   createdAt: number;
 }
+
+const initialTab = createUntitledTab(1);
 
 export const useStore = create<MedhaStore>((set) => ({
   workspacePath: "",
@@ -124,6 +165,101 @@ export const useStore = create<MedhaStore>((set) => ({
 
   agentLastQuery: null,
   setAgentLastQuery: (sql) => set({ agentLastQuery: sql }),
+
+  // Multi-tab SQL editor
+  tabs: [initialTab],
+  activeTabId: initialTab.id,
+
+  openTab: (filename?: string, content?: string) =>
+    set((state) => {
+      // If opening a saved file that's already in a tab, switch to it
+      if (filename) {
+        const existing = state.tabs.find((t) => t.filename === filename);
+        if (existing) {
+          return { activeTabId: existing.id, editorContent: existing.content };
+        }
+      }
+      const isNew = !filename;
+      const n = nextUntitledNumber(state.tabs);
+      const tab: SqlTab = {
+        id: crypto.randomUUID(),
+        filename: filename || `untitled-${n}.sql`,
+        content: content ?? "SELECT 1;",
+        savedContent: content ?? "",
+        isDirty: isNew,
+        isNew,
+      };
+      return {
+        tabs: [...state.tabs, tab],
+        activeTabId: tab.id,
+        editorContent: tab.content,
+      };
+    }),
+
+  closeTab: (id) =>
+    set((state) => {
+      const idx = state.tabs.findIndex((t) => t.id === id);
+      if (idx === -1) return state;
+      const remaining = state.tabs.filter((t) => t.id !== id);
+      if (remaining.length === 0) {
+        const fresh = createUntitledTab(1);
+        return {
+          tabs: [fresh],
+          activeTabId: fresh.id,
+          editorContent: fresh.content,
+        };
+      }
+      if (state.activeTabId === id) {
+        const newActive = remaining[Math.min(idx, remaining.length - 1)];
+        return {
+          tabs: remaining,
+          activeTabId: newActive.id,
+          editorContent: newActive.content,
+        };
+      }
+      return { tabs: remaining };
+    }),
+
+  setActiveTab: (id) =>
+    set((state) => {
+      const tab = state.tabs.find((t) => t.id === id);
+      if (!tab) return state;
+      // Save current tab's content from editorContent before switching
+      const updatedTabs = state.tabs.map((t) =>
+        t.id === state.activeTabId
+          ? { ...t, content: state.editorContent, isDirty: state.editorContent !== t.savedContent }
+          : t
+      );
+      return {
+        tabs: updatedTabs,
+        activeTabId: id,
+        editorContent: tab.content,
+      };
+    }),
+
+  updateTabContent: (id, content) =>
+    set((state) => ({
+      tabs: state.tabs.map((t) =>
+        t.id === id
+          ? { ...t, content, isDirty: content !== t.savedContent }
+          : t
+      ),
+    })),
+
+  markTabSaved: (id, filename?) =>
+    set((state) => ({
+      tabs: state.tabs.map((t) =>
+        t.id === id
+          ? {
+              ...t,
+              savedContent: t.content,
+              isDirty: false,
+              isNew: false,
+              ...(filename ? { filename } : {}),
+            }
+          : t
+      ),
+    })),
 
   toasts: [],
   addToast: (message) =>

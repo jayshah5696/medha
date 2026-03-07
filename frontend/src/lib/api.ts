@@ -216,6 +216,54 @@ export async function browseDirectory(path: string = ""): Promise<BrowseResult> 
   });
 }
 
+// Saved queries API
+
+export interface SavedQuery {
+  filename: string;
+  size_bytes: number;
+}
+
+export async function listQueries(): Promise<SavedQuery[]> {
+  return fetchJSON<SavedQuery[]>("/api/queries");
+}
+
+export async function readQuery(
+  filename: string
+): Promise<{ filename: string; content: string }> {
+  return fetchJSON(`/api/queries/${encodeURIComponent(filename)}`);
+}
+
+export async function saveQuery(
+  filename: string,
+  content: string
+): Promise<void> {
+  await fetchJSON(`/api/queries/${encodeURIComponent(filename)}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ content }),
+  });
+}
+
+export async function renameQuery(
+  filename: string,
+  newName: string
+): Promise<void> {
+  await fetchJSON(
+    `/api/queries/${encodeURIComponent(filename)}/rename`,
+    {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ new_name: newName }),
+    }
+  );
+}
+
+export async function deleteQuery(filename: string): Promise<void> {
+  await fetchJSON(`/api/queries/${encodeURIComponent(filename)}`, {
+    method: "DELETE",
+  });
+}
+
 // SSE event stream for file change notifications
 
 export type FileChangeType = "added" | "modified" | "deleted";
