@@ -476,6 +476,7 @@ export default function FileExplorer({ width, onFilePreview }: FileExplorerProps
             >
               <span>select folder</span>
               <button
+                aria-label="Close folder browser"
                 onClick={() => setBrowseOpen(false)}
                 style={{
                   background: "none",
