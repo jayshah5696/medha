@@ -243,3 +243,36 @@ async def update_settings(req: Settings):
             os.environ[env_var] = key
 
     return {"ok": True}
+
+
+# --- Boot endpoint (Phase 7: state persistence) ---
+
+
+@router.get("/api/boot")
+async def boot():
+    """Single hydration payload for frontend on startup.
+
+    Returns everything the frontend needs to restore state after a
+    page reload or app restart, in one round-trip.
+    """
+    from app import db
+    from app.routers.chats import _list_threads
+    from app.routers.history import _list_history_entries
+
+    settings = await asyncio.to_thread(load_settings)
+    files = await asyncio.to_thread(scan_files) if db.workspace_root else []
+    threads = await asyncio.to_thread(_list_threads)
+    history = await asyncio.to_thread(_list_history_entries, 20)
+
+    return {
+        "workspace_path": str(db.workspace_root) if db.workspace_root else "",
+        "files": files,
+        "threads": threads,
+        "recent_history": history,
+        "settings": {
+            "model_chat": settings.model_chat,
+            "model_inline": settings.model_inline,
+            "agent_profile": settings.agent_profile,
+            "last_workspace": settings.last_workspace,
+        },
+    }

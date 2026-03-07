@@ -19,13 +19,43 @@ from app.routers import events as events_router
 from app.routers import models as models_router
 
 
+def _apply_api_keys(settings) -> None:
+    """Push saved API keys from settings to os.environ for litellm.
+
+    Only sets non-empty keys — empty strings are skipped so that
+    pre-existing values from .env are not clobbered.
+    """
+    import os
+
+    key_map = {
+        "OPENAI_API_KEY": settings.openai_api_key,
+        "OPENROUTER_API_KEY": settings.openrouter_api_key,
+        "ANTHROPIC_API_KEY": settings.anthropic_api_key,
+        "GEMINI_API_KEY": settings.gemini_api_key,
+    }
+    for env_var, value in key_map.items():
+        if value:
+            os.environ[env_var] = value
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup
-    from app.workspace import start_watcher, stop_watcher
+    from app.routers.workspace import load_settings
+    from app.workspace import set_workspace, stop_watcher
     from app import db
-    if db.workspace_root is not None:
-        start_watcher()
+
+    # 1. Load settings and push API keys to os.environ
+    settings = load_settings()
+    _apply_api_keys(settings)
+
+    # 2. Restore last workspace (silently skip if dir missing/deleted)
+    if settings.last_workspace:
+        try:
+            set_workspace(settings.last_workspace)
+        except (FileNotFoundError, NotADirectoryError, ValueError, OSError):
+            pass  # dir was moved/deleted — start with no workspace
+
     yield
     # Shutdown: stop watcher and close DuckDB
     stop_watcher()
