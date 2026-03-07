@@ -98,6 +98,30 @@ export async function runQuery(
   });
 }
 
+export async function exportQuery(
+  query: string,
+  format: "csv" | "parquet"
+): Promise<void> {
+  const res = await fetch("/api/db/export", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ query, format }),
+  });
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(`Export error ${res.status}: ${body}`);
+  }
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `export.${format}`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
 export async function cancelQuery(
   queryId: string
 ): Promise<{ ok: boolean; query_id: string }> {

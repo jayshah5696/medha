@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import {
   useReactTable,
   getCoreRowModel,
@@ -6,6 +6,7 @@ import {
   createColumnHelper,
 } from "@tanstack/react-table";
 import type { QueryResult } from "../lib/api";
+import { useStore } from "../store";
 
 interface ResultGridProps {
   result: QueryResult | null;
@@ -136,6 +137,20 @@ function ResultTable({
   columns: ReturnType<ReturnType<typeof createColumnHelper<unknown[]>>["accessor"]>[];
   height?: number;
 }) {
+  const editorContent = useStore((s) => s.editorContent);
+  const [exporting, setExporting] = useState<string | null>(null);
+
+  const handleExport = async (format: "csv" | "parquet") => {
+    setExporting(format);
+    try {
+      const { exportQuery } = await import("../lib/api");
+      await exportQuery(editorContent, format);
+    } catch (e) {
+      console.error("Export failed:", e);
+    } finally {
+      setExporting(null);
+    }
+  };
   const table = useReactTable({
     data: result.rows,
     columns,
@@ -255,6 +270,42 @@ function ResultTable({
             TRUNCATED
           </span>
         )}
+        <span style={{ marginLeft: "auto", display: "flex", gap: 4 }}>
+          <button
+            onClick={() => handleExport("csv")}
+            disabled={!!exporting}
+            style={{
+              background: "none",
+              border: "1px solid var(--border-strong)",
+              color: "var(--text-secondary)",
+              cursor: "pointer",
+              fontSize: "var(--font-size-xs)",
+              fontFamily: "var(--font-ui)",
+              padding: "2px 8px",
+              textTransform: "uppercase",
+              letterSpacing: "0.04em",
+            }}
+          >
+            {exporting === "csv" ? "..." : "CSV"}
+          </button>
+          <button
+            onClick={() => handleExport("parquet")}
+            disabled={!!exporting}
+            style={{
+              background: "none",
+              border: "1px solid var(--border-strong)",
+              color: "var(--text-secondary)",
+              cursor: "pointer",
+              fontSize: "var(--font-size-xs)",
+              fontFamily: "var(--font-ui)",
+              padding: "2px 8px",
+              textTransform: "uppercase",
+              letterSpacing: "0.04em",
+            }}
+          >
+            {exporting === "parquet" ? "..." : "Parquet"}
+          </button>
+        </span>
       </div>
     </div>
   );
