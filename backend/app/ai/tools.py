@@ -61,7 +61,8 @@ def _pop_last_query_result() -> dict[str, Any] | None:
 async def get_schema(filename: str) -> str:
     """Get column names and types for a file in the workspace."""
     try:
-        cols = await asyncio.to_thread(_get_schema, filename)
+        async with db._get_db_lock():
+            cols = await asyncio.to_thread(_get_schema, filename)
         lines = [f"  {c['name']}: {c['type']}" for c in cols]
         return f"Schema for {filename}:\n" + "\n".join(lines)
     except Exception as e:
@@ -102,6 +103,47 @@ async def sample_data(filename: str, n: int = 5) -> str:
         return f"Error sampling data: {e}"
 
 
+HITL_ROW_THRESHOLD = 1_000_000  # Trigger HITL warning above this row count
+
+
+async def _estimate_row_count(sql: str) -> int | None:
+    """Estimate how many rows a query will touch via COUNT(*).
+
+    Wraps the query in SELECT COUNT(*) FROM (...) to get an estimate.
+    Returns None if estimation fails (don't block the query).
+    """
+    def _run_count():
+        try:
+            # Strip trailing semicolons and wrap in COUNT(*)
+            stripped = sql.strip().rstrip(";")
+            count_sql = f"SELECT COUNT(*) FROM ({stripped})"
+            result = db.conn.execute(count_sql)
+            row = result.fetchone()
+            return row[0] if row else None
+        except Exception:
+            return None
+
+    async with db._get_db_lock():
+        return await asyncio.to_thread(_run_count)
+
+
+async def _explain_check(sql: str) -> str | None:
+    """Run EXPLAIN on the SQL to validate it without executing.
+
+    Returns None if the SQL is valid, or an error message string
+    if EXPLAIN fails (syntax error, invalid column, etc.).
+    """
+    def _run_explain():
+        try:
+            db.conn.execute(f"EXPLAIN {sql}")
+            return None
+        except Exception as e:
+            return str(e)
+
+    async with db._get_db_lock():
+        return await asyncio.to_thread(_run_explain)
+
+
 @tool
 async def execute_query(sql: str) -> str:
     """Run a DuckDB SQL query. Returns first 20 rows as markdown table plus row count.
@@ -109,6 +151,9 @@ async def execute_query(sql: str) -> str:
     The query is validated against the same path-safety and SQL-safety
     rules that protect the public query endpoint, so the agent cannot
     escape the workspace sandbox or invoke dangerous DuckDB operations.
+
+    Before executing, EXPLAIN is run to validate the SQL. If EXPLAIN
+    fails, the error is returned immediately without running the query.
 
     On success, the structured result (columns, rows, timing) is stashed
     in a module-level variable so the streamer can emit a query_result
@@ -122,6 +167,20 @@ async def execute_query(sql: str) -> str:
         # Enforce safety before touching DuckDB
         db._check_sql_safety(sql)
         db._check_path_safety(sql)
+
+        # EXPLAIN pre-check: validate SQL without executing (Spec §4E)
+        explain_error = await _explain_check(sql)
+        if explain_error is not None:
+            return f"Error: SQL validation failed: {explain_error}"
+
+        # HITL row estimation: warn if query scans >1M rows (Spec §4E)
+        estimated_rows = await _estimate_row_count(sql)
+        if estimated_rows is not None and estimated_rows > HITL_ROW_THRESHOLD:
+            return (
+                f"HITL warning: This query will scan approximately "
+                f"{estimated_rows:,} rows. Consider adding filters or a "
+                f"LIMIT clause to reduce the scope."
+            )
 
         def _run():
             start = time.perf_counter()

@@ -6,10 +6,10 @@ import uuid
 from pathlib import Path
 
 from fastapi import APIRouter, HTTPException
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, Response
 from pydantic import BaseModel
 
-from app.db import async_execute, active_queries, workspace_root, conn, _check_sql_safety, _check_path_safety, _get_db_lock
+from app.db import async_execute, async_execute_arrow, active_queries, workspace_root, conn, _check_sql_safety, _check_path_safety, _get_db_lock
 from app.routers.history import save_history_entry
 
 router = APIRouter()
@@ -25,6 +25,28 @@ class QueryRequest(BaseModel):
 async def run_query(req: QueryRequest):
     qid = req.query_id or str(uuid.uuid4())
 
+    # Arrow format: return Arrow IPC bytes (Spec §4D)
+    if req.format == "arrow":
+        async def _run_arrow():
+            return await async_execute_arrow(req.query)
+
+        task = asyncio.create_task(_run_arrow())
+        active_queries[qid] = task
+
+        try:
+            arrow_bytes = await task
+            return Response(
+                content=arrow_bytes,
+                media_type="application/vnd.apache.arrow.stream",
+            )
+        except asyncio.CancelledError:
+            return {"error": "Query cancelled", "query_id": qid}
+        except Exception as e:
+            raise HTTPException(status_code=400, detail=str(e))
+        finally:
+            active_queries.pop(qid, None)
+
+    # Default JSON format
     async def _run():
         return await async_execute(req.query)
 

@@ -183,7 +183,11 @@ async def stream_agent_response(
                     msgs = node_output.get("messages", [])
                     for msg in msgs:
                         tool_name = getattr(msg, "name", "unknown")
+                        tool_content = getattr(msg, "content", "")
                         yield {"type": "tool_call", "tool": tool_name, "status": "end"}
+                        # Detect HITL warning from execute_query (Spec §4E)
+                        if tool_name == "execute_query" and "HITL warning:" in tool_content:
+                            yield {"type": "hitl", "message": tool_content.replace("HITL warning: ", "")}
                     # Check if execute_query stashed a structured result
                     stashed = _pop_last_query_result()
                     if stashed:

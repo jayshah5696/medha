@@ -186,6 +186,20 @@ export default function FileExplorer({ width, onFilePreview }: FileExplorerProps
   const [historyEntries, setHistoryEntries] = useState<HistoryEntry[]>([]);
   const [fileFilter, setFileFilter] = useState("");
 
+  // File System Access API detection (Spec §14B)
+  const hasNativePicker = typeof window !== "undefined" && "showDirectoryPicker" in window;
+
+  const handleNativePicker = async () => {
+    try {
+      const dirHandle = await (window as any).showDirectoryPicker();
+      if (dirHandle && dirHandle.name) {
+        setInputPath(dirHandle.name);
+      }
+    } catch {
+      // User cancelled the picker or API error — silently ignore
+    }
+  };
+
   // Folder browser state
   const [browseOpen, setBrowseOpen] = useState(false);
   const [browsePath, setBrowsePath] = useState("");
@@ -368,6 +382,16 @@ export default function FileExplorer({ width, onFilePreview }: FileExplorerProps
             >
               {loading ? "loading..." : "configure"}
             </button>
+            {hasNativePicker && (
+              <button
+                onClick={handleNativePicker}
+                className="medha-btn"
+                title="Open native folder picker"
+                style={{ padding: "4px 8px", flexShrink: 0 }}
+              >
+                📂
+              </button>
+            )}
             <button
               onClick={() => openBrowser(inputPath || "")}
               className="medha-btn"

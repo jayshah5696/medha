@@ -29,6 +29,38 @@ async def test_get_schema_tool(tmp_workspace):
 
 
 @pytest.mark.asyncio
+async def test_get_schema_tool_missing_file(tmp_workspace):
+    """get_schema with nonexistent file returns error string, not exception."""
+    result = await get_schema.ainvoke({"filename": "nonexistent.csv"})
+    assert isinstance(result, str)
+    assert "Error" in result
+
+
+@pytest.mark.asyncio
+async def test_get_schema_acquires_db_lock(tmp_workspace):
+    """get_schema must acquire the DuckDB lock to prevent concurrent access."""
+    from unittest.mock import patch, AsyncMock
+
+    lock_acquired = False
+    original_lock = db._get_db_lock()
+
+    class TrackingLock:
+        async def __aenter__(self):
+            nonlocal lock_acquired
+            lock_acquired = True
+            return await original_lock.__aenter__()
+
+        async def __aexit__(self, *args):
+            return await original_lock.__aexit__(*args)
+
+    with patch.object(db, "_get_db_lock", return_value=TrackingLock()):
+        result = await get_schema.ainvoke({"filename": "sample.csv"})
+
+    assert lock_acquired, "get_schema must acquire db lock for thread safety"
+    assert "Schema for sample.csv" in result
+
+
+@pytest.mark.asyncio
 async def test_sample_data_tool(tmp_workspace):
     """sample_data tool returns a markdown table with rows."""
     result = await sample_data.ainvoke({"filename": "sample.csv", "n": 3})
@@ -163,3 +195,75 @@ async def test_execute_query_stash_handles_various_types(tmp_workspace):
     assert "3.14" in serialized
     assert "null" in serialized
     assert "hello" in serialized
+
+
+# --- EXPLAIN pre-check tests (Spec §4E) ---
+
+
+@pytest.mark.asyncio
+async def test_execute_query_runs_explain_before_executing(tmp_workspace):
+    """execute_query should run EXPLAIN first. If EXPLAIN fails, the actual
+    query must NOT execute and no result is stashed."""
+    from app.ai.tools import _pop_last_query_result, _explain_check
+
+    _pop_last_query_result()  # clear
+
+    # Verify _explain_check exists and catches invalid SQL
+    error = await _explain_check(
+        f"SELECT nonexistent_col FROM '{tmp_workspace}/sample.csv'"
+    )
+    assert error is not None, "EXPLAIN should catch invalid column reference"
+    assert "nonexistent_col" in error.lower() or "column" in error.lower() or "not found" in error.lower()
+
+    # Also verify through the full tool — invalid SQL must not stash a result
+    result = await execute_query.ainvoke(
+        {"sql": f"SELECT nonexistent_col FROM '{tmp_workspace}/sample.csv'"}
+    )
+    assert "Error" in result
+    stashed = _pop_last_query_result()
+    assert stashed is None
+
+
+@pytest.mark.asyncio
+async def test_execute_query_explain_passes_valid_sql(tmp_workspace):
+    """Valid SQL should pass EXPLAIN (return None) and then execute normally."""
+    from app.ai.tools import _pop_last_query_result, _explain_check
+
+    _pop_last_query_result()  # clear
+
+    # EXPLAIN should pass (return None) for valid SQL
+    error = await _explain_check(
+        f"SELECT id, name FROM '{tmp_workspace}/sample.csv' LIMIT 3"
+    )
+    assert error is None, f"EXPLAIN should pass for valid SQL, got: {error}"
+
+    # Full tool should succeed
+    result = await execute_query.ainvoke(
+        {"sql": f"SELECT id, name FROM '{tmp_workspace}/sample.csv' LIMIT 3"}
+    )
+    assert "Error" not in result
+    assert "id" in result
+    assert "Total rows:" in result
+
+    stashed = _pop_last_query_result()
+    assert stashed is not None
+    assert stashed["result"]["row_count"] == 3
+
+
+@pytest.mark.asyncio
+async def test_execute_query_explain_syntax_error(tmp_workspace):
+    """Syntax errors caught by EXPLAIN return error string, no execution."""
+    from app.ai.tools import _pop_last_query_result, _explain_check
+
+    _pop_last_query_result()  # clear
+
+    error = await _explain_check("SELEC * FORM 'sample.csv'")
+    assert error is not None, "EXPLAIN should catch syntax errors"
+
+    result = await execute_query.ainvoke(
+        {"sql": "SELEC * FORM 'sample.csv'"}
+    )
+    assert isinstance(result, str)
+    assert "Error" in result
+    stashed = _pop_last_query_result()
+    assert stashed is None

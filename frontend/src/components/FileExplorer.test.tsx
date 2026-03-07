@@ -179,4 +179,39 @@ describe("FileExplorer", () => {
     const sidebar = container.firstChild as HTMLElement;
     expect(sidebar.style.width).toBe("300px");
   });
+
+  // --- showDirectoryPicker() tests (Spec §14B) ---
+
+  it("shows native picker button when showDirectoryPicker is available", () => {
+    // Simulate Chrome/Edge with File System Access API
+    (window as any).showDirectoryPicker = vi.fn();
+    render(<FileExplorer width={220} />);
+    const nativeBtn = screen.getByTitle("Open native folder picker");
+    expect(nativeBtn).toBeInTheDocument();
+    delete (window as any).showDirectoryPicker;
+  });
+
+  it("hides native picker button when showDirectoryPicker is not available", () => {
+    // Simulate Firefox/Safari without File System Access API
+    delete (window as any).showDirectoryPicker;
+    render(<FileExplorer width={220} />);
+    const nativeBtn = screen.queryByTitle("Open native folder picker");
+    expect(nativeBtn).not.toBeInTheDocument();
+  });
+
+  it("native picker pre-fills input with folder name", async () => {
+    const mockHandle = { kind: "directory", name: "my-data-folder" };
+    (window as any).showDirectoryPicker = vi.fn().mockResolvedValue(mockHandle);
+
+    render(<FileExplorer width={220} />);
+    const nativeBtn = screen.getByTitle("Open native folder picker");
+    fireEvent.click(nativeBtn);
+
+    await waitFor(() => {
+      const input = screen.getByPlaceholderText("/path/to/data") as HTMLInputElement;
+      expect(input.value).toContain("my-data-folder");
+    });
+
+    delete (window as any).showDirectoryPicker;
+  });
 });

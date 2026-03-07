@@ -1,4 +1,4 @@
-"""AI endpoints: inline edit and chat."""
+"""AI endpoints: inline edit, chat, and agent cancellation."""
 
 import asyncio
 import json
@@ -19,6 +19,10 @@ from app.routers.chats import (
 )
 
 router = APIRouter()
+
+# Track active agent runs for cancellation support (Spec §4D).
+# Maps thread_id -> asyncio.Event. Setting the event signals cancellation.
+_active_agent_runs: dict[str, asyncio.Event] = {}
 
 
 class InlineRequest(BaseModel):
@@ -95,9 +99,18 @@ async def ai_chat(req: ChatRequest, background_tasks: BackgroundTasks):
         if thread_data:
             chat_history = thread_data.get("messages", [])
 
+    # Create a cancellation event for this run (Spec §4D)
+    cancel_event = asyncio.Event()
+
     async def event_stream():
         collected_content = ""
         thread_id = req.thread_id
+
+        # Register the run for cancellation support.
+        # Use thread_id if provided, otherwise generate a temporary key
+        # and update it once the real slug is known.
+        run_key = thread_id or f"_pending_{id(cancel_event)}"
+        _active_agent_runs[run_key] = cancel_event
 
         try:
             # stream_agent_response now yields typed dicts (BUG-11 fix)
@@ -108,6 +121,11 @@ async def ai_chat(req: ChatRequest, background_tasks: BackgroundTasks):
                 profile=req.profile,
                 model_override=req.model,
             ):
+                # Check for cancellation between chunks
+                if cancel_event.is_set():
+                    yield f'data: {json.dumps({"type": "error", "message": "Agent run cancelled."})}\n\n'
+                    return
+
                 # Track assistant content for saving
                 if event.get("type") == "token":
                     collected_content += event.get("content", "")
@@ -129,6 +147,12 @@ async def ai_chat(req: ChatRequest, background_tasks: BackgroundTasks):
                 error_msg = "LLM provider unreachable. Check network or LM Studio URL."
             yield f'data: {json.dumps({"type": "error", "message": error_msg})}\n\n'
             return
+        finally:
+            # Clean up active runs tracking
+            _active_agent_runs.pop(run_key, None)
+            # Also clean up the real thread_id key if it was updated
+            if thread_id and thread_id != run_key:
+                _active_agent_runs.pop(thread_id, None)
 
         # BUG-2 fix: Generate slug inline via LLM (with 2s timeout)
         # so the frontend gets a descriptive slug, not a timestamp fallback.
@@ -136,6 +160,9 @@ async def ai_chat(req: ChatRequest, background_tasks: BackgroundTasks):
             thread_id = await generate_slug_from_message_with_timeout(
                 req.message, timeout=2.0
             )
+            # Update the active runs key to the real slug
+            _active_agent_runs.pop(run_key, None)
+            _active_agent_runs[thread_id] = cancel_event
             yield f'data: {json.dumps({"type": "thread_id", "slug": thread_id})}\n\n'
 
         # Schedule thread persistence as a background task so the SSE
@@ -159,3 +186,18 @@ async def ai_chat(req: ChatRequest, background_tasks: BackgroundTasks):
             "Connection": "keep-alive",
         },
     )
+
+
+@router.delete("/api/ai/chat/{thread_id}")
+async def cancel_agent_run(thread_id: str):
+    """Cancel/abort an active agent run (Spec §4D).
+
+    Sets the cancellation event so the streaming generator stops
+    after the current chunk and emits an error event.
+    """
+    cancel_event = _active_agent_runs.get(thread_id)
+    if cancel_event is None:
+        raise HTTPException(status_code=404, detail="No active agent run for this thread.")
+    cancel_event.set()
+    _active_agent_runs.pop(thread_id, None)
+    return {"ok": True, "thread_id": thread_id}

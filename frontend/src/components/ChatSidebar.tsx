@@ -27,6 +27,7 @@ export default function ChatSidebar({ width }: { width: number }) {
   const [input, setInput] = useState("");
   const [isStreaming, setIsStreaming] = useState(false);
   const [toolStatuses, setToolStatuses] = useState<ToolStatus[]>([]);
+  const [hitlWarning, setHitlWarning] = useState<string | null>(null);
   const [threadsOpen, setThreadsOpen] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [chatSettings, setChatSettings] = useState<ChatSettings>({
@@ -161,6 +162,8 @@ export default function ChatSidebar({ width }: { width: number }) {
                 ...prev.filter((t) => t.tool !== event.tool),
                 { tool: event.tool, status: event.status },
               ]);
+            } else if (event.type === "hitl") {
+              setHitlWarning(event.message);
             } else if (event.type === "query_result") {
               // Agent executed a query — push result to grid but DON'T
               // overwrite the user's editor content. Store the agent's
@@ -467,6 +470,35 @@ export default function ChatSidebar({ width }: { width: number }) {
 
         <div ref={messagesEndRef} />
       </div>
+
+      {/* HITL warning banner (Spec §4E) */}
+      {hitlWarning && (
+        <div
+          style={{
+            padding: "8px 10px",
+            margin: "0 8px 4px",
+            background: "rgba(251, 191, 36, 0.08)",
+            borderLeft: "2px solid #fbbf24",
+            fontSize: "var(--font-size-xs)",
+            fontFamily: "var(--font-mono)",
+            color: "#fbbf24",
+          }}
+        >
+          <div style={{ fontWeight: 600, marginBottom: 4, textTransform: "uppercase", letterSpacing: "0.1em" }}>
+            large query warning
+          </div>
+          <div style={{ color: "var(--text-secondary)", marginBottom: 6 }}>
+            {hitlWarning}
+          </div>
+          <button
+            onClick={() => setHitlWarning(null)}
+            className="medha-btn"
+            style={{ fontSize: "var(--font-size-sm)", padding: "2px 8px" }}
+          >
+            dismiss
+          </button>
+        </div>
+      )}
 
       {/* Input */}
       <div

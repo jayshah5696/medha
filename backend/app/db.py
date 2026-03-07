@@ -1,6 +1,7 @@
 """DuckDB connection manager with path safety, SQL safety, and auto-LIMIT."""
 
 import asyncio
+import io
 import re
 import time
 import urllib.parse
@@ -8,6 +9,8 @@ from pathlib import Path
 from typing import Any
 
 import duckdb
+import pyarrow as pa
+import pyarrow.ipc as ipc
 
 conn: duckdb.DuckDBPyConnection = duckdb.connect()
 
@@ -146,3 +149,46 @@ async def async_execute(
     _check_sql_safety(sql)
     async with _get_db_lock():
         return await asyncio.to_thread(_execute_sync, sql, params)
+
+
+def _execute_sync_arrow(sql: str, params: list | None = None) -> bytes:
+    """Run a query and return Arrow IPC stream bytes (called via asyncio.to_thread)."""
+    _check_path_safety(sql)
+    safe_sql = _auto_limit(sql)
+
+    start = time.perf_counter()
+    if params:
+        result = conn.execute(safe_sql, params)
+    else:
+        result = conn.execute(safe_sql)
+
+    # DuckDB supports fetching as Arrow directly
+    arrow_table = result.fetch_arrow_table()
+    duration_ms = round((time.perf_counter() - start) * 1000, 2)
+
+    row_count = arrow_table.num_rows
+    truncated = row_count >= MAX_ROWS
+
+    # Attach metadata to the schema
+    metadata = {
+        b"row_count": str(row_count).encode(),
+        b"truncated": str(truncated).encode(),
+        b"duration_ms": str(duration_ms).encode(),
+    }
+    arrow_table = arrow_table.replace_schema_metadata(metadata)
+
+    # Serialize to IPC stream bytes
+    sink = io.BytesIO()
+    writer = ipc.new_stream(sink, arrow_table.schema)
+    writer.write_table(arrow_table)
+    writer.close()
+    return sink.getvalue()
+
+
+async def async_execute_arrow(
+    sql: str, params: list | None = None
+) -> bytes:
+    """Run a DuckDB query and return Arrow IPC stream bytes."""
+    _check_sql_safety(sql)
+    async with _get_db_lock():
+        return await asyncio.to_thread(_execute_sync_arrow, sql, params)

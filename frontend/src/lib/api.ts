@@ -98,6 +98,22 @@ export async function runQuery(
   });
 }
 
+export async function runQueryArrow(
+  query: string,
+  queryId: string
+): Promise<ArrayBuffer> {
+  const res = await fetch("/api/db/query", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ query, query_id: queryId, format: "arrow" }),
+  });
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(`API error ${res.status}: ${body}`);
+  }
+  return res.arrayBuffer();
+}
+
 export async function exportQuery(
   query: string,
   format: "csv" | "parquet"
@@ -191,6 +207,16 @@ export async function getChat(slug: string): Promise<ChatThread> {
 
 export async function deleteChat(slug: string): Promise<void> {
   await fetchJSON(`/api/chats/${encodeURIComponent(slug)}`, {
+    method: "DELETE",
+  });
+}
+
+// Agent run cancellation
+
+export async function cancelAgentRun(
+  threadId: string
+): Promise<{ ok: boolean; thread_id: string }> {
+  return fetchJSON(`/api/ai/chat/${encodeURIComponent(threadId)}`, {
     method: "DELETE",
   });
 }

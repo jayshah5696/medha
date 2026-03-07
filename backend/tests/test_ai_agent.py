@@ -14,7 +14,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from app.ai.agent import load_agent_config, stream_agent_response, _validate_profile, _agent_cache
+from app.ai.agent import load_agent_config, stream_agent_response, _validate_profile, _agent_cache, _resolve_active_files
 
 
 # ---------------------------------------------------------------------------
@@ -244,8 +244,8 @@ async def test_stream_agent_response_injects_active_files():
 
 
 @pytest.mark.asyncio
-async def test_stream_agent_response_no_active_files_no_injection():
-    """When no active_files, the message is sent unmodified."""
+async def test_stream_agent_response_no_active_files_no_workspace():
+    """When no active_files AND no workspace configured, message is unmodified."""
     captured_input = {}
 
     async def _capture_astream(input_data, **kwargs):
@@ -256,7 +256,9 @@ async def test_stream_agent_response_no_active_files_no_injection():
     mock_agent = MagicMock()
     mock_agent.astream = MagicMock(side_effect=_capture_astream)
 
-    with patch("app.ai.agent.build_agent", return_value=mock_agent):
+    with patch("app.ai.agent.build_agent", return_value=mock_agent), \
+         patch("app.ai.agent.db") as mock_db:
+        mock_db.workspace_root = None
         chunks = []
         async for chunk in stream_agent_response(
             message="show all rows",
@@ -268,6 +270,93 @@ async def test_stream_agent_response_no_active_files_no_injection():
     last_msg = captured_input["messages"][-1]
     assert last_msg.content == "show all rows"
     assert "[Active files" not in last_msg.content
+
+
+# ---------------------------------------------------------------------------
+# BUG-1: _resolve_active_files falls back to workspace files
+# ---------------------------------------------------------------------------
+
+
+def test_resolve_active_files_returns_explicit_selection():
+    """When user explicitly selects files, those are returned as-is."""
+    result = _resolve_active_files(["train.csv", "test.csv"])
+    assert result == ["train.csv", "test.csv"]
+
+
+def test_resolve_active_files_returns_empty_when_no_workspace():
+    """When no workspace is configured and no files selected, returns []."""
+    with patch("app.ai.agent.db") as mock_db:
+        mock_db.workspace_root = None
+        result = _resolve_active_files([])
+    assert result == []
+
+
+def test_resolve_active_files_falls_back_to_workspace():
+    """When active_files is empty but workspace has files, auto-populate."""
+    fake_files = [
+        {"name": "sales.csv", "path": "/tmp/ws/sales.csv"},
+        {"name": "products.parquet", "path": "/tmp/ws/products.parquet"},
+    ]
+    with patch("app.ai.agent.db") as mock_db, \
+         patch("app.ai.agent.scan_files", return_value=fake_files):
+        mock_db.workspace_root = Path("/tmp/ws")
+        result = _resolve_active_files([])
+    assert result == ["sales.csv", "products.parquet"]
+
+
+def test_resolve_active_files_falls_back_none_arg():
+    """None active_files also triggers workspace fallback."""
+    fake_files = [{"name": "data.json", "path": "/tmp/ws/data.json"}]
+    with patch("app.ai.agent.db") as mock_db, \
+         patch("app.ai.agent.scan_files", return_value=fake_files):
+        mock_db.workspace_root = Path("/tmp/ws")
+        result = _resolve_active_files(None)
+    assert result == ["data.json"]
+
+
+def test_resolve_active_files_handles_scan_error():
+    """If scan_files raises, returns [] instead of crashing."""
+    with patch("app.ai.agent.db") as mock_db, \
+         patch("app.ai.agent.scan_files", side_effect=OSError("perm denied")):
+        mock_db.workspace_root = Path("/tmp/ws")
+        result = _resolve_active_files([])
+    assert result == []
+
+
+@pytest.mark.asyncio
+async def test_stream_auto_injects_workspace_files_when_none_selected():
+    """When user selects no files but workspace has data, files are auto-injected."""
+    captured_input = {}
+
+    async def _capture_astream(input_data, **kwargs):
+        captured_input.update(input_data)
+        return
+        yield
+
+    mock_agent = MagicMock()
+    mock_agent.astream = MagicMock(side_effect=_capture_astream)
+
+    fake_files = [
+        {"name": "sales.csv", "path": "/tmp/ws/sales.csv"},
+        {"name": "inventory.parquet", "path": "/tmp/ws/inventory.parquet"},
+    ]
+    with patch("app.ai.agent.build_agent", return_value=mock_agent), \
+         patch("app.ai.agent.db") as mock_db, \
+         patch("app.ai.agent.scan_files", return_value=fake_files):
+        mock_db.workspace_root = Path("/tmp/ws")
+        chunks = []
+        async for chunk in stream_agent_response(
+            message="tell me about available data",
+            chat_history=[],
+            active_files=[],
+        ):
+            chunks.append(chunk)
+
+    last_msg = captured_input["messages"][-1]
+    assert "[Active files in workspace:" in last_msg.content
+    assert "sales.csv" in last_msg.content
+    assert "inventory.parquet" in last_msg.content
+    assert "tell me about available data" in last_msg.content
 
 
 # ---------------------------------------------------------------------------
@@ -431,3 +520,78 @@ def test_system_prompt_has_stop_condition():
     # Must mention stopping after delivering the answer
     assert "stop" in prompt or "do not call tools after" in prompt, \
         "System prompt must include stop-condition guidance"
+
+
+# ---------------------------------------------------------------------------
+# HITL: execute_query HITL warning surfaces as hitl SSE event (Spec §4E)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_stream_emits_hitl_event_on_large_query():
+    """When execute_query returns a HITL warning, the stream should emit
+    a hitl event so the frontend can show a confirmation dialog."""
+    # Build a tool message whose content contains the HITL warning
+    tool_msg = MagicMock()
+    tool_msg.name = "execute_query"
+    tool_msg.content = (
+        "HITL warning: This query will scan approximately 2,500,000 rows. "
+        "Consider adding filters or a LIMIT clause to reduce the scope."
+    )
+
+    fake_chunks = [
+        {"model": {"messages": [_make_ai_msg_with_tool_call("execute_query")]}},
+        {"tools": {"messages": [tool_msg]}},
+        {"model": {"messages": [_make_ai_msg("The query is very large. Please add a LIMIT.")]}},
+    ]
+
+    mock_agent = MagicMock()
+    mock_agent.astream = MagicMock(return_value=_fake_astream(fake_chunks))
+
+    with patch("app.ai.agent.build_agent", return_value=mock_agent), \
+         patch("app.ai.agent._pop_last_query_result", return_value=None):
+        chunks = []
+        async for chunk in stream_agent_response(
+            message="show all data",
+            chat_history=[],
+            active_files=["big_file.parquet"],
+        ):
+            chunks.append(chunk)
+
+    hitl_chunks = [c for c in chunks if c.get("type") == "hitl"]
+    assert len(hitl_chunks) == 1
+    assert "2,500,000" in hitl_chunks[0]["message"]
+    assert "rows" in hitl_chunks[0]["message"].lower()
+
+
+@pytest.mark.asyncio
+async def test_stream_no_hitl_event_for_small_query():
+    """When execute_query succeeds normally, no hitl event should be emitted."""
+    tool_msg = _make_tool_msg("execute_query")
+    # Normal tool response (no HITL warning)
+    tool_msg.content = "| id | name |\n| --- | --- |\n| 1 | Alice |\n\nTotal rows: 5"
+
+    fake_chunks = [
+        {"model": {"messages": [_make_ai_msg_with_tool_call("execute_query")]}},
+        {"tools": {"messages": [tool_msg]}},
+    ]
+
+    mock_agent = MagicMock()
+    mock_agent.astream = MagicMock(return_value=_fake_astream(fake_chunks))
+
+    stashed = {
+        "sql": "SELECT * FROM 'sample.csv'",
+        "result": {"columns": ["id", "name"], "rows": [[1, "Alice"]], "row_count": 5, "truncated": False, "duration_ms": 1.0},
+    }
+
+    with patch("app.ai.agent.build_agent", return_value=mock_agent), \
+         patch("app.ai.agent._pop_last_query_result", return_value=stashed):
+        chunks = []
+        async for chunk in stream_agent_response(
+            message="show data",
+            chat_history=[],
+        ):
+            chunks.append(chunk)
+
+    hitl_chunks = [c for c in chunks if c.get("type") == "hitl"]
+    assert len(hitl_chunks) == 0

@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 240" width="200" height="240">
+  <!-- Medha logo: hexagon + Devanagari म + wordmark -->
+  <!-- Spec §17: Flat design, no gradients, no shadows, 1:1 hex -->
+
+  <!-- Background (transparent) -->
+
+  <!-- Hexagon outline: thin 2px stroke, electric cyan, no fill -->
+  <polygon
+    points="100,10 178,45 178,115 100,150 22,115 22,45"
+    fill="none"
+    stroke="#00D8FF"
+    stroke-width="2"
+    stroke-linejoin="round"
+  />
+
+  <!-- Devanagari म centered in hexagon -->
+  <text
+    x="100"
+    y="95"
+    text-anchor="middle"
+    dominant-baseline="central"
+    font-family="'Noto Sans Devanagari', 'Devanagari MT', sans-serif"
+    font-size="72"
+    font-weight="400"
+    fill="#00D8FF"
+  >म</text>
+
+  <!-- Wordmark "medha" below in monospace lowercase -->
+  <text
+    x="100"
+    y="190"
+    text-anchor="middle"
+    font-family="'JetBrains Mono', 'SF Mono', 'Consolas', monospace"
+    font-size="24"
+    font-weight="400"
+    letter-spacing="0.15em"
+    fill="#00D8FF"
+  >medha</text>
+</svg>
