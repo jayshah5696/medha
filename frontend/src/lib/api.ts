@@ -43,9 +43,17 @@ export interface ChatThreadSummary {
   preview: string;
 }
 
+export interface ToolStepData {
+  id: string;
+  tool: string;
+  status: "running" | "done";
+  durationMs?: number;
+}
+
 export interface ChatMessage {
   role: string;
   content: string;
+  tool_steps?: ToolStepData[];
 }
 
 export interface ChatThread {

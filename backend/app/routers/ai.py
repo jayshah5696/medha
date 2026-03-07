@@ -3,6 +3,7 @@
 import asyncio
 import json
 from datetime import datetime, timezone
+from typing import Optional
 
 from fastapi import APIRouter, HTTPException, BackgroundTasks
 from fastapi.responses import StreamingResponse
@@ -47,6 +48,7 @@ async def _save_thread_background(
     model: str,
     profile: str,
     active_files: list[str],
+    tool_steps: Optional[list[dict]] = None,
 ) -> None:
     """Background task: save the thread and generate slug if needed."""
     try:
@@ -62,8 +64,11 @@ async def _save_thread_background(
             messages = existing.get("messages", [])
 
         messages.append({"role": "user", "content": req_message})
-        if collected_content:
-            messages.append({"role": "assistant", "content": collected_content})
+        if collected_content or (tool_steps and len(tool_steps) > 0):
+            assistant_msg = {"role": "assistant", "content": collected_content}
+            if tool_steps:
+                assistant_msg["tool_steps"] = tool_steps
+            messages.append(assistant_msg)
 
         _save_thread({
             "slug": thread_id,
@@ -104,6 +109,7 @@ async def ai_chat(req: ChatRequest, background_tasks: BackgroundTasks):
 
     async def event_stream():
         collected_content = ""
+        collected_tools = []
         thread_id = req.thread_id
 
         # Register the run for cancellation support.
@@ -129,6 +135,18 @@ async def ai_chat(req: ChatRequest, background_tasks: BackgroundTasks):
                 # Track assistant content for saving
                 if event.get("type") == "token":
                     collected_content += event.get("content", "")
+                elif event.get("type") == "tool_call":
+                    if event.get("status") == "start":
+                        collected_tools.append({
+                            "id": f"{event.get('tool')}-{len(collected_tools)}", 
+                            "tool": event.get("tool"), 
+                            "status": "running"
+                        })
+                    elif event.get("status") == "end":
+                        for t in reversed(collected_tools):
+                            if t["tool"] == event.get("tool") and t["status"] == "running":
+                                t["status"] = "done"
+                                break
 
                 # Format dict -> SSE at the transport layer
                 yield f"data: {json.dumps(event)}\n\n"
@@ -175,6 +193,7 @@ async def ai_chat(req: ChatRequest, background_tasks: BackgroundTasks):
             req.model,
             req.profile,
             req.active_files,
+            collected_tools,
         )
 
     return StreamingResponse(

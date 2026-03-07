@@ -16,6 +16,7 @@ interface ChatSettings {
 interface ChatMessage {
   role: "user" | "assistant";
   content: string;
+  tool_steps?: ToolStepData[];
 }
 
 export default function ChatSidebar({ width }: { width: number }) {
@@ -23,7 +24,6 @@ export default function ChatSidebar({ width }: { width: number }) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [isStreaming, setIsStreaming] = useState(false);
-  const [toolSteps, setToolSteps] = useState<ToolStepData[]>([]);
   const [hitlWarning, setHitlWarning] = useState<string | null>(null);
   const toolStartTimes = useRef<Record<string, number>>({});
   const [threadsOpen, setThreadsOpen] = useState(false);
@@ -48,7 +48,7 @@ export default function ChatSidebar({ width }: { width: number }) {
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, toolSteps]);
+  }, [messages]);
 
   const loadThreadList = async () => {
     try {
@@ -73,6 +73,7 @@ export default function ChatSidebar({ width }: { width: number }) {
         .map((m: ApiChatMessage) => ({
           role: m.role as "user" | "assistant",
           content: m.content,
+          tool_steps: m.tool_steps as ToolStepData[] | undefined,
         }));
       setMessages(msgs);
       setThreadId(slug);
@@ -91,10 +92,10 @@ export default function ChatSidebar({ width }: { width: number }) {
     if (!trimmed || isStreaming) return;
 
     const userMsg: ChatMessage = { role: "user", content: trimmed };
-    setMessages((prev) => [...prev, userMsg]);
+    const initialAssistantMsg: ChatMessage = { role: "assistant", content: "", tool_steps: [] };
+    setMessages((prev) => [...prev, userMsg, initialAssistantMsg]);
     setInput("");
     setIsStreaming(true);
-    setToolSteps([]);
     toolStartTimes.current = {};
 
     let assistantContent = "";
@@ -145,14 +146,9 @@ export default function ChatSidebar({ width }: { width: number }) {
                 const lastIdx = updated.length - 1;
                 if (lastIdx >= 0 && updated[lastIdx].role === "assistant") {
                   updated[lastIdx] = {
-                    role: "assistant",
+                    ...updated[lastIdx],
                     content: assistantContent,
                   };
-                } else {
-                  updated.push({
-                    role: "assistant",
-                    content: assistantContent,
-                  });
                 }
                 return updated;
               });
@@ -160,21 +156,38 @@ export default function ChatSidebar({ width }: { width: number }) {
               if (event.status === "start") {
                 const stepId = `${event.tool}-${Date.now()}`;
                 toolStartTimes.current[event.tool] = Date.now();
-                setToolSteps((prev) => [
-                  ...prev,
-                  { id: stepId, tool: event.tool, status: "running" },
-                ]);
+                setMessages((prev) => {
+                  const updated = [...prev];
+                  const lastIdx = updated.length - 1;
+                  if (lastIdx >= 0 && updated[lastIdx].role === "assistant") {
+                    const currentSteps = updated[lastIdx].tool_steps || [];
+                    updated[lastIdx] = {
+                      ...updated[lastIdx],
+                      tool_steps: [...currentSteps, { id: stepId, tool: event.tool, status: "running" }],
+                    };
+                  }
+                  return updated;
+                });
               } else if (event.status === "end") {
                 const startTime = toolStartTimes.current[event.tool];
                 const durationMs = startTime ? Date.now() - startTime : undefined;
                 delete toolStartTimes.current[event.tool];
-                setToolSteps((prev) =>
-                  prev.map((s) =>
-                    s.tool === event.tool && s.status === "running"
-                      ? { ...s, status: "done" as const, durationMs }
-                      : s
-                  )
-                );
+                setMessages((prev) => {
+                  const updated = [...prev];
+                  const lastIdx = updated.length - 1;
+                  if (lastIdx >= 0 && updated[lastIdx].role === "assistant") {
+                    const currentSteps = updated[lastIdx].tool_steps || [];
+                    updated[lastIdx] = {
+                      ...updated[lastIdx],
+                      tool_steps: currentSteps.map((s) =>
+                        s.tool === event.tool && s.status === "running"
+                          ? { ...s, status: "done" as const, durationMs }
+                          : s
+                      ),
+                    };
+                  }
+                  return updated;
+                });
               }
             } else if (event.type === "hitl") {
               setHitlWarning(event.message);
@@ -196,14 +209,9 @@ export default function ChatSidebar({ width }: { width: number }) {
                 const lastIdx = updated.length - 1;
                 if (lastIdx >= 0 && updated[lastIdx].role === "assistant") {
                   updated[lastIdx] = {
-                    role: "assistant",
+                    ...updated[lastIdx],
                     content: assistantContent,
                   };
-                } else {
-                  updated.push({
-                    role: "assistant",
-                    content: assistantContent,
-                  });
                 }
                 return updated;
               });
@@ -224,11 +232,20 @@ export default function ChatSidebar({ width }: { width: number }) {
     } finally {
       setIsStreaming(false);
       // Mark any remaining running steps as done
-      setToolSteps((prev) =>
-        prev.map((s) =>
-          s.status === "running" ? { ...s, status: "done" as const } : s
-        )
-      );
+      setMessages((prev) => {
+        const updated = [...prev];
+        const lastIdx = updated.length - 1;
+        if (lastIdx >= 0 && updated[lastIdx].role === "assistant") {
+          const currentSteps = updated[lastIdx].tool_steps || [];
+          updated[lastIdx] = {
+            ...updated[lastIdx],
+            tool_steps: currentSteps.map((s) =>
+              s.status === "running" ? { ...s, status: "done" as const } : s
+            ),
+          };
+        }
+        return updated;
+      });
     }
   };
 
@@ -376,22 +393,13 @@ export default function ChatSidebar({ width }: { width: number }) {
         )}
 
         {messages.map((msg, i) => {
-          // Determine if the thinking block should render before this message.
-          // It goes right before the LAST assistant message (the response that
-          // follows the tool calls). During streaming, it goes before the
-          // currently-streaming assistant message.
-          const isLastAssistant =
-            msg.role === "assistant" &&
-            toolSteps.length > 0 &&
-            // Only show before the last assistant message in the sequence
-            (i === messages.length - 1 ||
-              !messages.slice(i + 1).some((m) => m.role === "assistant"));
+          const isStreamingThisMessage = isStreaming && i === messages.length - 1;
+          const hasSteps = msg.tool_steps && msg.tool_steps.length > 0;
 
           return (
             <div key={i}>
-              {/* ThinkingBlock renders before the assistant response */}
-              {isLastAssistant && (
-                <ThinkingBlock steps={toolSteps} isStreaming={isStreaming} />
+              {hasSteps && (
+                <ThinkingBlock steps={msg.tool_steps!} isStreaming={isStreamingThisMessage} />
               )}
 
               <div
@@ -487,13 +495,6 @@ export default function ChatSidebar({ width }: { width: number }) {
             </div>
           );
         })}
-
-        {/* Show thinking block at the end when tools are running but no assistant message yet */}
-        {toolSteps.length > 0 &&
-          !messages.some((m) => m.role === "assistant") &&
-          isStreaming && (
-            <ThinkingBlock steps={toolSteps} isStreaming={isStreaming} />
-          )}
 
         <div ref={messagesEndRef} />
       </div>

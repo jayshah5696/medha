@@ -29,7 +29,39 @@ async def test_slug_generation_fallback():
 
 
 @pytest.mark.asyncio
-async def test_chat_save_and_load(client):
+async def test_chat_save_and_load_with_tool_steps(client):
+    """POST /api/chats/{slug}/save with tool_steps persists them correctly."""
+    slug = "test-thread-tools"
+    save_resp = await client.post(
+        f"/api/chats/{slug}/save",
+        json={
+            "model": "openai/gpt-4o-mini",
+            "messages": [
+                {"role": "user", "content": "What is revenue?"},
+                {
+                    "role": "assistant",
+                    "content": "Revenue is total income.",
+                    "tool_steps": [
+                        {"id": "step1", "tool": "get_schema", "status": "done", "durationMs": 150}
+                    ]
+                },
+            ],
+        },
+    )
+    assert save_resp.status_code == 200
+
+    get_resp = await client.get(f"/api/chats/{slug}")
+    assert get_resp.status_code == 200
+    data = get_resp.json()
+    assert data["slug"] == slug
+    assert len(data["messages"]) == 2
+    
+    assistant_msg = data["messages"][1]
+    assert assistant_msg["role"] == "assistant"
+    assert "tool_steps" in assistant_msg
+    assert len(assistant_msg["tool_steps"]) == 1
+    assert assistant_msg["tool_steps"][0]["tool"] == "get_schema"
+
     """POST /api/chats/{slug}/save then GET /api/chats/{slug} returns messages."""
     slug = "test-thread-one"
     save_resp = await client.post(

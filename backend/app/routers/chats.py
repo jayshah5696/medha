@@ -26,6 +26,7 @@ def _validate_slug(slug: str) -> str:
 class ChatMessage(BaseModel):
     role: str
     content: str
+    tool_steps: Optional[list[dict]] = None
 
 
 class ChatThread(BaseModel):
@@ -197,7 +198,7 @@ async def save_chat(slug: str, req: SaveThreadRequest):
         "model": req.model,
         "agent_profile": req.agent_profile,
         "active_files": req.active_files,
-        "messages": [m.model_dump() for m in req.messages],
+        "messages": [m.model_dump(exclude_none=True) for m in req.messages],
     }
     await asyncio.to_thread(_save_thread, data)
     return {"ok": True, "slug": slug}
