@@ -1,3 +1,4 @@
+import "./ContextPill.css";
 import { useEffect, useRef } from "react";
 import { useStore } from "../store";
 
@@ -31,50 +32,19 @@ export default function ContextPill({ inputText }: ContextPillProps) {
   if (activeFiles.length === 0) return null;
 
   return (
-    <div
-      style={{
-        display: "flex",
-        flexWrap: "wrap",
-        gap: 4,
-        padding: "4px 0",
-      }}
-    >
+    <div className="cp-root">
       {activeFiles.map((name) => {
         const basename = name.includes("/") ? name.split("/").pop() : name;
         return (
         <span
           key={name}
           title={`schema: ${name}`}
-          style={{
-            display: "inline-flex",
-            alignItems: "center",
-            gap: 4,
-            padding: "1px 6px",
-            fontSize: 'var(--font-size-xs)',
-            fontFamily: "var(--font-mono)",
-            color: "var(--accent)",
-            background: "var(--bg-tertiary)",
-            border: "1px solid var(--accent-dimmed)",
-            lineHeight: "18px",
-            whiteSpace: "nowrap",
-            maxWidth: "100%",
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-          }}
+          className="cp-pill"
         >
           schema: {basename}
           <button
             onClick={() => removeActiveFile(name)}
-            style={{
-              background: "none",
-              border: "none",
-              color: "var(--text-dimmed)",
-              cursor: "pointer",
-              fontSize: 'var(--font-size-xs)',
-              padding: 0,
-              lineHeight: 1,
-              fontFamily: "var(--font-mono)",
-            }}
+            className="cp-remove"
           >
             x
           </button>

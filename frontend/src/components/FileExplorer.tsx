@@ -4,6 +4,7 @@ import { useStore } from "../store";
 import { configureWorkspace, getFiles, getHistory, getHistoryEntry, clearHistory, browseDirectory, runQuery } from "../lib/api";
 import type { HistoryEntry, DirEntry } from "../lib/api";
 import SidebarSection from "./SidebarSection";
+import "./FileExplorer.css";
 
 function formatBytes(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
@@ -70,28 +71,14 @@ function FileTreeItem({
       <>
         <div
           onClick={() => setExpanded(!expanded)}
-          style={{
-            padding: "4px 12px",
-            paddingLeft: 12 + indent,
-            fontSize: "var(--font-size-base)",
-            cursor: "pointer",
-            display: "flex",
-            alignItems: "center",
-            gap: 4,
-            fontFamily: "var(--font-mono)",
-            color: "var(--text-secondary)",
-            userSelect: "none",
-          }}
+          className="fe-tree-folder"
+          style={{ paddingLeft: 12 + indent }}
         >
-          <span style={{ fontSize: "var(--font-size-xs)", width: 12 }}>
+          <span className="fe-tree-chevron">
             {expanded ? "\u25BC" : "\u25B6"}
           </span>
           <span
-            style={{
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-              whiteSpace: "nowrap",
-            }}
+            className="fe-tree-folder-name"
             title={node.name}
           >
             {node.name}/
@@ -116,41 +103,16 @@ function FileTreeItem({
   return (
     <div
       onClick={(e) => onFileClick(node.fullPath!, e)}
-      style={{
-        padding: "6px 12px",
-        paddingLeft: 12 + indent,
-        fontSize: "var(--font-size-base)",
-        cursor: "pointer",
-        display: "flex",
-        justifyContent: "space-between",
-        alignItems: "center",
-        background: isActive ? "rgba(0, 216, 255, 0.1)" : "transparent",
-        borderLeft: isActive ? "3px solid var(--accent)" : "3px solid transparent",
-        fontFamily: "var(--font-mono)",
-        lineHeight: "24px",
-      }}
+      className={`fe-file ${isActive ? "fe-file--active" : ""}`}
+      style={{ paddingLeft: 12 + indent }}
     >
       <span
-        style={{
-          overflow: "hidden",
-          textOverflow: "ellipsis",
-          whiteSpace: "nowrap",
-          color: isActive ? "var(--text-primary)" : "var(--text-secondary)",
-          fontWeight: isActive ? 600 : 400,
-        }}
+        className="fe-file-name"
         title={node.fullPath}
       >
         {node.name}
       </span>
-      <span
-        style={{
-          fontSize: "var(--font-size-xs)",
-          color: "var(--text-dimmed)",
-          marginLeft: 8,
-          flexShrink: 0,
-          fontFamily: "var(--font-ui)",
-        }}
-      >
+      <span className="fe-file-size">
         {formatBytes(node.size_bytes!)}
       </span>
     </div>
@@ -340,33 +302,14 @@ export default function FileExplorer({ width, onFilePreview }: FileExplorerProps
 
   return (
     <div
-      style={{
-        width: width,
-        minWidth: width,
-        background: "var(--bg-secondary)",
-        display: "flex",
-        flexDirection: "column",
-        height: "100%",
-        overflow: "hidden",
-      }}
+      className="fe-root"
+      style={{ width: width, minWidth: width }}
     >
       {/* Workspace config section */}
       <SidebarSection title="workspace">
-        <div style={{ padding: "4px 12px 10px" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 0 }}>
-            <span
-              style={{
-                fontSize: 'var(--font-size-md)',
-                color: "var(--text-dimmed)",
-                padding: "7px 6px 7px 8px",
-                background: "var(--bg-tertiary)",
-                border: "1px solid var(--border)",
-                borderRight: "none",
-                borderRadius: 0,
-                fontFamily: "var(--font-mono)",
-                lineHeight: 1,
-              }}
-            >
+        <div className="fe-workspace-body">
+          <div className="fe-workspace-row">
+            <span className="fe-workspace-prompt">
               &gt;
             </span>
             <input
@@ -375,36 +318,22 @@ export default function FileExplorer({ width, onFilePreview }: FileExplorerProps
               onChange={(e) => setInputPath(e.target.value)}
               placeholder="/path/to/data"
               onKeyDown={(e) => e.key === "Enter" && handleConfigure()}
-              style={{
-                flex: 1,
-                padding: "7px 8px",
-                fontSize: 'var(--font-size-base)',
-                background: "var(--bg-tertiary)",
-                border: "1px solid var(--border)",
-                borderRadius: 0,
-                color: "var(--text-primary)",
-                outline: "none",
-                fontFamily: "var(--font-mono)",
-                width: "100%",
-                minWidth: 0,
-              }}
+              className="fe-workspace-input"
             />
           </div>
-          <div style={{ display: "flex", gap: 4, marginTop: 6 }}>
+          <div className="fe-workspace-actions">
             <button
               onClick={handleConfigure}
               disabled={loading}
-              className="medha-btn"
-              style={{ flex: 1 }}
+              className="medha-btn fe-btn-configure"
             >
               {loading ? "loading..." : "configure"}
             </button>
             {hasNativePicker && (
               <button
                 onClick={handleNativePicker}
-                className="medha-btn"
+                className="medha-btn fe-btn-icon"
                 title="Open native folder picker"
-                style={{ padding: "4px 8px", flexShrink: 0 }}
               >
                 <FolderOpen size={14} />
                
@@ -412,9 +341,8 @@ export default function FileExplorer({ width, onFilePreview }: FileExplorerProps
             )}
             <button
               onClick={() => openBrowser(inputPath || "")}
-              className="medha-btn"
+              className="medha-btn fe-btn-icon"
               title="Browse folders"
-              style={{ padding: "4px 8px", flexShrink: 0 }}
             >
                <FolderClosed size={14} />
              
@@ -424,28 +352,15 @@ export default function FileExplorer({ width, onFilePreview }: FileExplorerProps
       </SidebarSection>
 
       {/* File list */}
-      <div
-        style={{
-          flex: 1,
-          overflow: "auto",
-          padding: "4px 0",
-        }}
-      >
-        <div style={{ padding: "4px 12px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <span style={{ fontSize: "var(--font-size-xs)", textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--text-dimmed)" }}>
+      <div className="fe-file-list">
+        <div className="fe-file-header">
+          <span className="fe-file-header-label">
             Files
           </span>
           {activeFiles.length > 0 && (
             <button
               onClick={clearActiveFiles}
-              style={{
-                fontSize: "var(--font-size-xs)",
-                color: "var(--accent)",
-                background: "none",
-                border: "1px solid var(--accent)",
-                cursor: "pointer",
-                padding: "2px 6px",
-              }}
+              className="fe-clear-btn"
             >
               Clear selected
             </button>
@@ -454,39 +369,20 @@ export default function FileExplorer({ width, onFilePreview }: FileExplorerProps
 
         {/* File filter input (only shown when >10 files) */}
         {showFilter && (
-          <div style={{ padding: "4px 12px 4px" }}>
+          <div className="fe-filter-wrap">
             <input
               type="text"
               value={fileFilter}
               onChange={(e) => setFileFilter(e.target.value)}
               placeholder="filter files..."
-              style={{
-                width: "100%",
-                padding: "5px 8px",
-                fontSize: 'var(--font-size-base)',
-                background: "var(--bg-tertiary)",
-                border: "1px solid var(--border)",
-                borderRadius: 0,
-                color: "var(--text-primary)",
-                outline: "none",
-                fontFamily: "var(--font-mono)",
-              }}
+              className="fe-filter-input"
             />
           </div>
         )}
 
         {files.length === 0 && (
-          <div
-            style={{
-              padding: "24px 16px",
-              fontSize: 'var(--font-size-base)',
-              color: "var(--text-dimmed)",
-              textAlign: "center",
-              fontFamily: "var(--font-mono)",
-              lineHeight: 1.6,
-            }}
-          >
-            <div style={{ fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 6 }}>
+          <div className="fe-empty-state">
+            <div className="fe-empty-state-title">
               no files
             </div>
             <div>
@@ -512,42 +408,15 @@ export default function FileExplorer({ width, onFilePreview }: FileExplorerProps
                 <div
                   key={f.name}
                   onClick={(e) => handleFilePreview(f.name, e)}
-                  style={{
-                    padding: "6px 12px",
-                    fontSize: 'var(--font-size-base)',
-                    cursor: "pointer",
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                    background: isActive ? "rgba(0, 216, 255, 0.1)" : "transparent",
-                    borderLeft: isActive
-                      ? "3px solid var(--accent)"
-                      : "3px solid transparent",
-                    fontFamily: "var(--font-mono)",
-                    lineHeight: "24px",
-                  }}
+                  className={`fe-file ${isActive ? "fe-file--active" : ""}`}
                 >
                   <span
-                    style={{
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                      whiteSpace: "nowrap",
-                      color: isActive ? "var(--text-primary)" : "var(--text-secondary)",
-                      fontWeight: isActive ? 600 : 400,
-                    }}
+                    className="fe-file-name"
                     title={f.name}
                   >
                     {f.name}
                   </span>
-                  <span
-                    style={{
-                      fontSize: 'var(--font-size-xs)',
-                      color: "var(--text-dimmed)",
-                      marginLeft: 8,
-                      flexShrink: 0,
-                      fontFamily: "var(--font-ui)",
-                    }}
-                  >
+                  <span className="fe-file-size">
                     {formatBytes(f.size_bytes)}
                   </span>
                 </div>
@@ -563,8 +432,7 @@ export default function FileExplorer({ width, onFilePreview }: FileExplorerProps
             historyEntries.length > 0 ? (
               <button
                 onClick={handleClearHistory}
-                className="medha-btn"
-                style={{ fontSize: 'var(--font-size-sm)', padding: "1px 8px" }}
+                className="medha-btn fe-history-clear-btn"
               >
                 clear
               </button>
@@ -573,15 +441,7 @@ export default function FileExplorer({ width, onFilePreview }: FileExplorerProps
         >
             <div>
               {historyEntries.length === 0 && (
-                <div
-                  style={{
-                    padding: "8px 12px",
-                    fontSize: 'var(--font-size-base)',
-                    color: "var(--text-dimmed)",
-                    fontFamily: "var(--font-ui)",
-                    textAlign: "center",
-                  }}
-                >
+                <div className="fe-history-empty">
                   no history
                 </div>
               )}
@@ -593,33 +453,16 @@ export default function FileExplorer({ width, onFilePreview }: FileExplorerProps
                   <div
                     key={entry.id}
                     onClick={() => handleHistoryClick(entry)}
-                    style={{
-                      padding: "5px 12px",
-                      fontSize: 'var(--font-size-base)',
-                      cursor: "pointer",
-                      display: "flex",
-                      justifyContent: "space-between",
-                      alignItems: "center",
-                      fontFamily: "var(--font-mono)",
-                      gap: 6,
-                    }}
+                    className="fe-history-entry"
                     title={`${entry.source === "agent" ? "Agent" : "User"} ${entry.preview}`}
                   >
-                    <span style={{ flexShrink: 0, display: "flex", alignItems: "center" }}>
+                    <span className="fe-history-icon">
                       <SourceIcon size={11} />
                     </span>
-                    <span style={{ color: "var(--text-secondary)", flexShrink: 0, fontSize: 'var(--font-size-xs)' }}>
+                    <span className="fe-history-time">
                       {timePart}
                     </span>
-                    <span
-                      style={{
-                        color: "var(--text-dimmed)",
-                        overflow: "hidden",
-                        textOverflow: "ellipsis",
-                        whiteSpace: "nowrap",
-                        fontSize: 'var(--font-size-xs)',
-                      }}
-                    >
+                    <span className="fe-history-preview">
                       {previewText}
                     </span>
                   </div>
@@ -632,58 +475,19 @@ export default function FileExplorer({ width, onFilePreview }: FileExplorerProps
       {/* Folder browser overlay */}
       {browseOpen && (
         <div
-          style={{
-            position: "fixed",
-            inset: 0,
-            background: "rgba(0,0,0,0.5)",
-            zIndex: 100,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-          }}
+          className="fe-browse-overlay"
           onClick={() => setBrowseOpen(false)}
         >
           <div
             onClick={(e) => e.stopPropagation()}
-            style={{
-              width: 480,
-              maxWidth: "90vw",
-              maxHeight: "70vh",
-              background: "var(--bg-elevated, var(--bg-secondary))",
-              border: "1px solid var(--border)",
-              display: "flex",
-              flexDirection: "column",
-              overflow: "hidden",
-              boxShadow: "0 8px 32px rgba(0,0,0,0.5)",
-            }}
+            className="fe-browse-modal"
           >
             {/* Header */}
-            <div
-              style={{
-                padding: "10px 14px",
-                borderBottom: "1px solid var(--border)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                fontSize: 'var(--font-size-sm)',
-                fontFamily: "var(--font-ui)",
-                textTransform: "uppercase",
-                letterSpacing: "0.06em",
-                color: "var(--text-dimmed)",
-              }}
-            >
+            <div className="fe-browse-header">
               <span>select folder</span>
               <button
                 onClick={() => setBrowseOpen(false)}
-                style={{
-                  background: "none",
-                  border: "none",
-                  color: "var(--text-dimmed)",
-                  cursor: "pointer",
-                  fontSize: 'var(--font-size-base)',
-                  fontFamily: "var(--font-mono)",
-                  padding: "0 2px",
-                }}
+                className="fe-browse-close-btn"
               >
                 esc
               </button>
@@ -691,25 +495,16 @@ export default function FileExplorer({ width, onFilePreview }: FileExplorerProps
 
             {/* Current path */}
             <div
-              style={{
-                padding: "8px 14px",
-                fontSize: 'var(--font-size-base)',
-                fontFamily: "var(--font-mono)",
-                color: "var(--accent)",
-                borderBottom: "1px solid var(--border)",
-                overflow: "hidden",
-                textOverflow: "ellipsis",
-                whiteSpace: "nowrap",
-              }}
+              className="fe-browse-path"
               title={browsePath}
             >
               {browsePath}
             </div>
 
             {/* Directory list */}
-            <div style={{ flex: 1, overflow: "auto" }}>
+            <div className="fe-browse-list">
               {browseLoading && (
-                <div style={{ padding: 16, fontSize: 'var(--font-size-base)', color: "var(--text-dimmed)", textAlign: "center", fontFamily: "var(--font-ui)" }}>
+                <div className="fe-browse-loading">
                   loading...
                 </div>
               )}
@@ -717,23 +512,7 @@ export default function FileExplorer({ width, onFilePreview }: FileExplorerProps
               {!browseLoading && browseParent && (
                 <div
                   onClick={() => openBrowser(browseParent!)}
-                  style={{
-                    padding: "6px 14px",
-                    fontSize: 'var(--font-size-base)',
-                    cursor: "pointer",
-                    fontFamily: "var(--font-mono)",
-                    color: "var(--text-secondary)",
-                    borderBottom: "1px solid var(--border)",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 6,
-                  }}
-                  onMouseEnter={(e) => {
-                    (e.currentTarget as HTMLDivElement).style.background = "var(--bg-tertiary)";
-                  }}
-                  onMouseLeave={(e) => {
-                    (e.currentTarget as HTMLDivElement).style.background = "transparent";
-                  }}
+                  className="fe-browse-parent"
                 >
                   <ArrowUp size={14} />
                   <span>..</span>
@@ -749,72 +528,35 @@ export default function FileExplorer({ width, onFilePreview }: FileExplorerProps
                         openBrowser(browsePath + "/" + entry.name);
                       }
                     }}
-                    style={{
-                      padding: "5px 14px",
-                      fontSize: 'var(--font-size-base)',
-                      cursor: entry.is_dir ? "pointer" : "default",
-                      fontFamily: "var(--font-mono)",
-                      color: entry.is_dir ? "var(--text-primary)" : "var(--text-dimmed)",
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 8,
-                    }}
-                    onMouseEnter={(e) => {
-                      if (entry.is_dir) (e.currentTarget as HTMLDivElement).style.background = "var(--bg-tertiary)";
-                    }}
-                    onMouseLeave={(e) => {
-                      (e.currentTarget as HTMLDivElement).style.background = "transparent";
-                    }}
+                    className={`fe-browse-entry ${entry.is_dir ? "fe-browse-entry--dir" : "fe-browse-entry--file"}`}
                   >
-                    <span style={{ width: 20, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                    <span className="fe-browse-entry-icon">
                       {entry.is_dir ? <FolderClosed size={14} /> : <FileText size={14} />}
                     </span>
-                    <span
-                      style={{
-                        overflow: "hidden",
-                        textOverflow: "ellipsis",
-                        whiteSpace: "nowrap",
-                      }}
-                    >
+                    <span className="fe-browse-entry-name">
                       {entry.name}
                     </span>
                   </div>
                 ))}
 
               {!browseLoading && browseEntries.length === 0 && (
-                <div style={{ padding: 16, fontSize: 'var(--font-size-base)', color: "var(--text-dimmed)", textAlign: "center", fontFamily: "var(--font-ui)" }}>
+                <div className="fe-browse-empty">
                   empty directory
                 </div>
               )}
             </div>
 
             {/* Footer: select this folder */}
-            <div
-              style={{
-                padding: "10px 14px",
-                borderTop: "1px solid var(--border)",
-                display: "flex",
-                justifyContent: "flex-end",
-                gap: 8,
-              }}
-            >
+            <div className="fe-browse-footer">
               <button
                 onClick={() => setBrowseOpen(false)}
-                className="medha-btn"
-                style={{ fontSize: 'var(--font-size-sm)', padding: "5px 12px" }}
+                className="medha-btn fe-browse-cancel-btn"
               >
                 cancel
               </button>
               <button
                 onClick={() => handleBrowseSelect(browsePath)}
-                className="medha-btn"
-                style={{
-                  fontSize: 'var(--font-size-sm)',
-                  padding: "5px 12px",
-                  background: "var(--accent)",
-                  color: "var(--bg-primary)",
-                  fontWeight: 600,
-                }}
+                className="medha-btn fe-browse-select-btn"
               >
                 select this folder
               </button>

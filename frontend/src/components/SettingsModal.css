@@ -1,0 +1,211 @@
+/* SettingsModal — extracted inline styles */
+
+/* Overlay backdrop */
+.sm-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.65);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+/* Modal panel */
+.sm-panel {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-strong);
+  width: 440px;
+  max-width: 90vw;
+  max-height: 88vh;
+  overflow: auto;
+  padding: 18px 20px;
+}
+
+/* Header row */
+.sm-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 18px;
+}
+
+/* Header title */
+.sm-header-title {
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  color: var(--accent);
+  font-family: var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+/* Close button */
+.sm-close-btn {
+  background: none;
+  border: none;
+  color: var(--text-dimmed);
+  cursor: pointer;
+  font-size: var(--font-size-lg);
+  line-height: 1;
+  padding: 2px;
+}
+
+.sm-close-btn:hover {
+  color: var(--text-primary);
+}
+
+/* Section title */
+.sm-section-title {
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  margin-bottom: 10px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--border-strong);
+}
+
+/* Section wrapper */
+.sm-section {
+  margin-bottom: 20px;
+}
+
+/* Row */
+.sm-row {
+  margin-bottom: 12px;
+}
+
+/* Label */
+.sm-label {
+  display: block;
+  font-size: var(--font-size-sm);
+  color: var(--text-dimmed);
+  font-family: var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 4px;
+}
+
+/* Input */
+.sm-input {
+  width: 100%;
+  padding: 5px 8px;
+  font-size: var(--font-size-base);
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border);
+  border-radius: 0;
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  outline: none;
+  box-sizing: border-box;
+}
+
+.sm-input:focus {
+  border-color: var(--accent);
+}
+
+/* Select — same as input */
+.sm-select {
+  width: 100%;
+  padding: 5px 8px;
+  font-size: var(--font-size-base);
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border);
+  border-radius: 0;
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  outline: none;
+  box-sizing: border-box;
+}
+
+.sm-select:focus {
+  border-color: var(--accent);
+}
+
+/* ModelPicker wrapper */
+.sm-model-picker {
+  margin-bottom: 16px;
+}
+
+/* Provider + Fetch row */
+.sm-provider-row {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 6px;
+  align-items: center;
+}
+
+/* Provider select within picker — fills available space */
+.sm-provider-select {
+  flex: 1;
+}
+
+/* Fetch button */
+.sm-fetch-btn {
+  flex-shrink: 0;
+  font-size: var(--font-size-sm);
+  padding: 4px 10px;
+}
+
+/* Status dot */
+.sm-status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  transition: background 0.2s;
+}
+
+/* Error message */
+.sm-error-msg {
+  font-size: var(--font-size-xs);
+  color: var(--error);
+  margin-top: 4px;
+  font-family: var(--font-mono);
+}
+
+/* Warning box (missing credential) */
+.sm-warning-box {
+  font-size: var(--font-size-xs);
+  color: var(--warning);
+  font-family: var(--font-mono);
+  margin-bottom: 6px;
+  padding: 3px 6px;
+  background: rgba(245, 166, 35, 0.06);
+  border: 1px solid rgba(245, 166, 35, 0.15);
+}
+
+/* Warning icon alignment */
+.sm-warning-icon {
+  margin-right: 4px;
+  vertical-align: middle;
+}
+
+/* Save row */
+.sm-save-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* Save button padding override */
+.sm-save-btn {
+  padding: 5px 18px;
+}
+
+/* Status text */
+.sm-status-text {
+  font-size: var(--font-size-xs);
+  font-family: var(--font-mono);
+}
+
+.sm-status-saved {
+  color: var(--success);
+}
+
+.sm-status-error {
+  color: var(--error);
+}

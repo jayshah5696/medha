@@ -1,0 +1,189 @@
+/* ResultGrid — co-located styles
+   All class names prefixed with rg- to avoid collisions.
+   Uses CSS custom properties from index.css exclusively. */
+
+/* ── Placeholder / empty states ─────────────────────────────── */
+
+.rg-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-dimmed);
+  font-size: var(--font-size-lg);
+  padding: 24px;
+  background: var(--bg-primary);
+  font-family: var(--font-ui);
+}
+
+.rg-placeholder-mono {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-dimmed);
+  font-size: var(--font-size-lg);
+  padding: 24px;
+  background: var(--bg-primary);
+  font-family: var(--font-mono);
+}
+
+.rg-zero-duration {
+  margin-top: 4px;
+  font-size: var(--font-size-base);
+  color: var(--text-dimmed);
+  font-family: var(--font-ui);
+}
+
+/* ── Cell value variants ────────────────────────────────────── */
+
+.rg-cell-null {
+  color: var(--text-dimmed);
+  font-style: italic;
+}
+
+.rg-cell-json {
+  color: var(--text-secondary);
+  font-size: var(--font-size-xs);
+}
+
+/* ── Container ──────────────────────────────────────────────── */
+
+.rg-container {
+  overflow: hidden;
+  background: var(--bg-primary);
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── Table header ───────────────────────────────────────────── */
+
+.rg-table {
+  font-size: var(--font-size-md);
+  font-family: var(--font-mono);
+}
+
+.rg-header-row {
+  display: grid;
+  border-bottom: 1px solid var(--border-strong);
+  background: var(--bg-secondary);
+}
+
+.rg-column-header {
+  padding: 6px 14px;
+  text-align: left;
+  color: var(--text-dimmed);
+  font-weight: 500;
+  font-size: var(--font-size-base);
+  white-space: nowrap;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-family: var(--font-ui);
+  height: var(--row-height);
+  line-height: var(--row-height);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ── Scroll container ───────────────────────────────────────── */
+
+.rg-scroll {
+  flex: 1;
+  overflow: auto;
+}
+
+/* ── Virtualized body ───────────────────────────────────────── */
+
+.rg-body {
+  position: relative;
+  font-size: var(--font-size-md);
+  font-family: var(--font-mono);
+}
+
+/* ── Virtual row ────────────────────────────────────────────── */
+
+.rg-row {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: var(--row-height);
+  display: grid;
+}
+
+.rg-row-even {
+  background: var(--bg-primary);
+}
+
+.rg-row-odd {
+  background: var(--bg-row-alt);
+}
+
+/* ── Data cell ──────────────────────────────────────────────── */
+
+.rg-cell {
+  padding: 0 10px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  height: var(--row-height);
+  line-height: var(--row-height);
+  color: var(--text-primary);
+}
+
+/* ── Status bar ─────────────────────────────────────────────── */
+
+.rg-status {
+  padding: 0 14px;
+  font-size: var(--font-size-base);
+  color: var(--text-dimmed);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border-top: 1px solid var(--border);
+  background: var(--bg-secondary);
+  height: 30px;
+  min-height: 30px;
+  font-family: var(--font-ui);
+  flex-shrink: 0;
+}
+
+.rg-status-dot {
+  color: var(--text-dimmed);
+}
+
+.rg-status-loading {
+  color: var(--text-dimmed);
+  font-size: var(--font-size-xs);
+}
+
+.rg-status-truncated {
+  color: var(--accent);
+  font-weight: 500;
+  font-size: var(--font-size-base);
+  letter-spacing: 0.04em;
+}
+
+/* ── Export buttons ─────────────────────────────────────────── */
+
+.rg-export-group {
+  margin-left: auto;
+  display: flex;
+  gap: 4px;
+}
+
+.rg-export-btn {
+  background: none;
+  border: 1px solid var(--border-strong);
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: var(--font-size-xs);
+  font-family: var(--font-ui);
+  padding: 2px 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.rg-export-btn:hover {
+  background: var(--accent-dimmed);
+  color: var(--accent);
+}

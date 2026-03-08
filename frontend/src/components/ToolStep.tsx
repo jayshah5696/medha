@@ -13,6 +13,8 @@
  * exposing raw function names.
  */
 
+import "./ToolStep.css";
+
 export interface ToolStepData {
   id: string;
   tool: string;
@@ -53,75 +55,24 @@ export function toolVerb(
   return `failed ${tool}`;
 }
 
-// --- Status dot colors ---
-
-const DOT_STYLES: Record<string, { background: string; boxShadow: string }> = {
-  running: {
-    background: "var(--accent)",
-    boxShadow: "0 0 6px var(--accent)",
-  },
-  done: {
-    background: "var(--success)",
-    boxShadow: "0 0 4px var(--success)",
-  },
-  error: {
-    background: "var(--error)",
-    boxShadow: "0 0 4px var(--error)",
-  },
-};
-
 // --- Component ---
 
 export default function ToolStep({ step }: { step: ToolStepData }) {
   const verb = toolVerb(step.tool, step.status);
-  const dotStyle = DOT_STYLES[step.status] || DOT_STYLES.done;
-  const isRunning = step.status === "running";
-  const isError = step.status === "error";
 
   return (
-    <div
-      style={{
-        display: "flex",
-        alignItems: "center",
-        gap: 6,
-        padding: "3px 8px",
-        fontFamily: "var(--font-mono)",
-        fontSize: "var(--font-size-xs)",
-        lineHeight: 1.6,
-        animation: "fadeUp 0.2s ease both",
-      }}
-    >
+    <div className="ts-root">
       {/* Status dot */}
       <span
         data-testid={`status-dot-${step.status}`}
-        style={{
-          width: 6,
-          height: 6,
-          borderRadius: "50%",
-          flexShrink: 0,
-          ...dotStyle,
-          animation: isRunning ? "toolPulse 1.2s ease-in-out infinite" : undefined,
-        }}
+        className={`ts-dot ts-dot--${step.status}`}
       />
 
       {/* Verb + context */}
-      <span
-        style={{
-          color: isError
-            ? "var(--error)"
-            : isRunning
-            ? "var(--accent)"
-            : "var(--text-dimmed)",
-          fontStyle: isRunning ? "italic" : "normal",
-          overflow: "hidden",
-          textOverflow: "ellipsis",
-          whiteSpace: "nowrap",
-          flex: 1,
-        }}
-      >
+      <span className={`ts-verb ts-verb--${step.status}`}>
         {verb}
         {step.context && (
-          <span style={{ color: "var(--text-dimmed)", marginLeft: 4 }}>
+          <span className="ts-context">
             {"· "}
             {step.context}
           </span>
@@ -130,14 +81,7 @@ export default function ToolStep({ step }: { step: ToolStepData }) {
 
       {/* Duration badge (only when done) */}
       {step.status === "done" && step.durationMs != null && (
-        <span
-          style={{
-            color: "var(--text-dimmed)",
-            fontSize: "var(--font-size-xs)",
-            flexShrink: 0,
-            opacity: 0.6,
-          }}
-        >
+        <span className="ts-duration">
           {step.durationMs < 1000
             ? `${Math.round(step.durationMs)}ms`
             : `${(step.durationMs / 1000).toFixed(1)}s`}

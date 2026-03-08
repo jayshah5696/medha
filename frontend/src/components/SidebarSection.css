@@ -1,0 +1,32 @@
+.ss-root {
+  border-bottom: 1px solid var(--border);
+}
+
+.ss-header {
+  padding: 6px 12px;
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  text-transform: uppercase;
+  color: var(--text-dimmed);
+  letter-spacing: 0.08em;
+  font-family: var(--font-ui);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  user-select: none;
+}
+
+.ss-arrow {
+  font-size: var(--font-size-xs);
+  width: 12px;
+}
+
+.ss-title {
+  flex: 1;
+}
+
+.ss-actions {
+  display: flex;
+  gap: 4px;
+}

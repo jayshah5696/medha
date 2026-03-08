@@ -1,0 +1,79 @@
+.tabbar-root {
+  height: 28px;
+  min-height: 28px;
+  display: flex;
+  align-items: stretch;
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border);
+  overflow: hidden;
+  font-family: var(--font-mono);
+  font-size: var(--font-size-sm);
+}
+
+/* Individual tab */
+.tabbar-tab {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 10px;
+  cursor: pointer;
+  border-right: 1px solid var(--border);
+  white-space: nowrap;
+  user-select: none;
+  transition: color 0.1s;
+  color: var(--text-dimmed);
+  border-bottom: 2px solid transparent;
+}
+
+.tabbar-tab:hover {
+  color: var(--text-secondary);
+}
+
+.tabbar-tab--active {
+  color: var(--text-primary);
+  border-bottom: 2px solid var(--accent);
+}
+
+.tabbar-tab--active:hover {
+  color: var(--text-primary);
+}
+
+/* Inline rename input */
+.tabbar-input {
+  background: transparent;
+  border: none;
+  color: var(--text-primary);
+  outline: none;
+  font-family: var(--font-mono);
+  font-size: var(--font-size-sm);
+  min-width: 40px;
+}
+
+/* Close button on each tab */
+.tabbar-close {
+  margin-left: 2px;
+  padding: 0 2px;
+  line-height: 1;
+  font-size: var(--font-size-xs);
+  color: var(--text-dimmed);
+  cursor: pointer;
+}
+
+.tabbar-close:hover {
+  color: var(--text-primary);
+}
+
+/* New-tab button */
+.tabbar-new {
+  display: flex;
+  align-items: center;
+  padding: 0 8px;
+  cursor: pointer;
+  color: var(--text-dimmed);
+  font-size: var(--font-size-sm);
+  user-select: none;
+}
+
+.tabbar-new:hover {
+  color: var(--accent);
+}

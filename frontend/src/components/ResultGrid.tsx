@@ -8,6 +8,7 @@ import {
 } from "@tanstack/react-table";
 import type { QueryResult } from "../lib/api";
 import { useStore } from "../store";
+import "./ResultGrid.css";
 
 interface ResultGridProps {
   result: QueryResult | null;
@@ -29,19 +30,7 @@ export default function ResultGrid({ result, isQuerying, height, onLoadMore, isL
 
   if (isQuerying) {
     return (
-      <div
-        style={{
-          ...paneStyle,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          color: "var(--text-dimmed)",
-          fontSize: 'var(--font-size-lg)',
-          padding: 24,
-          background: "var(--bg-primary)",
-          fontFamily: "var(--font-ui)",
-        }}
-      >
+      <div className="rg-placeholder" style={paneStyle}>
         running query...
       </div>
     );
@@ -49,19 +38,7 @@ export default function ResultGrid({ result, isQuerying, height, onLoadMore, isL
 
   if (!result) {
     return (
-      <div
-        style={{
-          ...paneStyle,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          color: "var(--text-dimmed)",
-          fontSize: 'var(--font-size-lg)',
-          padding: 24,
-          background: "var(--bg-primary)",
-          fontFamily: "var(--font-ui)",
-        }}
-      >
+      <div className="rg-placeholder" style={paneStyle}>
         Cmd+Enter to run
       </div>
     );
@@ -69,29 +46,9 @@ export default function ResultGrid({ result, isQuerying, height, onLoadMore, isL
 
   if (result.row_count === 0 || result.rows.length === 0) {
     return (
-      <div
-        style={{
-          ...paneStyle,
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          justifyContent: "center",
-          color: "var(--text-dimmed)",
-          fontSize: 'var(--font-size-lg)',
-          padding: 24,
-          background: "var(--bg-primary)",
-          fontFamily: "var(--font-mono)",
-        }}
-      >
+      <div className="rg-placeholder-mono" style={paneStyle}>
         <div>Query returned 0 rows.</div>
-        <div
-          style={{
-            marginTop: 4,
-            fontSize: 'var(--font-size-base)',
-            color: "var(--text-dimmed)",
-            fontFamily: "var(--font-ui)",
-          }}
-        >
+        <div className="rg-zero-duration">
           {result.duration_ms}ms
         </div>
       </div>
@@ -108,15 +65,12 @@ export default function ResultGrid({ result, isQuerying, height, onLoadMore, isL
         header: col,
         cell: (info) => {
           const val = info.getValue();
-          if (val === null) return <span style={{ color: "var(--text-dimmed)", fontStyle: "italic" }}>null</span>;
+          if (val === null) return <span className="rg-cell-null">null</span>;
           if (typeof val === "object") {
             const json = JSON.stringify(val);
             const display = json.length > 120 ? json.slice(0, 120) + "\u2026" : json;
             return (
-              <span
-                style={{ color: "var(--text-secondary)", fontSize: "var(--font-size-xs)" }}
-                title={json}
-              >
+              <span className="rg-cell-json" title={json}>
                 {display}
               </span>
             );
@@ -196,10 +150,10 @@ function ResultTable({
     return () => el.removeEventListener("scroll", handleScroll);
   }, [handleScroll]);
 
-  // FEAT-1: use explicit height if provided
-  const containerStyle: React.CSSProperties = height
-    ? { height, overflow: "hidden", background: "var(--bg-primary)", display: "flex", flexDirection: "column" }
-    : { maxHeight: "40vh", overflow: "hidden", background: "var(--bg-primary)", display: "flex", flexDirection: "column" };
+  // FEAT-1: use explicit height if provided (dynamic — height vs maxHeight)
+  const containerDynamicStyle: React.CSSProperties = height
+    ? { height }
+    : { maxHeight: "40vh" };
 
   // Build a CSS grid-template-columns value so header and body share
   // identical column sizing. Each column gets minmax(120px, 1fr).
@@ -207,47 +161,23 @@ function ResultTable({
   const gridColumns = `repeat(${colCount}, minmax(120px, 1fr))`;
 
   return (
-    <div style={containerStyle}>
+    <div className="rg-container" style={containerDynamicStyle}>
 
       {/* Sticky header — outside the scroll container so it never scrolls away */}
-      <div
-        role="table"
-        style={{
-          fontSize: 'var(--font-size-md)',
-          fontFamily: "var(--font-mono)",
-        }}
-      >
+      <div role="table" className="rg-table">
         <div role="rowgroup">
           {table.getHeaderGroups().map((hg) => (
             <div
               key={hg.id}
               role="row"
-              style={{
-                display: "grid",
-                gridTemplateColumns: gridColumns,
-                borderBottom: "1px solid var(--border-strong)",
-                background: "var(--bg-secondary)",
-              }}
+              className="rg-header-row"
+              style={{ gridTemplateColumns: gridColumns }}
             >
               {hg.headers.map((header) => (
                 <div
                   key={header.id}
                   role="columnheader"
-                  style={{
-                    padding: "6px 14px",
-                    textAlign: "left",
-                    color: "var(--text-dimmed)",
-                    fontWeight: 500,
-                    fontSize: 'var(--font-size-base)',
-                    whiteSpace: "nowrap",
-                    textTransform: "uppercase",
-                    letterSpacing: "0.06em",
-                    fontFamily: "var(--font-ui)",
-                    height: ROW_HEIGHT,
-                    lineHeight: `${ROW_HEIGHT}px`,
-                    overflow: "hidden",
-                    textOverflow: "ellipsis",
-                  }}
+                  className="rg-column-header"
                 >
                   {flexRender(
                     header.column.columnDef.header,
@@ -264,16 +194,12 @@ function ResultTable({
       <div
         ref={scrollContainerRef}
         data-testid="virtual-scroll-container"
-        style={{ flex: 1, overflow: "auto" }}
+        className="rg-scroll"
       >
         <div
           role="rowgroup"
-          style={{
-            height: rowVirtualizer.getTotalSize(),
-            position: "relative",
-            fontSize: 'var(--font-size-md)',
-            fontFamily: "var(--font-mono)",
-          }}
+          className="rg-body"
+          style={{ height: rowVirtualizer.getTotalSize() }}
         >
           {rowVirtualizer.getVirtualItems().map((virtualRow) => {
             const row = rows[virtualRow.index];
@@ -281,31 +207,17 @@ function ResultTable({
               <div
                 key={row.id}
                 role="row"
+                className={`rg-row ${virtualRow.index % 2 === 0 ? "rg-row-even" : "rg-row-odd"}`}
                 style={{
-                  position: "absolute",
-                  top: 0,
-                  left: 0,
-                  width: "100%",
-                  height: ROW_HEIGHT,
                   transform: `translateY(${virtualRow.start}px)`,
-                  display: "grid",
                   gridTemplateColumns: gridColumns,
-                  background: virtualRow.index % 2 === 0 ? "var(--bg-primary)" : "var(--bg-row-alt)",
                 }}
               >
                 {row.getVisibleCells().map((cell) => (
                   <div
                     key={cell.id}
                     role="cell"
-                    style={{
-                      padding: "0 10px",
-                      whiteSpace: "nowrap",
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                      height: ROW_HEIGHT,
-                      lineHeight: `${ROW_HEIGHT}px`,
-                      color: "var(--text-primary)",
-                    }}
+                    className="rg-cell"
                   >
                     {flexRender(cell.column.columnDef.cell, cell.getContext())}
                   </div>
@@ -317,78 +229,36 @@ function ResultTable({
       </div>
 
       {/* Status bar */}
-      <div
-        style={{
-          padding: "0 14px",
-          fontSize: 'var(--font-size-base)',
-          color: "var(--text-dimmed)",
-          display: "flex",
-          alignItems: "center",
-          gap: 8,
-          borderTop: "1px solid var(--border)",
-          background: "var(--bg-secondary)",
-          height: 30,
-          minHeight: 30,
-          fontFamily: "var(--font-ui)",
-          flexShrink: 0,
-        }}
-      >
+      <div className="rg-status">
         <span>
           {result.total_row_count != null
             ? `${formatRowCount(result.rows.length)} / ${formatRowCount(result.total_row_count)} rows`
             : `${formatRowCount(result.row_count)} rows`}
         </span>
-        <span style={{ color: "var(--text-dimmed)" }}>{"\u00B7"}</span>
+        <span className="rg-status-dot">{"\u00B7"}</span>
         <span>{result.duration_ms}ms</span>
         {isLoadingMore && (
-          <span style={{ color: "var(--text-dimmed)", fontSize: "var(--font-size-xs)" }}>
+          <span className="rg-status-loading">
             loading...
           </span>
         )}
         {result.truncated && (
-          <span
-            style={{
-              color: "var(--accent)",
-              fontWeight: 500,
-              fontSize: 'var(--font-size-base)',
-              letterSpacing: "0.04em",
-            }}
-          >
+          <span className="rg-status-truncated">
             TRUNCATED
           </span>
         )}
-        <span style={{ marginLeft: "auto", display: "flex", gap: 4 }}>
+        <span className="rg-export-group">
           <button
             onClick={() => handleExport("csv")}
             disabled={!!exporting}
-            style={{
-              background: "none",
-              border: "1px solid var(--border-strong)",
-              color: "var(--text-secondary)",
-              cursor: "pointer",
-              fontSize: "var(--font-size-xs)",
-              fontFamily: "var(--font-ui)",
-              padding: "2px 8px",
-              textTransform: "uppercase",
-              letterSpacing: "0.04em",
-            }}
+            className="rg-export-btn"
           >
             {exporting === "csv" ? "..." : "CSV"}
           </button>
           <button
             onClick={() => handleExport("parquet")}
             disabled={!!exporting}
-            style={{
-              background: "none",
-              border: "1px solid var(--border-strong)",
-              color: "var(--text-secondary)",
-              cursor: "pointer",
-              fontSize: "var(--font-size-xs)",
-              fontFamily: "var(--font-ui)",
-              padding: "2px 8px",
-              textTransform: "uppercase",
-              letterSpacing: "0.04em",
-            }}
+            className="rg-export-btn"
           >
             {exporting === "parquet" ? "..." : "Parquet"}
           </button>

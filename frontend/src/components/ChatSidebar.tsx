@@ -8,6 +8,7 @@ import type { ChatMessage as ApiChatMessage } from "../lib/api";
 import ContextPill from "./ContextPill";
 import type { ToolStepData } from "./ToolStep";
 import ThinkingBlock from "./ThinkingBlock";
+import "./ChatSidebar.css";
 
 interface ChatSettings {
   model_chat: string;
@@ -286,83 +287,33 @@ export default function ChatSidebar({ width }: { width: number }) {
 
   return (
     <div
-      style={{
-        width: width,
-        minWidth: width,
-        background: "var(--bg-secondary)",
-        display: "flex",
-        flexDirection: "column",
-        height: "100%",
-        overflow: "hidden",
-      }}
+      className="cs-root"
+      style={{ width, minWidth: width }}
     >
       {/* Header */}
-      <div
-        style={{
-          padding: "0 10px",
-          height: 28,
-          minHeight: 28,
-          borderBottom: "1px solid var(--border)",
-          fontSize: 'var(--font-size-sm)',
-          fontWeight: 500,
-          textTransform: "uppercase",
-          color: "var(--text-dimmed)",
-          letterSpacing: "0.08em",
-          fontFamily: "var(--font-ui)",
-          fontVariant: "small-caps",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-        }}
-      >
-        <span style={{ fontSize: 'var(--font-size-sm)', letterSpacing: "0.15em", color: "var(--text-dimmed)" }}>assistant</span>
+      <div className="cs-header">
+        <span className="cs-header-label">assistant</span>
         <button
           onClick={handleNewChat}
-          className="medha-btn"
-          style={{
-            fontSize: 'var(--font-size-sm)',
-            padding: "1px 8px",
-            lineHeight: 1.4,
-          }}
+          className="medha-btn cs-new-btn"
         >
           new
         </button>
       </div>
 
       {/* Threads panel */}
-      <div style={{ borderBottom: "1px solid var(--border)" }}>
+      <div className="cs-threads">
         <div
           onClick={() => setThreadsOpen(!threadsOpen)}
-          style={{
-            padding: "5px 10px",
-            fontSize: 'var(--font-size-sm)',
-            fontWeight: 500,
-            textTransform: "uppercase",
-            color: "var(--text-dimmed)",
-            letterSpacing: "0.08em",
-            fontFamily: "var(--font-ui)",
-            cursor: "pointer",
-            display: "flex",
-            alignItems: "center",
-            gap: 4,
-            userSelect: "none",
-          }}
+          className="cs-threads-toggle"
         >
-          <span style={{ fontSize: 'var(--font-size-xs)' }}>{threadsOpen ? "\u25BC" : "\u25B6"}</span>
-          <span style={{ fontSize: 'var(--font-size-sm)', letterSpacing: "0.15em", color: "var(--text-dimmed)" }}>threads</span>
+          <span className="cs-threads-arrow">{threadsOpen ? "\u25BC" : "\u25B6"}</span>
+          <span className="cs-threads-label">threads</span>
         </div>
         {threadsOpen && (
-          <div style={{ maxHeight: 160, overflow: "auto" }}>
+          <div className="cs-threads-list">
             {chatHistory.length === 0 && (
-              <div
-                style={{
-                  padding: "10px 10px",
-                  fontSize: 'var(--font-size-base)',
-                  color: "var(--text-dimmed)",
-                  fontFamily: "var(--font-mono)",
-                  textAlign: "center",
-                }}
-              >
+              <div className="cs-threads-empty">
                 No saved threads yet.
               </div>
             )}
@@ -370,30 +321,12 @@ export default function ChatSidebar({ width }: { width: number }) {
               <div
                 key={thread.slug}
                 onClick={() => handleLoadThread(thread.slug)}
-                style={{
-                  padding: "4px 10px",
-                  cursor: "pointer",
-                  background: currentThreadId === thread.slug ? "var(--bg-tertiary)" : "transparent",
-                  borderLeft: currentThreadId === thread.slug ? "2px solid var(--accent)" : "2px solid transparent",
-                }}
+                className={`cs-thread-item ${currentThreadId === thread.slug ? "cs-thread-item--active" : ""}`}
               >
-                <div
-                  style={{
-                    fontSize: 'var(--font-size-base)',
-                    fontWeight: 600,
-                    color: "var(--text-primary)",
-                    fontFamily: "var(--font-mono)",
-                  }}
-                >
+                <div className="cs-thread-slug">
                   {thread.slug}
                 </div>
-                <div
-                  style={{
-                    fontSize: 'var(--font-size-xs)',
-                    color: "var(--text-dimmed)",
-                    fontFamily: "var(--font-ui)",
-                  }}
-                >
+                <div className="cs-thread-meta">
                   {thread.created_at?.slice(0, 10)} / {thread.model}
                 </div>
               </div>
@@ -403,26 +336,9 @@ export default function ChatSidebar({ width }: { width: number }) {
       </div>
 
       {/* Messages */}
-      <div
-        style={{
-          flex: 1,
-          overflow: "auto",
-          padding: "8px",
-          display: "flex",
-          flexDirection: "column",
-          gap: 12,
-        }}
-      >
+      <div className="cs-messages">
         {messages.length === 0 && (
-          <div
-            style={{
-              color: "var(--text-dimmed)",
-              fontSize: 'var(--font-size-base)',
-              textAlign: "center",
-              marginTop: 24,
-              fontFamily: "var(--font-mono)",
-            }}
-          >
+          <div className="cs-empty-state">
             ask about your data
           </div>
         )}
@@ -437,43 +353,11 @@ export default function ChatSidebar({ width }: { width: number }) {
                 <ThinkingBlock steps={msg.tool_steps!} isStreaming={isStreamingThisMessage} />
               )}
 
-              <div
-                style={{
-                  textAlign: msg.role === "user" ? ("right" as const) : ("left" as const),
-                }}
-              >
-                <div
-                  style={{
-                    fontSize: 'var(--font-size-sm)',
-                    textTransform: "uppercase" as const,
-                    letterSpacing: "0.15em",
-                    marginBottom: 2,
-                    fontFamily: "var(--font-mono)",
-                    color: msg.role === "user" ? "var(--accent)" : "var(--text-secondary)",
-                  }}
-                >
+              <div className={`cs-msg-wrap ${msg.role === "user" ? "cs-msg-wrap--user" : ""}`}>
+                <div className={`cs-role ${msg.role === "user" ? "cs-role--user" : ""}`}>
                   {msg.role === "user" ? "you" : "medha"}
                 </div>
-                <div
-                  style={{
-                    padding: "6px 10px",
-                    fontSize: 'var(--font-size-md)',
-                    lineHeight: 1.5,
-                    fontFamily: "var(--font-mono)",
-                    borderRadius: 0,
-                    ...(msg.role === "user"
-                      ? {
-                          borderLeft: "2px solid var(--accent)",
-                          background: "rgba(0, 216, 255, 0.04)",
-                          color: "var(--text-primary)",
-                        }
-                      : {
-                          borderLeft: "2px solid var(--border)",
-                          background: "rgba(255, 255, 255, 0.02)",
-                          color: "var(--text-primary)",
-                        }),
-                  }}
-                >
+                <div className={`cs-bubble ${msg.role === "user" ? "cs-bubble--user" : ""}`}>
                   {msg.role === "assistant" ? (
                     <div className="markdown-body">
                       <ReactMarkdown
@@ -481,7 +365,7 @@ export default function ChatSidebar({ width }: { width: number }) {
                         components={{
                           table({ children, ...props }) {
                             return (
-                              <div data-testid="table-scroll-wrapper" style={{ overflowX: "auto", maxWidth: "100%" }}>
+                              <div data-testid="table-scroll-wrapper" className="cs-table-scroll">
                                 <table {...props}>{children}</table>
                               </div>
                             );
@@ -491,35 +375,16 @@ export default function ChatSidebar({ width }: { width: number }) {
                             const isBlock = className?.startsWith("language-");
                             if (!isBlock) return <code {...props}>{children}</code>;
                             return (
-                              <div style={{ position: "relative", marginTop: 4 }}>
-                                <pre style={{
-                                  background: "var(--bg-tertiary)",
-                                  padding: "8px 10px",
-                                  fontSize: 'var(--font-size-xs)',
-                                  overflow: "auto",
-                                  border: "1px solid var(--border)",
-                                }}>
+                              <div className="cs-code-wrap">
+                                <pre className="cs-code-pre">
                                   <code>{codeText}</code>
                                 </pre>
                                 <button
                                   onClick={() => setEditorContent(codeText)}
                                   title="Copy to SQL Editor"
-                                  style={{
-                                    position: "absolute",
-                                    top: 4,
-                                    right: 4,
-                                    fontSize: 'var(--font-size-xs)',
-                                    padding: "2px 6px",
-                                    background: "var(--bg-elevated)",
-                                    border: "1px solid var(--border)",
-                                    color: "var(--accent)",
-                                    cursor: "pointer",
-                                    fontFamily: "var(--font-mono)",
-                                    textTransform: "uppercase" as const,
-                                    letterSpacing: "0.08em",
-                                  }}
+                                  className="cs-code-copy"
                                 >
-                                  <ArrowRight size={10} style={{ marginRight: 4, verticalAlign: "middle" }} /> editor
+                                  <ArrowRight size={10} className="cs-code-copy-icon" /> editor
                                 </button>
                               </div>
                             );
@@ -543,27 +408,16 @@ export default function ChatSidebar({ width }: { width: number }) {
 
       {/* HITL warning banner (Spec §4E) */}
       {hitlWarning && (
-        <div
-          style={{
-            padding: "8px 10px",
-            margin: "0 8px 4px",
-            background: "rgba(251, 191, 36, 0.08)",
-            borderLeft: "2px solid var(--warning)",
-            fontSize: "var(--font-size-xs)",
-            fontFamily: "var(--font-mono)",
-            color: "var(--warning)",
-          }}
-        >
-          <div style={{ fontWeight: 600, marginBottom: 4, textTransform: "uppercase", letterSpacing: "0.1em" }}>
+        <div className="cs-hitl">
+          <div className="cs-hitl-title">
             large query warning
           </div>
-          <div style={{ color: "var(--text-secondary)", marginBottom: 6 }}>
+          <div className="cs-hitl-body">
             {hitlWarning}
           </div>
           <button
             onClick={() => setHitlWarning(null)}
-            className="medha-btn"
-            style={{ fontSize: "var(--font-size-sm)", padding: "2px 8px" }}
+            className="medha-btn cs-hitl-dismiss"
           >
             dismiss
           </button>
@@ -571,43 +425,20 @@ export default function ChatSidebar({ width }: { width: number }) {
       )}
 
       {/* Input */}
-      <div
-        style={{
-          padding: "8px",
-          borderTop: "1px solid var(--border)",
-        }}
-      >
+      <div className="cs-input-area">
         <ContextPill inputText={input} />
-        <div style={{ position: "relative" }}>
+        <div className="cs-input-rel">
           {/* @-mention autocomplete popover */}
           {mentionOpen && mentionFiles.length > 0 && (
             <div
               data-testid="mention-popover"
-              style={{
-                position: "absolute",
-                bottom: "100%",
-                left: 0,
-                right: 0,
-                maxHeight: 160,
-                overflowY: "auto",
-                background: "var(--bg-elevated)",
-                border: "1px solid var(--border-strong)",
-                zIndex: 10,
-                marginBottom: 2,
-              }}
+              className="cs-mention-popover"
             >
               {mentionFiles.map((f, idx) => (
                 <div
                   key={f.name}
                   onClick={() => handleMentionSelect(f.name)}
-                  style={{
-                    padding: "4px 8px",
-                    fontSize: "var(--font-size-sm)",
-                    fontFamily: "var(--font-mono)",
-                    cursor: "pointer",
-                    background: idx === mentionIndex ? "var(--accent-dimmed)" : "transparent",
-                    color: idx === mentionIndex ? "var(--accent)" : "var(--text-primary)",
-                  }}
+                  className={`cs-mention-item ${idx === mentionIndex ? "cs-mention-item--active" : ""}`}
                 >
                   {f.name}
                 </div>
@@ -645,19 +476,7 @@ export default function ChatSidebar({ width }: { width: number }) {
             }}
             placeholder="ask..."
             disabled={isStreaming}
-            style={{
-              width: "100%",
-              padding: "6px 8px",
-              fontSize: 'var(--font-size-base)',
-              background: "var(--bg-tertiary)",
-              border: "1px solid var(--border)",
-              borderRadius: 0,
-              color: "var(--text-primary)",
-              outline: "none",
-              fontFamily: "var(--font-mono)",
-            }}
-            onFocus={(e) => { e.currentTarget.style.borderColor = "var(--accent)"; }}
-            onBlur={(e) => { e.currentTarget.style.borderColor = "var(--border)"; }}
+            className="cs-input"
           />
         </div>
       </div>

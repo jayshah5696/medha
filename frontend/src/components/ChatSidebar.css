@@ -1,0 +1,313 @@
+/* ChatSidebar — extracted inline styles */
+
+.cs-root {
+  background: var(--bg-secondary);
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+/* ── Header ── */
+
+.cs-header {
+  padding: 0 10px;
+  height: 28px;
+  min-height: 28px;
+  border-bottom: 1px solid var(--border);
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  text-transform: uppercase;
+  color: var(--text-dimmed);
+  letter-spacing: 0.08em;
+  font-family: var(--font-ui);
+  font-variant: small-caps;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.cs-header-label {
+  font-size: var(--font-size-sm);
+  letter-spacing: 0.15em;
+  color: var(--text-dimmed);
+}
+
+.cs-new-btn {
+  font-size: var(--font-size-sm);
+  padding: 1px 8px;
+  line-height: 1.4;
+}
+
+/* ── Threads panel ── */
+
+.cs-threads {
+  border-bottom: 1px solid var(--border);
+}
+
+.cs-threads-toggle {
+  padding: 5px 10px;
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  text-transform: uppercase;
+  color: var(--text-dimmed);
+  letter-spacing: 0.08em;
+  font-family: var(--font-ui);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  user-select: none;
+}
+
+.cs-threads-arrow {
+  font-size: var(--font-size-xs);
+}
+
+.cs-threads-label {
+  font-size: var(--font-size-sm);
+  letter-spacing: 0.15em;
+  color: var(--text-dimmed);
+}
+
+.cs-threads-list {
+  max-height: 160px;
+  overflow: auto;
+}
+
+.cs-threads-empty {
+  padding: 10px;
+  font-size: var(--font-size-base);
+  color: var(--text-dimmed);
+  font-family: var(--font-mono);
+  text-align: center;
+}
+
+.cs-thread-item {
+  padding: 4px 10px;
+  cursor: pointer;
+  background: transparent;
+  border-left: 2px solid transparent;
+}
+
+.cs-thread-item--active {
+  background: var(--bg-tertiary);
+  border-left-color: var(--accent);
+}
+
+.cs-thread-item:hover:not(.cs-thread-item--active) {
+  background: var(--bg-tertiary);
+}
+
+.cs-thread-slug {
+  font-size: var(--font-size-base);
+  font-weight: 600;
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+}
+
+.cs-thread-meta {
+  font-size: var(--font-size-xs);
+  color: var(--text-dimmed);
+  font-family: var(--font-ui);
+}
+
+/* ── Messages area ── */
+
+.cs-messages {
+  flex: 1;
+  overflow: auto;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.cs-empty-state {
+  color: var(--text-dimmed);
+  font-size: var(--font-size-base);
+  text-align: center;
+  margin-top: 24px;
+  font-family: var(--font-mono);
+}
+
+/* Message wrapper — text alignment */
+
+.cs-msg-wrap {
+  text-align: left;
+}
+
+.cs-msg-wrap--user {
+  text-align: right;
+}
+
+/* Role label */
+
+.cs-role {
+  font-size: var(--font-size-sm);
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  margin-bottom: 2px;
+  font-family: var(--font-mono);
+  color: var(--text-secondary);
+}
+
+.cs-role--user {
+  color: var(--accent);
+}
+
+/* Bubble */
+
+.cs-bubble {
+  padding: 6px 10px;
+  font-size: var(--font-size-md);
+  line-height: 1.5;
+  font-family: var(--font-mono);
+  border-radius: 0;
+  border-left: 2px solid var(--border);
+  background: rgba(255, 255, 255, 0.02);
+  color: var(--text-primary);
+}
+
+.cs-bubble--user {
+  border-left: 2px solid var(--accent);
+  background: rgba(0, 216, 255, 0.04);
+}
+
+/* Code block wrapper inside messages */
+
+.cs-code-wrap {
+  position: relative;
+  margin-top: 4px;
+}
+
+.cs-code-pre {
+  background: var(--bg-tertiary);
+  padding: 8px 10px;
+  font-size: var(--font-size-xs);
+  overflow: auto;
+  border: 1px solid var(--border);
+}
+
+.cs-code-copy {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  font-size: var(--font-size-xs);
+  padding: 2px 6px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  color: var(--accent);
+  cursor: pointer;
+  font-family: var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.cs-code-copy:hover {
+  background: var(--bg-tertiary);
+  border-color: var(--accent);
+}
+
+.cs-code-copy-icon {
+  margin-right: 4px;
+  vertical-align: middle;
+}
+
+/* Table scroll wrapper inside markdown */
+
+.cs-table-scroll {
+  overflow-x: auto;
+  max-width: 100%;
+}
+
+/* ── HITL warning banner ── */
+
+.cs-hitl {
+  padding: 8px 10px;
+  margin: 0 8px 4px;
+  background: rgba(251, 191, 36, 0.08);
+  border-left: 2px solid var(--warning);
+  font-size: var(--font-size-xs);
+  font-family: var(--font-mono);
+  color: var(--warning);
+}
+
+.cs-hitl-title {
+  font-weight: 600;
+  margin-bottom: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.cs-hitl-body {
+  color: var(--text-secondary);
+  margin-bottom: 6px;
+}
+
+.cs-hitl-dismiss {
+  font-size: var(--font-size-sm);
+  padding: 2px 8px;
+}
+
+/* ── Input area ── */
+
+.cs-input-area {
+  padding: 8px;
+  border-top: 1px solid var(--border);
+}
+
+.cs-input-rel {
+  position: relative;
+}
+
+/* @-mention popover */
+
+.cs-mention-popover {
+  position: absolute;
+  bottom: 100%;
+  left: 0;
+  right: 0;
+  max-height: 160px;
+  overflow-y: auto;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-strong);
+  z-index: 10;
+  margin-bottom: 2px;
+}
+
+.cs-mention-item {
+  padding: 4px 8px;
+  font-size: var(--font-size-sm);
+  font-family: var(--font-mono);
+  cursor: pointer;
+  background: transparent;
+  color: var(--text-primary);
+}
+
+.cs-mention-item--active {
+  background: var(--accent-dimmed);
+  color: var(--accent);
+}
+
+.cs-mention-item:hover:not(.cs-mention-item--active) {
+  background: var(--accent-dimmed);
+}
+
+/* Text input */
+
+.cs-input {
+  width: 100%;
+  padding: 6px 8px;
+  font-size: var(--font-size-base);
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border);
+  border-radius: 0;
+  color: var(--text-primary);
+  outline: none;
+  font-family: var(--font-mono);
+}
+
+.cs-input:focus {
+  border-color: var(--accent);
+}

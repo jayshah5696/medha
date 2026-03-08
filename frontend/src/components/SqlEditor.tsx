@@ -8,6 +8,7 @@ import { getHistory, getHistoryEntry, saveQuery } from "../lib/api";
 import type { HistoryEntry } from "../lib/api";
 import { useStore } from "../store";
 import TabBar from "./TabBar";
+import "./SqlEditor.css";
 
 // Error line decoration effect and field
 const setErrorLine = StateEffect.define<number | null>();
@@ -364,64 +365,34 @@ export default function SqlEditor({
   }, []);
 
   return (
-    <div
-      style={{
-        flex: 1,
-        display: "flex",
-        flexDirection: "column",
-        overflow: "hidden",
-        borderBottom: "1px solid var(--border)",
-        position: "relative",
-      }}
-    >
+    <div className="se-root">
       {/* Toolbar */}
-      <div
-        style={{
-          height: 34,
-          minHeight: 34,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          padding: "0 14px",
-          background: "var(--bg-secondary)",
-          borderBottom: "1px solid var(--border)",
-          fontFamily: "var(--font-ui)",
-          fontSize: 'var(--font-size-base)',
-        }}
-      >
-        <span style={{ color: "var(--text-secondary)", fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.06em" }}>
+      <div className="se-toolbar">
+        <span className="se-toolbar-label">
           sql
         </span>
-        <span style={{ display: "flex", alignItems: "center", gap: 0 }}>
+        <span className="se-toolbar-actions">
           <span
             onClick={openHistory}
-            className="medha-toolbar-btn"
-            style={{ cursor: "pointer" }}
+            className="se-toolbar-btn se-toolbar-btn--clickable"
             title="Open history"
           >
             ⌘H History
           </span>
-          <span className="medha-toolbar-sep" />
-          <span className="medha-toolbar-btn">⌘S Save</span>
-          <span className="medha-toolbar-sep" />
-          <span className="medha-toolbar-btn">⌘K Edit</span>
-          <span className="medha-toolbar-sep" />
-          <span className="medha-toolbar-btn">⌘L Chat</span>
-          <span className="medha-toolbar-sep" />
+          <span className="se-toolbar-sep" />
+          <span className="se-toolbar-btn">⌘S Save</span>
+          <span className="se-toolbar-sep" />
+          <span className="se-toolbar-btn">⌘K Edit</span>
+          <span className="se-toolbar-sep" />
+          <span className="se-toolbar-btn">⌘L Chat</span>
+          <span className="se-toolbar-sep" />
           {isQuerying ? (
-            <span
-              className="medha-toolbar-btn"
-              style={{
-                color: "var(--accent)",
-                animation: "medha-pulse 1s ease-in-out infinite",
-              }}
-            >
+            <span className="se-toolbar-btn se-toolbar-btn--running">
               ⌘↵ Running...
             </span>
           ) : (
             <span
-              className="medha-toolbar-btn"
-              style={{ cursor: "pointer" }}
+              className="se-toolbar-btn se-toolbar-btn--clickable"
               onClick={() => {
                 const content = viewRef.current?.state.doc.toString() || "";
                 if (content) onExecuteRef.current?.(content);
@@ -433,143 +404,44 @@ export default function SqlEditor({
         </span>
       </div>
 
-      {/* Toolbar + pulse animation styles */}
-      <style>{`
-        @keyframes medha-pulse {
-          0%, 100% { opacity: 0.5; }
-          50% { opacity: 1; }
-        }
-        .medha-toolbar-btn {
-          color: var(--text-dimmed);
-          font-size: var(--font-size-base);
-          font-family: var(--font-mono);
-          padding: 0 10px;
-          transition: color 0.15s;
-          white-space: nowrap;
-        }
-        .medha-toolbar-btn:hover {
-          color: var(--accent);
-        }
-        .medha-toolbar-sep {
-          width: 1px;
-          height: 10px;
-          background: var(--border);
-          flex-shrink: 0;
-        }
-      `}</style>
-
       {/* Tab bar */}
       <TabBar />
 
       {/* Error banner below toolbar */}
       {queryError && (
-        <div
-          style={{
-            padding: "4px 10px",
-            background: "rgba(255, 60, 60, 0.08)",
-            borderBottom: "1px solid var(--border)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            gap: 8,
-          }}
-        >
-          <span
-            style={{
-              fontSize: 'var(--font-size-md)',
-              fontFamily: "var(--font-mono)",
-              color: "var(--error)",
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-              whiteSpace: "nowrap",
-            }}
-          >
+        <div className="se-error-banner">
+          <span className="se-error-text">
             {queryError}
           </span>
-          <button
-            onClick={onDismissError}
-            style={{
-              background: "none",
-              border: "none",
-              color: "var(--error)",
-              cursor: "pointer",
-              fontSize: 'var(--font-size-sm)',
-              fontFamily: "var(--font-mono)",
-              padding: "0 4px",
-              flexShrink: 0,
-            }}
-          >
+          <button onClick={onDismissError} className="se-error-dismiss">
             x
           </button>
         </div>
       )}
 
       {/* Editor container */}
-      <div
-        ref={containerRef}
-        style={{
-          flex: 1,
-          overflow: "auto",
-        }}
-      />
+      <div ref={containerRef} className="se-editor" />
 
       {/* History popover */}
       {historyOpen && (
-        <div
-          style={{
-            position: "absolute",
-            top: 38,
-            right: 14,
-            width: 420,
-            maxWidth: "calc(100vw - 28px)",
-            maxHeight: 450,
-            background: "var(--bg-elevated, var(--bg-secondary))",
-            border: "1px solid var(--border)",
-            zIndex: 50,
-            display: "flex",
-            flexDirection: "column",
-            overflow: "hidden",
-            boxShadow: "0 4px 16px rgba(0,0,0,0.4)",
-          }}
-        >
-          <div
-            style={{
-              padding: "10px 14px",
-              borderBottom: "1px solid var(--border)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              fontSize: 'var(--font-size-base)',
-              fontFamily: "var(--font-ui)",
-              textTransform: "uppercase",
-              letterSpacing: "0.06em",
-              color: "var(--text-dimmed)",
-            }}
-          >
+        <div className="se-history">
+          <div className="se-history-header">
             <span>query history</span>
             <button
               onClick={() => setHistoryOpen(false)}
-              style={{
-                background: "none",
-                border: "none",
-                color: "var(--text-dimmed)",
-                cursor: "pointer",
-                fontSize: 'var(--font-size-base)',
-                padding: "0 2px",
-                fontFamily: "var(--font-mono)",
-              }}
+              className="se-history-close"
             >
               esc
             </button>
           </div>
-          <div style={{ flex: 1, overflow: "auto" }}>
+          <div className="se-history-list">
             {historyLoading && (
-              <div style={{ padding: 14, fontSize: 'var(--font-size-base)', color: "var(--text-dimmed)", textAlign: "center", fontFamily: "var(--font-ui)" }}>
+              <div className="se-history-status">
                 loading...
               </div>
             )}
             {!historyLoading && historyEntries.length === 0 && (
-              <div style={{ padding: 14, fontSize: 'var(--font-size-base)', color: "var(--text-dimmed)", textAlign: "center", fontFamily: "var(--font-ui)" }}>
+              <div className="se-history-status">
                 no history
               </div>
             )}
@@ -583,37 +455,15 @@ export default function SqlEditor({
                 <div
                   key={entry.id}
                   onClick={() => handleHistorySelect(entry)}
-                  style={{
-                    padding: "7px 14px",
-                    cursor: "pointer",
-                    display: "flex",
-                    gap: 8,
-                    alignItems: "baseline",
-                    borderBottom: "1px solid var(--border)",
-                    fontSize: 'var(--font-size-md)',
-                    fontFamily: "var(--font-mono)",
-                  }}
-                  onMouseEnter={(e) => {
-                    (e.currentTarget as HTMLDivElement).style.background = "var(--bg-tertiary)";
-                  }}
-                  onMouseLeave={(e) => {
-                    (e.currentTarget as HTMLDivElement).style.background = "transparent";
-                  }}
+                  className="se-history-entry"
                 >
-                  <span style={{ flexShrink: 0, display: "flex", alignItems: "center" }}>
+                  <span className="se-history-entry-icon">
                     <SourceIcon size={11} />
                   </span>
-                  <span style={{ color: "var(--accent)", flexShrink: 0, fontSize: 'var(--font-size-xs)' }}>
+                  <span className="se-history-entry-time">
                     {timePart}
                   </span>
-                  <span
-                    style={{
-                      color: "var(--text-secondary)",
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                      whiteSpace: "nowrap",
-                    }}
-                  >
+                  <span className="se-history-entry-preview">
                     {preview}
                   </span>
                 </div>

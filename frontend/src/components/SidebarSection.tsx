@@ -1,3 +1,4 @@
+import "./SidebarSection.css";
 import { useState } from "react";
 
 interface SidebarSectionProps {
@@ -30,33 +31,17 @@ export default function SidebarSection({
   };
 
   return (
-    <div style={{ borderBottom: "1px solid var(--border)" }}>
+    <div className="ss-root">
       {/* Header */}
-      <div
-        onClick={handleToggle}
-        style={{
-          padding: "6px 12px",
-          fontSize: "var(--font-size-sm)",
-          fontWeight: 500,
-          textTransform: "uppercase",
-          color: "var(--text-dimmed)",
-          letterSpacing: "0.08em",
-          fontFamily: "var(--font-ui)",
-          cursor: "pointer",
-          display: "flex",
-          alignItems: "center",
-          gap: 4,
-          userSelect: "none",
-        }}
-      >
-        <span style={{ fontSize: "var(--font-size-xs)", width: 12 }}>
+      <div onClick={handleToggle} className="ss-header">
+        <span className="ss-arrow">
           {open ? "\u25BC" : "\u25B6"}
         </span>
-        <span style={{ flex: 1 }}>{title}</span>
+        <span className="ss-title">{title}</span>
         {actions && (
           <span
             onClick={(e) => e.stopPropagation()}
-            style={{ display: "flex", gap: 4 }}
+            className="ss-actions"
           >
             {actions}
           </span>

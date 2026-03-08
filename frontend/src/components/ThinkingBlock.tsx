@@ -1,3 +1,4 @@
+import "./ThinkingBlock.css";
 import { ChevronDown } from "lucide-react";
 /**
  * ThinkingBlock — collapsible container for agent tool activity steps.
@@ -45,65 +46,29 @@ export default function ThinkingBlock({ steps, isStreaming }: ThinkingBlockProps
   const label = `${stepCount} step${stepCount !== 1 ? "s" : ""}`;
 
   return (
-    <div
-      style={{
-        margin: "4px 0",
-        fontSize: "var(--font-size-xs)",
-        fontFamily: "var(--font-mono)",
-      }}
-    >
+    <div className="tb-root">
       {/* Header — clickable toggle */}
       <div
         onClick={() => setExpanded((v) => !v)}
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 6,
-          padding: "4px 8px",
-          cursor: "pointer",
-          userSelect: "none",
-          color: "var(--text-dimmed)",
-        }}
+        className="tb-header"
       >
         {/* Thinking indicator (animated dot when running) */}
         {hasRunning && (
           <span
             data-testid="thinking-indicator"
-            style={{
-              width: 6,
-              height: 6,
-              borderRadius: "50%",
-              background: "var(--accent)",
-              boxShadow: "0 0 6px var(--accent)",
-              animation: "toolPulse 1.2s ease-in-out infinite",
-              flexShrink: 0,
-            }}
+            className="tb-dot tb-dot--running"
           />
         )}
         {!hasRunning && (
-          <span
-            style={{
-              width: 6,
-              height: 6,
-              borderRadius: "50%",
-              background: "var(--text-dimmed)",
-              flexShrink: 0,
-              opacity: 0.5,
-            }}
-          />
+          <span className="tb-dot tb-dot--idle" />
         )}
 
-        <span style={{ color: hasRunning ? "var(--accent)" : "var(--text-dimmed)" }}>
+        <span className={hasRunning ? "tb-label--running" : "tb-label--idle"}>
           {hasRunning ? "thinking" : label}
         </span>
 
         <span
-          style={{
-            fontSize: "var(--font-size-xs)",
-            transition: "transform 0.15s",
-            transform: expanded ? "rotate(180deg)" : "rotate(0deg)",
-            marginLeft: "auto",
-          }}
+          className={`tb-chevron ${expanded ? "tb-chevron--expanded" : "tb-chevron--collapsed"}`}
         >
           <ChevronDown size={12} />
         </span>
@@ -111,13 +76,7 @@ export default function ThinkingBlock({ steps, isStreaming }: ThinkingBlockProps
 
       {/* Steps — only shown when expanded */}
       {expanded && (
-        <div
-          style={{
-            borderLeft: "1px solid var(--border)",
-            marginLeft: 11,
-            animation: "fadeUp 0.15s ease both",
-          }}
-        >
+        <div className="tb-steps">
           {steps.map((step) => (
             <ToolStep key={step.id} step={step} />
           ))}

@@ -1,0 +1,71 @@
+.ts-root {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 8px;
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+  line-height: 1.6;
+  animation: fadeUp 0.2s ease both;
+}
+
+/* Status dot base */
+.ts-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.ts-dot--running {
+  background: var(--accent);
+  box-shadow: 0 0 6px var(--accent);
+  animation: toolPulse 1.2s ease-in-out infinite;
+}
+
+.ts-dot--done {
+  background: var(--success);
+  box-shadow: 0 0 4px var(--success);
+}
+
+.ts-dot--error {
+  background: var(--error);
+  box-shadow: 0 0 4px var(--error);
+}
+
+/* Verb text */
+.ts-verb {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+}
+
+.ts-verb--running {
+  color: var(--accent);
+  font-style: italic;
+}
+
+.ts-verb--done {
+  color: var(--text-dimmed);
+  font-style: normal;
+}
+
+.ts-verb--error {
+  color: var(--error);
+  font-style: normal;
+}
+
+/* Context separator */
+.ts-context {
+  color: var(--text-dimmed);
+  margin-left: 4px;
+}
+
+/* Duration badge */
+.ts-duration {
+  color: var(--text-dimmed);
+  font-size: var(--font-size-xs);
+  flex-shrink: 0;
+  opacity: 0.6;
+}

@@ -10,6 +10,7 @@ import SettingsModal from "./components/SettingsModal";
 import { useStore } from "./store";
 import { runQuery, getFiles, openEventStream } from "./lib/api";
 import "./index.css";
+import "./App.css";
 
 const BANNER_DISMISSED_KEY = "medha_key_banner_dismissed";
 const DEFAULT_LM_STUDIO_URL = "http://localhost:1234/v1";
@@ -246,23 +247,12 @@ function App() {
   );
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", height: "100vh", width: "100%" }}>
+    <div className="app-root">
       {/* Header bar */}
-      <div
-        style={{
-          height: "var(--header-height)",
-          minHeight: "var(--header-height)",
-          background: "var(--bg-secondary)",
-          borderBottom: "1px solid var(--border)",
-          display: "flex",
-          alignItems: "center",
-          padding: "0 14px",
-          gap: 12,
-        }}
-      >
+      <div className="app-header">
         <svg
           viewBox="0 0 120 28"
-          style={{ height: 20 }}
+          className="app-logo"
           fill="none"
           xmlns="http://www.w3.org/2000/svg"
           aria-label="medha"
@@ -285,54 +275,25 @@ function App() {
             MEDHA
           </text>
         </svg>
-        <span
-          style={{
-            fontSize: 'var(--font-size-md)',
-            color: "var(--text-dimmed)",
-            fontFamily: "var(--font-ui)",
-          }}
-        >
+        <span className="app-subtitle">
           sql ide for flat files
         </span>
-        <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 10 }}>
+        <div className="app-header-actions">
           <button
             onClick={toggleTheme}
             title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
-            style={{
-              background: "none",
-              border: "none",
-              color: "var(--text-secondary)",
-              cursor: "pointer",
-              fontSize: 'var(--font-size-lg)',
-              padding: "2px 6px",
-              lineHeight: 1,
-            }}
+            className="app-header-btn app-header-btn--theme"
           >
             {theme === "dark" ? <Sun size={14} /> : <Moon size={14} />}
           </button>
           <button
             onClick={() => setShowSettings(true)}
             title="Settings"
-            style={{
-              background: "none",
-              border: "none",
-              color: "var(--text-dimmed)",
-              cursor: "pointer",
-              fontSize: 'var(--font-size-lg)',
-              fontFamily: "var(--font-mono)",
-              padding: "2px 6px",
-              lineHeight: 1,
-            }}
+            className="app-header-btn app-header-btn--settings"
           >
             <Settings size={14} />
           </button>
-          <span
-            style={{
-              fontSize: 'var(--font-size-base)',
-              color: "var(--text-dimmed)",
-              fontFamily: "var(--font-ui)",
-            }}
-          >
+          <span className="app-engine-label">
             duckdb
           </span>
         </div>
@@ -340,55 +301,23 @@ function App() {
 
       {/* Onboarding banner: no API key configured */}
       {showKeyBanner && (
-        <div
-          style={{
-            padding: "8px 14px",
-            background: "rgba(255, 180, 0, 0.1)",
-            borderBottom: "1px solid var(--border)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            gap: 10,
-            fontSize: 'var(--font-size-base)',
-            fontFamily: "var(--font-ui)",
-            color: "var(--text-secondary)",
-          }}
-        >
+        <div className="app-banner">
           <span>
             No LLM configured. Open Settings to add an API key before using ⌘K or ⌘L.
           </span>
-          <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
+          <div className="app-banner-actions">
             <button
               onClick={() => {
                 setShowSettings(true);
                 dismissBanner();
               }}
-              style={{
-                padding: "5px 14px",
-                fontSize: 'var(--font-size-sm)',
-                fontFamily: "var(--font-ui)",
-                fontWeight: 500,
-                textTransform: "uppercase",
-                letterSpacing: "0.06em",
-                background: "var(--accent)",
-                color: "var(--bg-primary)",
-                border: "none",
-                cursor: "pointer",
-              }}
+              className="app-banner-cta"
             >
               Open Settings
             </button>
             <button
               onClick={dismissBanner}
-              style={{
-                background: "none",
-                border: "none",
-                color: "var(--text-dimmed)",
-                cursor: "pointer",
-                fontSize: 'var(--font-size-sm)',
-                fontFamily: "var(--font-mono)",
-                padding: "0 4px",
-              }}
+              className="app-banner-dismiss"
             >
               x
             </button>
@@ -397,39 +326,18 @@ function App() {
       )}
 
       {/* Main content */}
-      <div style={{ flex: 1, display: "flex", overflow: "hidden" }}>
+      <div className="app-main">
         {/* Left sidebar */}
         <FileExplorer width={leftWidth} onFilePreview={handleExecute} />
 
         {/* Left resize handle */}
         <div
           onMouseDown={handleDragStart("left")}
-          style={{
-            width: 5,
-            cursor: "col-resize",
-            background: "var(--border)",
-            position: "relative",
-            flexShrink: 0,
-          }}
-        >
-          <div
-            style={{
-              position: "absolute",
-              inset: "0 -2px",
-            }}
-          />
-        </div>
+          className="app-resize-handle--horizontal"
+        />
 
         {/* Center panel */}
-        <div
-          style={{
-            flex: 1,
-            display: "flex",
-            flexDirection: "column",
-            overflow: "hidden",
-            minWidth: 0,
-          }}
-        >
+        <div className="app-center">
           <SqlEditor
             onExecute={handleExecute}
             onCmdK={handleCmdK}
@@ -439,21 +347,8 @@ function App() {
           {/* FEAT-1: Vertical resize handle */}
           <div
             onMouseDown={handleVDragStart}
-            style={{
-              height: 5,
-              cursor: "row-resize",
-              background: "var(--border)",
-              position: "relative",
-              flexShrink: 0,
-            }}
-          >
-            <div
-              style={{
-                position: "absolute",
-                inset: "-2px 0",
-              }}
-            />
-          </div>
+            className="app-resize-handle--vertical"
+          />
           <ResultGrid
             result={queryResult}
             isQuerying={isQuerying}
@@ -468,54 +363,20 @@ function App() {
           <>
             <div
               onMouseDown={handleDragStart("right")}
-              style={{
-                width: 5,
-                cursor: "col-resize",
-                background: "var(--border)",
-                position: "relative",
-                flexShrink: 0,
-              }}
-            >
-              <div
-                style={{
-                  position: "absolute",
-                  inset: "0 -2px",
-                }}
-              />
-            </div>
+              className="app-resize-handle--horizontal"
+            />
             <ChatSidebar width={rightWidth} />
           </>
         )}
       </div>
 
       {/* Status bar */}
-      <div
-        style={{
-          height: "var(--status-height)",
-          minHeight: "var(--status-height)",
-          background: "var(--bg-secondary)",
-          borderTop: "1px solid var(--border)",
-          display: "flex",
-          alignItems: "center",
-          padding: "0 12px",
-          gap: 8,
-          fontSize: 'var(--font-size-sm)',
-          color: "var(--text-dimmed)",
-          fontFamily: "var(--font-ui)",
-        }}
-      >
+      <div className="app-status">
         <span
-          style={{
-            width: 8,
-            height: 8,
-            borderRadius: "50%",
-            background: workspacePath ? "var(--success)" : "var(--text-dimmed)",
-            display: "inline-block",
-            flexShrink: 0,
-          }}
+          className={`app-status-dot${workspacePath ? " app-status-dot--connected" : ""}`}
         />
         <span>{workspacePath || "no workspace"}</span>
-        <span style={{ marginLeft: "auto", fontSize: 'var(--font-size-sm)' }}>medha v0.1</span>
+        <span className="app-status-version">medha v0.1</span>
       </div>
 
       {/* Cmd+K Diff Overlay */}
@@ -545,36 +406,11 @@ function ToastContainer() {
   if (toasts.length === 0) return null;
 
   return (
-    <div
-      style={{
-        position: "fixed",
-        bottom: 40,
-        right: 16,
-        zIndex: 2000,
-        display: "flex",
-        flexDirection: "column",
-        gap: 6,
-        pointerEvents: "none",
-      }}
-    >
+    <div className="app-toast-container">
       {toasts.map((toast) => (
         <div
           key={toast.id}
-          style={{
-            padding: "6px 12px",
-            background: "var(--bg-elevated)",
-            border: "1px solid var(--border-strong)",
-            color: "var(--text-primary)",
-            fontSize: "var(--font-size-xs)",
-            fontFamily: "var(--font-mono)",
-            pointerEvents: "auto",
-            cursor: "pointer",
-            maxWidth: 320,
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-            whiteSpace: "nowrap",
-            boxShadow: "0 2px 8px rgba(0,0,0,0.3)",
-          }}
+          className="app-toast"
           onClick={() => removeToast(toast.id)}
           title="Click to dismiss"
         >

@@ -1,0 +1,154 @@
+/* DiffOverlay — co-located styles (prefix: do-) */
+
+.do-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.do-panel {
+  background: var(--bg-primary);
+  border: 1px solid var(--border-strong);
+  border-radius: 0;
+  width: 640px;
+  max-width: 90vw;
+  max-height: 80vh;
+  overflow: auto;
+  padding: 16px;
+}
+
+.do-title {
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  margin-bottom: 12px;
+  color: var(--accent);
+  font-family: var(--font-ui);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.do-input-row {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.do-input {
+  flex: 1;
+  padding: 6px 8px;
+  font-size: var(--font-size-base);
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border);
+  border-radius: 0;
+  color: var(--text-primary);
+  outline: none;
+  font-family: var(--font-mono);
+}
+
+.do-submit-btn {
+  padding: 6px 12px;
+  font-size: var(--font-size-sm);
+  background: transparent;
+  color: var(--accent);
+  border: 1px solid var(--border);
+  border-radius: 0;
+  cursor: pointer;
+  font-weight: 500;
+  font-family: var(--font-ui);
+}
+
+.do-submit-btn:hover {
+  background: var(--accent-dimmed);
+}
+
+.do-error {
+  padding: 6px 8px;
+  background: var(--diff-remove-bg);
+  color: var(--error);
+  border-radius: 0;
+  font-size: var(--font-size-xs);
+  margin-bottom: 12px;
+  font-family: var(--font-mono);
+}
+
+.do-diff-container {
+  font-family: var(--font-mono);
+  font-size: var(--font-size-sm);
+  line-height: 1.6;
+  background: var(--bg-secondary);
+  border-radius: 0;
+  padding: 8px;
+  overflow: auto;
+  max-height: 400px;
+  margin-bottom: 12px;
+  border: 1px solid var(--border);
+}
+
+.do-diff-line {
+  padding: 1px 8px;
+}
+
+.do-diff-line-added {
+  background: var(--diff-add-bg);
+  color: var(--diff-add-text);
+}
+
+.do-diff-line-removed {
+  background: var(--diff-remove-bg);
+  color: var(--diff-remove-text);
+}
+
+.do-diff-line-unchanged {
+  background: transparent;
+  color: var(--text-primary);
+}
+
+.do-diff-gutter {
+  opacity: 0.4;
+  margin-right: 8px;
+}
+
+.do-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.do-reject-btn {
+  padding: 5px 12px;
+  font-size: var(--font-size-sm);
+  background: transparent;
+  color: var(--text-dimmed);
+  border: 1px solid var(--border);
+  border-radius: 0;
+  cursor: pointer;
+  font-family: var(--font-ui);
+}
+
+.do-reject-btn:hover {
+  color: var(--text-secondary);
+  background: var(--bg-tertiary);
+}
+
+.do-accept-btn {
+  padding: 5px 12px;
+  font-size: var(--font-size-sm);
+  background: transparent;
+  color: var(--accent);
+  border: 1px solid var(--border);
+  border-radius: 0;
+  cursor: pointer;
+  font-weight: 500;
+  font-family: var(--font-ui);
+}
+
+.do-accept-btn:hover {
+  background: var(--accent-dimmed);
+}

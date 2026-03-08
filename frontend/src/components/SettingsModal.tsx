@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { AlertTriangle, X } from "lucide-react";
+import "./SettingsModal.css";
 
 // --- Types ---------------------------------------------------------------
 
@@ -76,47 +77,6 @@ const defaultSettings: SettingsData = {
   ollama_url: "http://localhost:11434",
 };
 
-// --- Utilities -----------------------------------------------------------
-
-const label: React.CSSProperties = {
-  display: "block",
-  fontSize: 'var(--font-size-sm)',
-  color: "var(--text-dimmed)",
-  fontFamily: "var(--font-mono)",
-  textTransform: "uppercase",
-  letterSpacing: "0.08em",
-  marginBottom: 4,
-};
-
-const input: React.CSSProperties = {
-  width: "100%",
-  padding: "5px 8px",
-  fontSize: 'var(--font-size-base)',
-  background: "var(--bg-tertiary)",
-  border: "1px solid var(--border)",
-  borderRadius: 0,
-  color: "var(--text-primary)",
-  fontFamily: "var(--font-mono)",
-  outline: "none",
-  boxSizing: "border-box",
-};
-
-const select: React.CSSProperties = { ...input };
-
-const sectionTitle: React.CSSProperties = {
-  fontSize: 'var(--font-size-sm)',
-  fontWeight: 600,
-  color: "var(--text-primary)",
-  fontFamily: "var(--font-mono)",
-  textTransform: "uppercase",
-  letterSpacing: "0.12em",
-  marginBottom: 10,
-  paddingBottom: 4,
-  borderBottom: "1px solid var(--border-strong)",
-};
-
-const row: React.CSSProperties = { marginBottom: 12 };
-
 // --- ModelPicker sub-component -------------------------------------------
 
 interface ModelPickerProps {
@@ -179,12 +139,12 @@ function ModelPicker({
     : { color: "var(--border-strong)", title: "Not fetched" };
 
   return (
-    <div style={{ marginBottom: 16 }}>
+    <div className="sm-model-picker">
       {/* Label */}
-      <span style={label}>{labelText}</span>
+      <span className="sm-label">{labelText}</span>
 
       {/* Provider + Fetch row */}
-      <div style={{ display: "flex", gap: 6, marginBottom: 6, alignItems: "center" }}>
+      <div className="sm-provider-row">
         <select
           value={provider}
           onChange={(e) => {
@@ -193,7 +153,7 @@ function ModelPicker({
             setFetchStatus("idle");
             setManualMode(false);
           }}
-          style={{ ...select, flex: 1 }}
+          className="sm-select sm-provider-select"
         >
           {(Object.keys(PROVIDERS) as Provider[]).map((p) => (
             <option key={p} value={p}>{PROVIDERS[p].label}</option>
@@ -203,8 +163,8 @@ function ModelPicker({
         <button
           onClick={fetchModels}
           disabled={fetching}
-          className="medha-btn"
-          style={{ flexShrink: 0, fontSize: 'var(--font-size-sm)', padding: "4px 10px", opacity: fetching ? 0.5 : 1 }}
+          className="medha-btn sm-fetch-btn"
+          style={fetching ? { opacity: 0.5 } : undefined}
           title="Fetch model list from provider"
         >
           {fetching ? "..." : "fetch"}
@@ -212,11 +172,8 @@ function ModelPicker({
 
         {/* Connection dot */}
         <span
-          style={{
-            width: 8, height: 8, borderRadius: "50%",
-            background: statusDot.color, flexShrink: 0,
-            transition: "background 0.2s",
-          }}
+          className="sm-status-dot"
+          style={{ background: statusDot.color }}
           title={statusDot.title}
         />
       </div>
@@ -231,13 +188,13 @@ function ModelPicker({
           value={modelValue}
           onChange={(e) => onModelChange(e.target.value)}
           placeholder="e.g. openai/gpt-4o-mini"
-          style={{ ...input }}
+          className="sm-input"
         />
       ) : (
         <select
           value={modelValue}
           onChange={(e) => onModelChange(e.target.value)}
-          style={{ ...select }}
+          className="sm-select"
         >
           {models.map((m) => (
             <option key={m} value={m}>{m}</option>
@@ -246,7 +203,7 @@ function ModelPicker({
       )}
 
       {fetchStatus === "err" && (
-        <div style={{ fontSize: 'var(--font-size-xs)', color: "var(--error)", marginTop: 4, fontFamily: "var(--font-mono)" }}>
+        <div className="sm-error-msg">
           {errMsg}
         </div>
       )}
@@ -271,12 +228,8 @@ function ProviderCredentialField({ provider, settings }: CredFieldProps) {
 
   if (!val) {
     return (
-      <div style={{
-        fontSize: 'var(--font-size-xs)', color: "var(--warning)", fontFamily: "var(--font-mono)",
-        marginBottom: 6, padding: "3px 6px",
-        background: "rgba(245,166,35,0.06)", border: "1px solid rgba(245,166,35,0.15)",
-      }}>
-        <AlertTriangle size={12} style={{ marginRight: 4, verticalAlign: "middle" }} /> {cfg.keyField ? "API key not set — see Keys section." : `${cfg.urlLabel} not configured.`}
+      <div className="sm-warning-box">
+        <AlertTriangle size={12} className="sm-warning-icon" /> {cfg.keyField ? "API key not set — see Keys section." : `${cfg.urlLabel} not configured.`}
       </div>
     );
   }
@@ -323,35 +276,27 @@ export default function SettingsModal({ onClose }: { onClose: () => void }) {
 
   return (
     <div
-      style={{
-        position: "fixed", inset: 0, background: "rgba(0,0,0,0.65)",
-        display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000,
-      }}
+      className="sm-overlay"
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
-      <div
-        style={{
-          background: "var(--bg-secondary)", border: "1px solid var(--border-strong)",
-          width: 440, maxWidth: "90vw", maxHeight: "88vh", overflow: "auto", padding: "18px 20px",
-        }}
-      >
+      <div className="sm-panel">
         {/* Header */}
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18 }}>
-          <span style={{ fontSize: 'var(--font-size-sm)', fontWeight: 500, color: "var(--accent)", fontFamily: "var(--font-mono)", textTransform: "uppercase", letterSpacing: "0.1em" }}>
+        <div className="sm-header">
+          <span className="sm-header-title">
             settings
           </span>
           <button
             onClick={onClose}
             aria-label="Close settings"
-            style={{ background: "none", border: "none", color: "var(--text-dimmed)", cursor: "pointer", fontSize: 'var(--font-size-lg)', lineHeight: 1, padding: 2 }}
+            className="sm-close-btn"
           >
             <X size={16} />
           </button>
         </div>
 
         {/* ---- LLM Models (Provider-first) ---- */}
-        <div style={{ marginBottom: 20 }}>
-          <div style={sectionTitle}>Models</div>
+        <div className="sm-section">
+          <div className="sm-section-title">Models</div>
 
           <ModelPicker
             label="Inline / Cmd+K"
@@ -371,17 +316,17 @@ export default function SettingsModal({ onClose }: { onClose: () => void }) {
             settings={settings}
           />
 
-          <div style={row}>
-            <span style={label}>Agent Profile</span>
-            <select value={settings.agent_profile} onChange={(e) => set("agent_profile", e.target.value)} style={select}>
+          <div className="sm-row">
+            <span className="sm-label">Agent Profile</span>
+            <select value={settings.agent_profile} onChange={(e) => set("agent_profile", e.target.value)} className="sm-select">
               {PROFILE_OPTIONS.map((p) => <option key={p} value={p}>{p}</option>)}
             </select>
           </div>
         </div>
 
         {/* ---- API Keys ---- */}
-        <div style={{ marginBottom: 20 }}>
-          <div style={sectionTitle}>API Keys</div>
+        <div className="sm-section">
+          <div className="sm-section-title">API Keys</div>
 
           {(["openai_api_key", "openrouter_api_key", "anthropic_api_key", "gemini_api_key"] as const).map((field) => {
             const providerLabel: Record<string, string> = {
@@ -393,14 +338,14 @@ export default function SettingsModal({ onClose }: { onClose: () => void }) {
               anthropic_api_key: "sk-ant-...", gemini_api_key: "AIza...",
             };
             return (
-              <div key={field} style={row}>
-                <span style={label}>{providerLabel[field]}</span>
+              <div key={field} className="sm-row">
+                <span className="sm-label">{providerLabel[field]}</span>
                 <input
                   type="password"
                   value={settings[field]}
                   onChange={(e) => set(field, e.target.value)}
                   placeholder={placeholder[field]}
-                  style={input}
+                  className="sm-input"
                 />
               </div>
             );
@@ -408,25 +353,25 @@ export default function SettingsModal({ onClose }: { onClose: () => void }) {
         </div>
 
         {/* ---- Local Providers ---- */}
-        <div style={{ marginBottom: 20 }}>
-          <div style={sectionTitle}>Local Providers</div>
-          <div style={row}>
-            <span style={label}>LM Studio URL</span>
-            <input type="text" value={settings.lm_studio_url} onChange={(e) => set("lm_studio_url", e.target.value)} style={input} />
+        <div className="sm-section">
+          <div className="sm-section-title">Local Providers</div>
+          <div className="sm-row">
+            <span className="sm-label">LM Studio URL</span>
+            <input type="text" value={settings.lm_studio_url} onChange={(e) => set("lm_studio_url", e.target.value)} className="sm-input" />
           </div>
-          <div style={row}>
-            <span style={label}>Ollama URL</span>
-            <input type="text" value={settings.ollama_url} onChange={(e) => set("ollama_url", e.target.value)} style={input} />
+          <div className="sm-row">
+            <span className="sm-label">Ollama URL</span>
+            <input type="text" value={settings.ollama_url} onChange={(e) => set("ollama_url", e.target.value)} className="sm-input" />
           </div>
         </div>
 
         {/* ---- Save ---- */}
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <button onClick={handleSave} className="medha-btn" style={{ padding: "5px 18px" }}>
+        <div className="sm-save-row">
+          <button onClick={handleSave} className="medha-btn sm-save-btn">
             save
           </button>
           {status && (
-            <span style={{ fontSize: 'var(--font-size-xs)', fontFamily: "var(--font-mono)", color: status === "saved" ? "var(--success)" : "var(--error)" }}>
+            <span className={`sm-status-text ${status === "saved" ? "sm-status-saved" : "sm-status-error"}`}>
               {status}
             </span>
           )}

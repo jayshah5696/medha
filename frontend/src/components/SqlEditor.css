@@ -1,0 +1,205 @@
+/* SqlEditor — co-located styles
+   Prefix: se-  (sql editor)
+   Uses design-system custom properties from index.css */
+
+/* ── Layout root ────────────────────────────────────────── */
+
+.se-root {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-bottom: 1px solid var(--border);
+  position: relative;
+}
+
+/* ── Toolbar ────────────────────────────────────────────── */
+
+.se-toolbar {
+  height: 34px;
+  min-height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 14px;
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border);
+  font-family: var(--font-ui);
+  font-size: var(--font-size-base);
+}
+
+.se-toolbar-label {
+  color: var(--text-secondary);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.se-toolbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 0;
+}
+
+/* Toolbar buttons & separators (moved from inline <style>) */
+
+.se-toolbar-btn {
+  color: var(--text-dimmed);
+  font-size: var(--font-size-base);
+  font-family: var(--font-mono);
+  padding: 0 10px;
+  transition: color 0.15s;
+  white-space: nowrap;
+}
+
+.se-toolbar-btn:hover {
+  color: var(--accent);
+}
+
+.se-toolbar-btn--clickable {
+  cursor: pointer;
+}
+
+.se-toolbar-btn--running {
+  color: var(--accent);
+  animation: se-pulse 1s ease-in-out infinite;
+}
+
+.se-toolbar-sep {
+  width: 1px;
+  height: 10px;
+  background: var(--border);
+  flex-shrink: 0;
+}
+
+@keyframes se-pulse {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 1; }
+}
+
+/* ── Error banner ───────────────────────────────────────── */
+
+.se-error-banner {
+  padding: 4px 10px;
+  background: rgba(255, 60, 60, 0.08);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.se-error-text {
+  font-size: var(--font-size-md);
+  font-family: var(--font-mono);
+  color: var(--error);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.se-error-dismiss {
+  background: none;
+  border: none;
+  color: var(--error);
+  cursor: pointer;
+  font-size: var(--font-size-sm);
+  font-family: var(--font-mono);
+  padding: 0 4px;
+  flex-shrink: 0;
+}
+
+/* ── Editor container ───────────────────────────────────── */
+
+.se-editor {
+  flex: 1;
+  overflow: auto;
+}
+
+/* ── History popover ────────────────────────────────────── */
+
+.se-history {
+  position: absolute;
+  top: 38px;
+  right: 14px;
+  width: 420px;
+  max-width: calc(100vw - 28px);
+  max-height: 450px;
+  background: var(--bg-elevated, var(--bg-secondary));
+  border: 1px solid var(--border);
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+}
+
+.se-history-header {
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: var(--font-size-base);
+  font-family: var(--font-ui);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-dimmed);
+}
+
+.se-history-close {
+  background: none;
+  border: none;
+  color: var(--text-dimmed);
+  cursor: pointer;
+  font-size: var(--font-size-base);
+  padding: 0 2px;
+  font-family: var(--font-mono);
+}
+
+.se-history-list {
+  flex: 1;
+  overflow: auto;
+}
+
+.se-history-status {
+  padding: 14px;
+  font-size: var(--font-size-base);
+  color: var(--text-dimmed);
+  text-align: center;
+  font-family: var(--font-ui);
+}
+
+.se-history-entry {
+  padding: 7px 14px;
+  cursor: pointer;
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  border-bottom: 1px solid var(--border);
+  font-size: var(--font-size-md);
+  font-family: var(--font-mono);
+}
+
+.se-history-entry:hover {
+  background: var(--bg-tertiary);
+}
+
+.se-history-entry-icon {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+}
+
+.se-history-entry-time {
+  color: var(--accent);
+  flex-shrink: 0;
+  font-size: var(--font-size-xs);
+}
+
+.se-history-entry-preview {
+  color: var(--text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

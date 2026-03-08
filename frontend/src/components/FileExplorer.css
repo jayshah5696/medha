@@ -1,0 +1,414 @@
+/* ──────────────────────────────────────────────
+   FileExplorer.css — co-located styles
+   Class prefix: fe-
+   ────────────────────────────────────────────── */
+
+/* Root container */
+.fe-root {
+  background: var(--bg-secondary);
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+/* ── Workspace config section ── */
+
+.fe-workspace-body {
+  padding: 4px 12px 10px;
+}
+
+.fe-workspace-row {
+  display: flex;
+  align-items: center;
+  gap: 0;
+}
+
+.fe-workspace-prompt {
+  font-size: var(--font-size-md);
+  color: var(--text-dimmed);
+  padding: 7px 6px 7px 8px;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border);
+  border-right: none;
+  border-radius: 0;
+  font-family: var(--font-mono);
+  line-height: 1;
+}
+
+.fe-workspace-input {
+  flex: 1;
+  padding: 7px 8px;
+  font-size: var(--font-size-base);
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border);
+  border-radius: 0;
+  color: var(--text-primary);
+  outline: none;
+  font-family: var(--font-mono);
+  width: 100%;
+  min-width: 0;
+}
+
+.fe-workspace-actions {
+  display: flex;
+  gap: 4px;
+  margin-top: 6px;
+}
+
+.fe-btn-configure {
+  flex: 1;
+}
+
+.fe-btn-icon {
+  padding: 4px 8px;
+  flex-shrink: 0;
+}
+
+/* ── File list area ── */
+
+.fe-file-list {
+  flex: 1;
+  overflow: auto;
+  padding: 4px 0;
+}
+
+.fe-file-header {
+  padding: 4px 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.fe-file-header-label {
+  font-size: var(--font-size-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-dimmed);
+}
+
+.fe-clear-btn {
+  font-size: var(--font-size-xs);
+  color: var(--accent);
+  background: none;
+  border: 1px solid var(--accent);
+  cursor: pointer;
+  padding: 2px 6px;
+}
+
+/* ── Filter input ── */
+
+.fe-filter-wrap {
+  padding: 4px 12px 4px;
+}
+
+.fe-filter-input {
+  width: 100%;
+  padding: 5px 8px;
+  font-size: var(--font-size-base);
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border);
+  border-radius: 0;
+  color: var(--text-primary);
+  outline: none;
+  font-family: var(--font-mono);
+}
+
+/* ── Empty state ── */
+
+.fe-empty-state {
+  padding: 24px 16px;
+  font-size: var(--font-size-base);
+  color: var(--text-dimmed);
+  text-align: center;
+  font-family: var(--font-mono);
+  line-height: 1.6;
+}
+
+.fe-empty-state-title {
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  margin-bottom: 6px;
+}
+
+/* ── File tree: folder row ── */
+
+.fe-tree-folder {
+  padding: 4px 12px;
+  font-size: var(--font-size-base);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-family: var(--font-mono);
+  color: var(--text-secondary);
+  user-select: none;
+}
+
+.fe-tree-folder:hover {
+  background: var(--bg-tertiary);
+}
+
+.fe-tree-chevron {
+  font-size: var(--font-size-xs);
+  width: 12px;
+}
+
+.fe-tree-folder-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ── File row (flat list AND tree leaf) ── */
+
+.fe-file {
+  padding: 6px 12px;
+  font-size: var(--font-size-base);
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: transparent;
+  border-left: 3px solid transparent;
+  font-family: var(--font-mono);
+  line-height: 24px;
+}
+
+.fe-file:hover {
+  background: var(--bg-tertiary);
+}
+
+.fe-file--active {
+  background: var(--accent-dimmed);
+  border-left: 3px solid var(--accent);
+}
+
+.fe-file--active:hover {
+  background: var(--accent-dimmed);
+}
+
+.fe-file-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-secondary);
+  font-weight: 400;
+}
+
+.fe-file--active .fe-file-name {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.fe-file-size {
+  font-size: var(--font-size-xs);
+  color: var(--text-dimmed);
+  margin-left: 8px;
+  flex-shrink: 0;
+  font-family: var(--font-ui);
+}
+
+/* ── History section ── */
+
+.fe-history-clear-btn {
+  font-size: var(--font-size-sm);
+  padding: 1px 8px;
+}
+
+.fe-history-empty {
+  padding: 8px 12px;
+  font-size: var(--font-size-base);
+  color: var(--text-dimmed);
+  font-family: var(--font-ui);
+  text-align: center;
+}
+
+.fe-history-entry {
+  padding: 5px 12px;
+  font-size: var(--font-size-base);
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-family: var(--font-mono);
+  gap: 6px;
+}
+
+.fe-history-entry:hover {
+  background: var(--bg-tertiary);
+}
+
+.fe-history-icon {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+}
+
+.fe-history-time {
+  color: var(--text-secondary);
+  flex-shrink: 0;
+  font-size: var(--font-size-xs);
+}
+
+.fe-history-preview {
+  color: var(--text-dimmed);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--font-size-xs);
+}
+
+/* ── Browse overlay ── */
+
+.fe-browse-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.fe-browse-modal {
+  width: 480px;
+  max-width: 90vw;
+  max-height: 70vh;
+  background: var(--bg-elevated, var(--bg-secondary));
+  border: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+}
+
+.fe-browse-header {
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: var(--font-size-sm);
+  font-family: var(--font-ui);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-dimmed);
+}
+
+.fe-browse-close-btn {
+  background: none;
+  border: none;
+  color: var(--text-dimmed);
+  cursor: pointer;
+  font-size: var(--font-size-base);
+  font-family: var(--font-mono);
+  padding: 0 2px;
+}
+
+.fe-browse-path {
+  padding: 8px 14px;
+  font-size: var(--font-size-base);
+  font-family: var(--font-mono);
+  color: var(--accent);
+  border-bottom: 1px solid var(--border);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fe-browse-list {
+  flex: 1;
+  overflow: auto;
+}
+
+.fe-browse-loading {
+  padding: 16px;
+  font-size: var(--font-size-base);
+  color: var(--text-dimmed);
+  text-align: center;
+  font-family: var(--font-ui);
+}
+
+.fe-browse-parent {
+  padding: 6px 14px;
+  font-size: var(--font-size-base);
+  cursor: pointer;
+  font-family: var(--font-mono);
+  color: var(--text-secondary);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.fe-browse-parent:hover {
+  background: var(--bg-tertiary);
+}
+
+.fe-browse-entry {
+  padding: 5px 14px;
+  font-size: var(--font-size-base);
+  font-family: var(--font-mono);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.fe-browse-entry--dir {
+  cursor: pointer;
+  color: var(--text-primary);
+}
+
+.fe-browse-entry--file {
+  cursor: default;
+  color: var(--text-dimmed);
+}
+
+.fe-browse-entry--dir:hover {
+  background: var(--bg-tertiary);
+}
+
+.fe-browse-entry-icon {
+  width: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.fe-browse-entry-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fe-browse-empty {
+  padding: 16px;
+  font-size: var(--font-size-base);
+  color: var(--text-dimmed);
+  text-align: center;
+  font-family: var(--font-ui);
+}
+
+.fe-browse-footer {
+  padding: 10px 14px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.fe-browse-cancel-btn {
+  font-size: var(--font-size-sm);
+  padding: 5px 12px;
+}
+
+.fe-browse-select-btn {
+  font-size: var(--font-size-sm);
+  padding: 5px 12px;
+  background: var(--accent);
+  color: var(--bg-primary);
+  font-weight: 600;
+}
