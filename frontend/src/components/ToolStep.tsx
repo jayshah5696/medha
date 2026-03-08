@@ -57,16 +57,16 @@ export function toolVerb(
 
 const DOT_STYLES: Record<string, { background: string; boxShadow: string }> = {
   running: {
-    background: "#00D8FF",
-    boxShadow: "0 0 6px #00D8FF",
+    background: "var(--accent)",
+    boxShadow: "0 0 6px var(--accent)",
   },
   done: {
-    background: "#34d399",
-    boxShadow: "0 0 4px rgba(52, 211, 153, 0.4)",
+    background: "var(--success)",
+    boxShadow: "0 0 4px var(--success)",
   },
   error: {
-    background: "#f87171",
-    boxShadow: "0 0 4px rgba(248, 113, 113, 0.4)",
+    background: "var(--error)",
+    boxShadow: "0 0 4px var(--error)",
   },
 };
 
@@ -108,9 +108,9 @@ export default function ToolStep({ step }: { step: ToolStepData }) {
       <span
         style={{
           color: isError
-            ? "#f87171"
+            ? "var(--error)"
             : isRunning
-            ? "#00D8FF"
+            ? "var(--accent)"
             : "var(--text-dimmed)",
           fontStyle: isRunning ? "italic" : "normal",
           overflow: "hidden",

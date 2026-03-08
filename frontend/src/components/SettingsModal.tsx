@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { AlertTriangle, X } from "lucide-react";
 
 // --- Types ---------------------------------------------------------------
 
@@ -275,7 +276,7 @@ function ProviderCredentialField({ provider, settings }: CredFieldProps) {
         marginBottom: 6, padding: "3px 6px",
         background: "rgba(245,166,35,0.06)", border: "1px solid rgba(245,166,35,0.15)",
       }}>
-        ⚠ {cfg.keyField ? "API key not set — see Keys section." : `${cfg.urlLabel} not configured.`}
+        <AlertTriangle size={12} style={{ marginRight: 4, verticalAlign: "middle" }} /> {cfg.keyField ? "API key not set — see Keys section." : `${cfg.urlLabel} not configured.`}
       </div>
     );
   }
@@ -331,7 +332,7 @@ export default function SettingsModal({ onClose }: { onClose: () => void }) {
       <div
         style={{
           background: "var(--bg-secondary)", border: "1px solid var(--border-strong)",
-          width: 440, maxHeight: "88vh", overflow: "auto", padding: "18px 20px",
+          width: 440, maxWidth: "90vw", maxHeight: "88vh", overflow: "auto", padding: "18px 20px",
         }}
       >
         {/* Header */}
@@ -344,7 +345,7 @@ export default function SettingsModal({ onClose }: { onClose: () => void }) {
             aria-label="Close settings"
             style={{ background: "none", border: "none", color: "var(--text-dimmed)", cursor: "pointer", fontSize: 'var(--font-size-lg)', lineHeight: 1, padding: 2 }}
           >
-            ×
+            <X size={16} />
           </button>
         </div>
 

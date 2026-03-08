@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useMemo } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import { ArrowRight } from "lucide-react";
 import { useStore } from "../store";
 import { getChats, getChat } from "../lib/api";
 import type { ChatMessage as ApiChatMessage } from "../lib/api";
@@ -314,7 +315,7 @@ export default function ChatSidebar({ width }: { width: number }) {
           justifyContent: "space-between",
         }}
       >
-        <span style={{ fontSize: 'var(--font-size-sm)', letterSpacing: "0.15em", color: "#444" }}>assistant</span>
+        <span style={{ fontSize: 'var(--font-size-sm)', letterSpacing: "0.15em", color: "var(--text-dimmed)" }}>assistant</span>
         <button
           onClick={handleNewChat}
           className="medha-btn"
@@ -348,7 +349,7 @@ export default function ChatSidebar({ width }: { width: number }) {
           }}
         >
           <span style={{ fontSize: 'var(--font-size-xs)' }}>{threadsOpen ? "\u25BC" : "\u25B6"}</span>
-          <span style={{ fontSize: 'var(--font-size-sm)', letterSpacing: "0.15em", color: "#444" }}>threads</span>
+          <span style={{ fontSize: 'var(--font-size-sm)', letterSpacing: "0.15em", color: "var(--text-dimmed)" }}>threads</span>
         </div>
         {threadsOpen && (
           <div style={{ maxHeight: 160, overflow: "auto" }}>
@@ -357,7 +358,7 @@ export default function ChatSidebar({ width }: { width: number }) {
                 style={{
                   padding: "10px 10px",
                   fontSize: 'var(--font-size-base)',
-                  color: "#333",
+                  color: "var(--text-dimmed)",
                   fontFamily: "var(--font-mono)",
                   textAlign: "center",
                 }}
@@ -415,7 +416,7 @@ export default function ChatSidebar({ width }: { width: number }) {
         {messages.length === 0 && (
           <div
             style={{
-              color: "#333",
+              color: "var(--text-dimmed)",
               fontSize: 'var(--font-size-base)',
               textAlign: "center",
               marginTop: 24,
@@ -448,7 +449,7 @@ export default function ChatSidebar({ width }: { width: number }) {
                     letterSpacing: "0.15em",
                     marginBottom: 2,
                     fontFamily: "var(--font-mono)",
-                    color: msg.role === "user" ? "#00D8FF" : "#555",
+                    color: msg.role === "user" ? "var(--accent)" : "var(--text-secondary)",
                   }}
                 >
                   {msg.role === "user" ? "you" : "medha"}
@@ -462,12 +463,12 @@ export default function ChatSidebar({ width }: { width: number }) {
                     borderRadius: 0,
                     ...(msg.role === "user"
                       ? {
-                          borderLeft: "2px solid #00D8FF",
+                          borderLeft: "2px solid var(--accent)",
                           background: "rgba(0, 216, 255, 0.04)",
                           color: "var(--text-primary)",
                         }
                       : {
-                          borderLeft: "2px solid #1a1a1f",
+                          borderLeft: "2px solid var(--border)",
                           background: "rgba(255, 255, 255, 0.02)",
                           color: "var(--text-primary)",
                         }),
@@ -518,7 +519,7 @@ export default function ChatSidebar({ width }: { width: number }) {
                                     letterSpacing: "0.08em",
                                   }}
                                 >
-                                  → editor
+                                  <ArrowRight size={10} style={{ marginRight: 4, verticalAlign: "middle" }} /> editor
                                 </button>
                               </div>
                             );
@@ -547,10 +548,10 @@ export default function ChatSidebar({ width }: { width: number }) {
             padding: "8px 10px",
             margin: "0 8px 4px",
             background: "rgba(251, 191, 36, 0.08)",
-            borderLeft: "2px solid #fbbf24",
+            borderLeft: "2px solid var(--warning)",
             fontSize: "var(--font-size-xs)",
             fontFamily: "var(--font-mono)",
-            color: "#fbbf24",
+            color: "var(--warning)",
           }}
         >
           <div style={{ fontWeight: 600, marginBottom: 4, textTransform: "uppercase", letterSpacing: "0.1em" }}>

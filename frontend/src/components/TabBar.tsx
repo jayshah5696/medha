@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from "react";
+import { X, Plus } from "lucide-react";
 import { useStore } from "../store";
 import { renameQuery } from "../lib/api";
 
@@ -142,7 +143,7 @@ export default function TabBar() {
               }}
               title="Close tab"
             >
-              x
+              <X size={12} />
             </span>
           </div>
         );
@@ -167,7 +168,7 @@ export default function TabBar() {
         }}
         title="New tab"
       >
-        +
+        <Plus size={14} />
       </div>
     </div>
   );

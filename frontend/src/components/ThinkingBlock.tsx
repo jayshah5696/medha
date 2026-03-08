@@ -1,3 +1,4 @@
+import { ChevronDown } from "lucide-react";
 /**
  * ThinkingBlock — collapsible container for agent tool activity steps.
  *
@@ -72,8 +73,8 @@ export default function ThinkingBlock({ steps, isStreaming }: ThinkingBlockProps
               width: 6,
               height: 6,
               borderRadius: "50%",
-              background: "#00D8FF",
-              boxShadow: "0 0 6px #00D8FF",
+              background: "var(--accent)",
+              boxShadow: "0 0 6px var(--accent)",
               animation: "toolPulse 1.2s ease-in-out infinite",
               flexShrink: 0,
             }}
@@ -92,7 +93,7 @@ export default function ThinkingBlock({ steps, isStreaming }: ThinkingBlockProps
           />
         )}
 
-        <span style={{ color: hasRunning ? "#00D8FF" : "var(--text-dimmed)" }}>
+        <span style={{ color: hasRunning ? "var(--accent)" : "var(--text-dimmed)" }}>
           {hasRunning ? "thinking" : label}
         </span>
 
@@ -104,7 +105,7 @@ export default function ThinkingBlock({ steps, isStreaming }: ThinkingBlockProps
             marginLeft: "auto",
           }}
         >
-          ▾
+          <ChevronDown size={12} />
         </span>
       </div>
 

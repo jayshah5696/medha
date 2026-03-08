@@ -76,7 +76,7 @@ export default function ResultGrid({ result, isQuerying, height, onLoadMore, isL
           flexDirection: "column",
           alignItems: "center",
           justifyContent: "center",
-          color: "#333",
+          color: "var(--text-dimmed)",
           fontSize: 'var(--font-size-lg)',
           padding: 24,
           background: "var(--bg-primary)",

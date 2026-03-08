@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
+import { FolderOpen, FolderClosed, FileText, ArrowUp, Bot, User } from "lucide-react";
 import { useStore } from "../store";
 import { configureWorkspace, getFiles, getHistory, getHistoryEntry, clearHistory, browseDirectory, runQuery } from "../lib/api";
 import type { HistoryEntry, DirEntry } from "../lib/api";
@@ -134,7 +135,7 @@ function FileTreeItem({
           overflow: "hidden",
           textOverflow: "ellipsis",
           whiteSpace: "nowrap",
-          color: isActive ? "#ffffff" : "var(--text-primary)",
+          color: isActive ? "var(--text-primary)" : "var(--text-secondary)",
           fontWeight: isActive ? 600 : 400,
         }}
         title={node.fullPath}
@@ -405,7 +406,8 @@ export default function FileExplorer({ width, onFilePreview }: FileExplorerProps
                 title="Open native folder picker"
                 style={{ padding: "4px 8px", flexShrink: 0 }}
               >
-                📂
+                <FolderOpen size={14} />
+               
               </button>
             )}
             <button
@@ -414,7 +416,8 @@ export default function FileExplorer({ width, onFilePreview }: FileExplorerProps
               title="Browse folders"
               style={{ padding: "4px 8px", flexShrink: 0 }}
             >
-              📁
+               <FolderClosed size={14} />
+             
             </button>
           </div>
         </div>
@@ -477,7 +480,7 @@ export default function FileExplorer({ width, onFilePreview }: FileExplorerProps
             style={{
               padding: "24px 16px",
               fontSize: 'var(--font-size-base)',
-              color: "#333",
+              color: "var(--text-dimmed)",
               textAlign: "center",
               fontFamily: "var(--font-mono)",
               lineHeight: 1.6,
@@ -529,7 +532,7 @@ export default function FileExplorer({ width, onFilePreview }: FileExplorerProps
                       overflow: "hidden",
                       textOverflow: "ellipsis",
                       whiteSpace: "nowrap",
-                      color: isActive ? "#ffffff" : "var(--text-primary)",
+                      color: isActive ? "var(--text-primary)" : "var(--text-secondary)",
                       fontWeight: isActive ? 600 : 400,
                     }}
                     title={f.name}
@@ -585,7 +588,7 @@ export default function FileExplorer({ width, onFilePreview }: FileExplorerProps
               {historyEntries.map((entry) => {
                 const timePart = entry.timestamp ? entry.timestamp.split(" ")[1]?.slice(0, 5) || "" : "";
                 const previewText = entry.preview.slice(0, 36);
-                const sourceIcon = entry.source === "agent" ? "🤖" : "👤";
+                const SourceIcon = entry.source === "agent" ? Bot : User;
                 return (
                   <div
                     key={entry.id}
@@ -600,10 +603,10 @@ export default function FileExplorer({ width, onFilePreview }: FileExplorerProps
                       fontFamily: "var(--font-mono)",
                       gap: 6,
                     }}
-                    title={`${sourceIcon} ${entry.preview}`}
+                    title={`${entry.source === "agent" ? "Agent" : "User"} ${entry.preview}`}
                   >
-                    <span style={{ flexShrink: 0, fontSize: 'var(--font-size-xs)' }}>
-                      {sourceIcon}
+                    <span style={{ flexShrink: 0, display: "flex", alignItems: "center" }}>
+                      <SourceIcon size={11} />
                     </span>
                     <span style={{ color: "var(--text-secondary)", flexShrink: 0, fontSize: 'var(--font-size-xs)' }}>
                       {timePart}
@@ -644,6 +647,7 @@ export default function FileExplorer({ width, onFilePreview }: FileExplorerProps
             onClick={(e) => e.stopPropagation()}
             style={{
               width: 480,
+              maxWidth: "90vw",
               maxHeight: "70vh",
               background: "var(--bg-elevated, var(--bg-secondary))",
               border: "1px solid var(--border)",
@@ -731,7 +735,7 @@ export default function FileExplorer({ width, onFilePreview }: FileExplorerProps
                     (e.currentTarget as HTMLDivElement).style.background = "transparent";
                   }}
                 >
-                  <span style={{ fontSize: 'var(--font-size-md)' }}>↑</span>
+                  <ArrowUp size={14} />
                   <span>..</span>
                 </div>
               )}
@@ -762,8 +766,8 @@ export default function FileExplorer({ width, onFilePreview }: FileExplorerProps
                       (e.currentTarget as HTMLDivElement).style.background = "transparent";
                     }}
                   >
-                    <span style={{ fontSize: 'var(--font-size-base)', width: 20, textAlign: "center", flexShrink: 0 }}>
-                      {entry.is_dir ? "📁" : "📄"}
+                    <span style={{ width: 20, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                      {entry.is_dir ? <FolderClosed size={14} /> : <FileText size={14} />}
                     </span>
                     <span
                       style={{

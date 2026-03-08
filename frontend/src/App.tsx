@@ -1,5 +1,6 @@
 import { useCallback, useState, useEffect, useRef } from "react";
 import type { EditorView } from "@codemirror/view";
+import { Sun, Moon, Settings } from "lucide-react";
 import FileExplorer from "./components/FileExplorer";
 import SqlEditor from "./components/SqlEditor";
 import ResultGrid from "./components/ResultGrid";
@@ -245,7 +246,7 @@ function App() {
   );
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", height: "100vh", width: "100vw" }}>
+    <div style={{ display: "flex", flexDirection: "column", height: "100vh", width: "100%" }}>
       {/* Header bar */}
       <div
         style={{
@@ -307,7 +308,7 @@ function App() {
               lineHeight: 1,
             }}
           >
-            {theme === "dark" ? "☀" : "☾"}
+            {theme === "dark" ? <Sun size={14} /> : <Moon size={14} />}
           </button>
           <button
             onClick={() => setShowSettings(true)}
@@ -323,7 +324,7 @@ function App() {
               lineHeight: 1,
             }}
           >
-            &#9881;
+            <Settings size={14} />
           </button>
           <span
             style={{

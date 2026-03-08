@@ -3,6 +3,7 @@ import { EditorState, StateField, StateEffect, Prec } from "@codemirror/state";
 import { EditorView, keymap, Decoration, type DecorationSet } from "@codemirror/view";
 import { sql } from "@codemirror/lang-sql";
 import { basicSetup } from "codemirror";
+import { Bot, User } from "lucide-react";
 import { getHistory, getHistoryEntry, saveQuery } from "../lib/api";
 import type { HistoryEntry } from "../lib/api";
 import { useStore } from "../store";
@@ -260,7 +261,7 @@ export default function SqlEditor({
         },
         ".cm-error-line": {
           backgroundColor: "rgba(255, 60, 60, 0.08)",
-          borderLeft: "2px solid #ff3c3c",
+          borderLeft: "2px solid var(--error)",
         },
       },
       { dark: true }
@@ -411,7 +412,7 @@ export default function SqlEditor({
             <span
               className="medha-toolbar-btn"
               style={{
-                color: "#00D8FF",
+                color: "var(--accent)",
                 animation: "medha-pulse 1s ease-in-out infinite",
               }}
             >
@@ -439,7 +440,7 @@ export default function SqlEditor({
           50% { opacity: 1; }
         }
         .medha-toolbar-btn {
-          color: #444;
+          color: var(--text-dimmed);
           font-size: var(--font-size-base);
           font-family: var(--font-mono);
           padding: 0 10px;
@@ -447,12 +448,12 @@ export default function SqlEditor({
           white-space: nowrap;
         }
         .medha-toolbar-btn:hover {
-          color: #00D8FF;
+          color: var(--accent);
         }
         .medha-toolbar-sep {
           width: 1px;
           height: 10px;
-          background: #1a1a1f;
+          background: var(--border);
           flex-shrink: 0;
         }
       `}</style>
@@ -477,7 +478,7 @@ export default function SqlEditor({
             style={{
               fontSize: 'var(--font-size-md)',
               fontFamily: "var(--font-mono)",
-              color: "#ff3c3c",
+              color: "var(--error)",
               overflow: "hidden",
               textOverflow: "ellipsis",
               whiteSpace: "nowrap",
@@ -490,7 +491,7 @@ export default function SqlEditor({
             style={{
               background: "none",
               border: "none",
-              color: "#ff3c3c",
+              color: "var(--error)",
               cursor: "pointer",
               fontSize: 'var(--font-size-sm)',
               fontFamily: "var(--font-mono)",
@@ -520,6 +521,7 @@ export default function SqlEditor({
             top: 38,
             right: 14,
             width: 420,
+            maxWidth: "calc(100vw - 28px)",
             maxHeight: 450,
             background: "var(--bg-elevated, var(--bg-secondary))",
             border: "1px solid var(--border)",
@@ -576,7 +578,7 @@ export default function SqlEditor({
                 ? entry.timestamp.split(" ")[1]?.slice(0, 5) || ""
                 : "";
               const preview = entry.preview.slice(0, 55);
-              const sourceIcon = entry.source === "agent" ? "🤖" : "👤";
+              const SourceIcon = entry.source === "agent" ? Bot : User;
               return (
                 <div
                   key={entry.id}
@@ -598,8 +600,8 @@ export default function SqlEditor({
                     (e.currentTarget as HTMLDivElement).style.background = "transparent";
                   }}
                 >
-                  <span style={{ flexShrink: 0, fontSize: 'var(--font-size-xs)' }}>
-                    {sourceIcon}
+                  <span style={{ flexShrink: 0, display: "flex", alignItems: "center" }}>
+                    <SourceIcon size={11} />
                   </span>
                   <span style={{ color: "var(--accent)", flexShrink: 0, fontSize: 'var(--font-size-xs)' }}>
                     {timePart}
