@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { useStore } from "../store";
@@ -20,7 +20,7 @@ interface ChatMessage {
 }
 
 export default function ChatSidebar({ width }: { width: number }) {
-  const { activeFiles, currentThreadId, setThreadId, chatHistory, setChatHistory, setEditorContent, setQueryResult, setLastError, setAgentLastQuery, bumpHistoryVersion } = useStore();
+  const { activeFiles, files, addActiveFile, currentThreadId, setThreadId, chatHistory, setChatHistory, setEditorContent, setQueryResult, setLastError, setAgentLastQuery, bumpHistoryVersion } = useStore();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [isStreaming, setIsStreaming] = useState(false);
@@ -32,6 +32,17 @@ export default function ChatSidebar({ width }: { width: number }) {
     model_chat: "openai/gpt-4o-mini",
     agent_profile: "default",
   });
+
+  // @-mention autocomplete state
+  const [mentionOpen, setMentionOpen] = useState(false);
+  const [mentionQuery, setMentionQuery] = useState("");
+  const [mentionIndex, setMentionIndex] = useState(0);
+
+  const mentionFiles = useMemo(() => {
+    if (!mentionOpen) return [];
+    const q = mentionQuery.toLowerCase();
+    return files.filter((f) => !q || f.name.toLowerCase().includes(q));
+  }, [mentionOpen, mentionQuery, files]);
 
   // Priority-8: fetch settings so we send model/profile with each chat request
   useEffect(() => {
@@ -85,6 +96,29 @@ export default function ChatSidebar({ width }: { width: number }) {
   const handleNewChat = () => {
     setMessages([]);
     setThreadId(null);
+  };
+
+  const handleInputChange = (value: string) => {
+    setInput(value);
+    // Detect @-mention trigger
+    const atMatch = value.match(/@(\S*)$/);
+    if (atMatch) {
+      setMentionOpen(true);
+      setMentionQuery(atMatch[1]);
+      setMentionIndex(0);
+    } else {
+      setMentionOpen(false);
+      setMentionQuery("");
+    }
+  };
+
+  const handleMentionSelect = (fileName: string) => {
+    // Remove the @query from input text
+    const newInput = input.replace(/@\S*$/, "").trimEnd();
+    setInput(newInput);
+    addActiveFile(fileName);
+    setMentionOpen(false);
+    setMentionQuery("");
   };
 
   const handleSend = async () => {
@@ -444,6 +478,13 @@ export default function ChatSidebar({ width }: { width: number }) {
                       <ReactMarkdown
                         remarkPlugins={[remarkGfm]}
                         components={{
+                          table({ children, ...props }) {
+                            return (
+                              <div data-testid="table-scroll-wrapper" style={{ overflowX: "auto", maxWidth: "100%" }}>
+                                <table {...props}>{children}</table>
+                              </div>
+                            );
+                          },
                           code({ className, children, ...props }) {
                             const codeText = String(children).replace(/\n$/, "");
                             const isBlock = className?.startsWith("language-");
@@ -536,27 +577,88 @@ export default function ChatSidebar({ width }: { width: number }) {
         }}
       >
         <ContextPill inputText={input} />
-        <input
-          type="text"
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && handleSend()}
-          placeholder="ask..."
-          disabled={isStreaming}
-          style={{
-            width: "100%",
-            padding: "6px 8px",
-            fontSize: 'var(--font-size-base)',
-            background: "var(--bg-tertiary)",
-            border: "1px solid var(--border)",
-            borderRadius: 0,
-            color: "var(--text-primary)",
-            outline: "none",
-            fontFamily: "var(--font-mono)",
-          }}
-          onFocus={(e) => { e.currentTarget.style.borderColor = "var(--accent)"; }}
-          onBlur={(e) => { e.currentTarget.style.borderColor = "var(--border)"; }}
-        />
+        <div style={{ position: "relative" }}>
+          {/* @-mention autocomplete popover */}
+          {mentionOpen && mentionFiles.length > 0 && (
+            <div
+              data-testid="mention-popover"
+              style={{
+                position: "absolute",
+                bottom: "100%",
+                left: 0,
+                right: 0,
+                maxHeight: 160,
+                overflowY: "auto",
+                background: "var(--bg-elevated)",
+                border: "1px solid var(--border-strong)",
+                zIndex: 10,
+                marginBottom: 2,
+              }}
+            >
+              {mentionFiles.map((f, idx) => (
+                <div
+                  key={f.name}
+                  onClick={() => handleMentionSelect(f.name)}
+                  style={{
+                    padding: "4px 8px",
+                    fontSize: "var(--font-size-sm)",
+                    fontFamily: "var(--font-mono)",
+                    cursor: "pointer",
+                    background: idx === mentionIndex ? "var(--accent-dimmed)" : "transparent",
+                    color: idx === mentionIndex ? "var(--accent)" : "var(--text-primary)",
+                  }}
+                >
+                  {f.name}
+                </div>
+              ))}
+            </div>
+          )}
+          <input
+            type="text"
+            value={input}
+            onChange={(e) => handleInputChange(e.target.value)}
+            onKeyDown={(e) => {
+              if (mentionOpen && mentionFiles.length > 0) {
+                if (e.key === "ArrowDown") {
+                  e.preventDefault();
+                  setMentionIndex((prev) => Math.min(prev + 1, mentionFiles.length - 1));
+                  return;
+                }
+                if (e.key === "ArrowUp") {
+                  e.preventDefault();
+                  setMentionIndex((prev) => Math.max(prev - 1, 0));
+                  return;
+                }
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  handleMentionSelect(mentionFiles[mentionIndex].name);
+                  return;
+                }
+                if (e.key === "Escape") {
+                  e.preventDefault();
+                  setMentionOpen(false);
+                  return;
+                }
+              }
+              if (e.key === "Enter") handleSend();
+            }}
+            placeholder="ask..."
+            disabled={isStreaming}
+            style={{
+              width: "100%",
+              padding: "6px 8px",
+              fontSize: 'var(--font-size-base)',
+              background: "var(--bg-tertiary)",
+              border: "1px solid var(--border)",
+              borderRadius: 0,
+              color: "var(--text-primary)",
+              outline: "none",
+              fontFamily: "var(--font-mono)",
+            }}
+            onFocus={(e) => { e.currentTarget.style.borderColor = "var(--accent)"; }}
+            onBlur={(e) => { e.currentTarget.style.borderColor = "var(--border)"; }}
+          />
+        </div>
       </div>
     </div>
   );
