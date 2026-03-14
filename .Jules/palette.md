@@ -1,0 +1,3 @@
+## 2024-05-18 - Keyboard accessibility on non-button elements
+**Learning:** When using `div` or `span` elements as interactive buttons (like in TabBar.tsx), simply adding `tabIndex={0}` and `role="button"` makes them focusable but *not* fully accessible. Unlike standard `<button>` elements, non-button elements do not inherently respond to Enter or Space key presses.
+**Action:** Always prefer native `<button>` elements for interactive click targets. If a `div` or `span` must be used, ensure you implement an `onKeyDown` handler that specifically listens for `e.key === "Enter"` and `e.key === " "` (Space) to trigger the same action as the `onClick` handler, and remember to `e.preventDefault()` to stop page scrolling on Space.

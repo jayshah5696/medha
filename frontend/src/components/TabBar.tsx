@@ -125,6 +125,13 @@ export default function TabBar() {
                 e.stopPropagation();
                 closeTab(tab.id);
               }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  closeTab(tab.id);
+                }
+              }}
               style={{
                 marginLeft: 2,
                 padding: "0 2px",
@@ -142,6 +149,9 @@ export default function TabBar() {
                   "var(--text-dimmed)";
               }}
               title="Close tab"
+              aria-label="Close tab"
+              role="button"
+              tabIndex={0}
             >
               <X size={12} />
             </span>
@@ -150,6 +160,12 @@ export default function TabBar() {
       })}
       <div
         onClick={() => openTab()}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            openTab();
+          }
+        }}
         style={{
           display: "flex",
           alignItems: "center",
@@ -167,6 +183,9 @@ export default function TabBar() {
             "var(--text-dimmed)";
         }}
         title="New tab"
+        aria-label="New tab"
+        role="button"
+        tabIndex={0}
       >
         <Plus size={14} />
       </div>

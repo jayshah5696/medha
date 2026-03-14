@@ -298,6 +298,7 @@ function App() {
           <button
             onClick={toggleTheme}
             title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+            aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
             style={{
               background: "none",
               border: "none",
@@ -313,6 +314,7 @@ function App() {
           <button
             onClick={() => setShowSettings(true)}
             title="Settings"
+            aria-label="Settings"
             style={{
               background: "none",
               border: "none",
@@ -380,6 +382,7 @@ function App() {
             </button>
             <button
               onClick={dismissBanner}
+              aria-label="Dismiss banner"
               style={{
                 background: "none",
                 border: "none",

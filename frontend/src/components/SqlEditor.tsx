@@ -488,6 +488,7 @@ export default function SqlEditor({
           </span>
           <button
             onClick={onDismissError}
+            aria-label="Dismiss error"
             style={{
               background: "none",
               border: "none",
