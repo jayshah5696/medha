@@ -404,6 +404,7 @@ export default function FileExplorer({ width, onFilePreview }: FileExplorerProps
                 onClick={handleNativePicker}
                 className="medha-btn"
                 title="Open native folder picker"
+                aria-label="Open native folder picker"
                 style={{ padding: "4px 8px", flexShrink: 0 }}
               >
                 <FolderOpen size={14} />
@@ -414,6 +415,7 @@ export default function FileExplorer({ width, onFilePreview }: FileExplorerProps
               onClick={() => openBrowser(inputPath || "")}
               className="medha-btn"
               title="Browse folders"
+              aria-label="Browse folders"
               style={{ padding: "4px 8px", flexShrink: 0 }}
             >
                <FolderClosed size={14} />
@@ -675,6 +677,7 @@ export default function FileExplorer({ width, onFilePreview }: FileExplorerProps
               <span>select folder</span>
               <button
                 onClick={() => setBrowseOpen(false)}
+                aria-label="Close folder browser"
                 style={{
                   background: "none",
                   border: "none",
