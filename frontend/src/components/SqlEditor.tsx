@@ -487,6 +487,7 @@ export default function SqlEditor({
             {queryError}
           </span>
           <button
+            aria-label="Dismiss error"
             onClick={onDismissError}
             style={{
               background: "none",
@@ -548,6 +549,7 @@ export default function SqlEditor({
           >
             <span>query history</span>
             <button
+              aria-label="Close history"
               onClick={() => setHistoryOpen(false)}
               style={{
                 background: "none",

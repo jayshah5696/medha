@@ -379,6 +379,7 @@ function App() {
               Open Settings
             </button>
             <button
+              aria-label="Dismiss banner"
               onClick={dismissBanner}
               style={{
                 background: "none",
