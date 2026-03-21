@@ -1,0 +1,1 @@
+## 2023-10-27 - Icon-only buttons accessibility\n**Learning:** Found multiple icon-only buttons missing aria-labels in core components (App, FileExplorer, SqlEditor) which negatively impacts screen reader users.\n**Action:** Applied aria-labels to provide meaningful names for these controls. Ensure to check for aria-labels when adding new icon-only buttons.
