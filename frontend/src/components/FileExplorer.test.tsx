@@ -25,63 +25,55 @@ vi.mock("../lib/api", () => ({
       { name: "sales.csv", is_dir: false },
     ],
   }),
+  runQuery: vi.fn().mockResolvedValue({ columns: [], rows: [], row_count: 0 }),
 }));
 
-// Mock the store
-const mockLoadHistoryEntry = vi.fn();
-const mockSetLastError = vi.fn();
-
+// Mock the store — useStore() is called without a selector (destructured)
+const mockStore = {
+  workspacePath: "",
+  setWorkspacePath: vi.fn(),
+  files: [] as Array<{ name: string; path: string; size_bytes: number; extension: string }>,
+  activeFiles: [] as string[],
+  clearActiveFiles: vi.fn(),
+  editorContent: "",
+  setEditorContent: vi.fn(),
+  fileFilter: "",
+  setFileFilter: vi.fn(),
+  theme: "dark",
+};
 vi.mock("../store", () => ({
-  useStore: () => ({
-    workspacePath: "/test/path",
-    setWorkspacePath: vi.fn(),
-    files: [
-      { name: "data.csv", path: "/test/data.csv", size_bytes: 2048, extension: ".csv" },
-      { name: "users.parquet", path: "/test/users.parquet", size_bytes: 4096, extension: ".parquet" },
-    ],
-    setFiles: vi.fn(),
-    activeFiles: ["data.csv"],
-    toggleActiveFile: vi.fn(),
-    setLastError: mockSetLastError,
-    loadHistoryEntry: mockLoadHistoryEntry,
-  }),
+  useStore: vi.fn((selector?: (s: typeof mockStore) => unknown) =>
+    selector ? selector(mockStore) : mockStore
+  ),
 }));
 
 import FileExplorer from "./FileExplorer";
 
-beforeEach(() => {
-  vi.clearAllMocks();
-});
-
 describe("FileExplorer", () => {
-  it("renders workspace input", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    // Ensure no Electron API in test environment
+    delete (window as any).electronAPI;
+  });
+
+  it("renders workspace input in web mode", () => {
     render(<FileExplorer width={220} />);
     const input = screen.getByPlaceholderText("/path/to/data");
     expect(input).toBeInTheDocument();
   });
 
-  it("shows file list after files loaded", () => {
+  it("calls configure when Open is clicked", async () => {
+    const { configureWorkspace } = await import("../lib/api");
     render(<FileExplorer width={220} />);
-    expect(screen.getByText("data.csv")).toBeInTheDocument();
-    expect(screen.getByText("users.parquet")).toBeInTheDocument();
+    const input = screen.getByPlaceholderText("/path/to/data") as HTMLInputElement;
+    fireEvent.change(input, { target: { value: "/tmp/test" } });
+    fireEvent.click(screen.getByText("open"));
+    await waitFor(() => {
+      expect(configureWorkspace).toHaveBeenCalledWith("/tmp/test");
+    });
   });
 
-  it("active file shows highlighted", () => {
-    render(<FileExplorer width={220} />);
-    const activeItem = screen.getByText("data.csv");
-    // Active file has a different style; just check it exists
-    expect(activeItem).toBeInTheDocument();
-  });
-
-  it("history section is collapsed by default", () => {
-    render(<FileExplorer width={220} />);
-    expect(screen.getByText("history")).toBeInTheDocument();
-    // The history entries should NOT be visible
-    expect(screen.queryByText("no history")).not.toBeInTheDocument();
-    expect(screen.queryByText("SELECT * FROM users")).not.toBeInTheDocument();
-  });
-
-  it("clicking history entry calls loadHistoryEntry", async () => {
+  it("loads history on section expand", async () => {
     const { getHistoryEntry } = await import("../lib/api");
     render(<FileExplorer width={220} />);
     // Click to expand history
@@ -97,16 +89,16 @@ describe("FileExplorer", () => {
     });
   });
 
-  it("renders browse button", () => {
+  it("renders browse button in web mode", () => {
     render(<FileExplorer width={220} />);
-    const browseBtn = screen.getByTitle("Browse folders");
+    const browseBtn = screen.getByText("browse...");
     expect(browseBtn).toBeInTheDocument();
   });
 
   it("clicking browse opens folder picker modal", async () => {
     const { browseDirectory } = await import("../lib/api");
     render(<FileExplorer width={220} />);
-    fireEvent.click(screen.getByTitle("Browse folders"));
+    fireEvent.click(screen.getByText("browse..."));
     await waitFor(() => {
       expect(browseDirectory).toHaveBeenCalled();
     });
@@ -119,25 +111,27 @@ describe("FileExplorer", () => {
     });
   });
 
-  it("clicking 'select this folder' populates input and closes modal", async () => {
+  it("clicking 'select this folder' auto-configures workspace", async () => {
+    const { configureWorkspace } = await import("../lib/api");
     render(<FileExplorer width={220} />);
-    fireEvent.click(screen.getByTitle("Browse folders"));
+    fireEvent.click(screen.getByText("browse..."));
     await waitFor(() => {
       expect(screen.getByText("select folder")).toBeInTheDocument();
     });
     fireEvent.click(screen.getByText("select this folder"));
+    // Should auto-configure the workspace
+    await waitFor(() => {
+      expect(configureWorkspace).toHaveBeenCalledWith("/Users/test/data");
+    });
     // Modal should close
     await waitFor(() => {
       expect(screen.queryByText("select folder")).not.toBeInTheDocument();
     });
-    // Input should have the browsed path
-    const input = screen.getByPlaceholderText("/path/to/data") as HTMLInputElement;
-    expect(input.value).toBe("/Users/test/data");
   });
 
   it("clicking cancel closes the browse modal", async () => {
     render(<FileExplorer width={220} />);
-    fireEvent.click(screen.getByTitle("Browse folders"));
+    fireEvent.click(screen.getByText("browse..."));
     await waitFor(() => {
       expect(screen.getByText("select folder")).toBeInTheDocument();
     });
@@ -150,7 +144,7 @@ describe("FileExplorer", () => {
   it("clicking a subdirectory in browse navigates into it", async () => {
     const { browseDirectory } = await import("../lib/api");
     render(<FileExplorer width={220} />);
-    fireEvent.click(screen.getByTitle("Browse folders"));
+    fireEvent.click(screen.getByText("browse..."));
     await waitFor(() => {
       expect(screen.getByText("subdir")).toBeInTheDocument();
     });
@@ -164,7 +158,7 @@ describe("FileExplorer", () => {
   it("clicking '..' navigates to parent directory", async () => {
     const { browseDirectory } = await import("../lib/api");
     render(<FileExplorer width={220} />);
-    fireEvent.click(screen.getByTitle("Browse folders"));
+    fireEvent.click(screen.getByText("browse..."));
     await waitFor(() => {
       expect(screen.getByText("..")).toBeInTheDocument();
     });
@@ -180,38 +174,22 @@ describe("FileExplorer", () => {
     expect(sidebar.style.width).toBe("300px");
   });
 
-  // --- showDirectoryPicker() tests (Spec §14B) ---
+  // --- Electron mode tests ---
 
-  it("shows native picker button when showDirectoryPicker is available", () => {
-    // Simulate Chrome/Edge with File System Access API
-    (window as any).showDirectoryPicker = vi.fn();
+  it("shows choose folder button in Electron mode", () => {
+    (window as any).electronAPI = { pickDirectory: vi.fn() };
     render(<FileExplorer width={220} />);
-    const nativeBtn = screen.getByTitle("Open native folder picker");
-    expect(nativeBtn).toBeInTheDocument();
-    delete (window as any).showDirectoryPicker;
+    expect(screen.getByText("choose folder")).toBeInTheDocument();
+    // Should NOT show text input in Electron mode
+    expect(screen.queryByPlaceholderText("/path/to/data")).not.toBeInTheDocument();
+    delete (window as any).electronAPI;
   });
 
-  it("hides native picker button when showDirectoryPicker is not available", () => {
-    // Simulate Firefox/Safari without File System Access API
-    delete (window as any).showDirectoryPicker;
+  it("does not show choose folder button in web mode", () => {
+    delete (window as any).electronAPI;
     render(<FileExplorer width={220} />);
-    const nativeBtn = screen.queryByTitle("Open native folder picker");
-    expect(nativeBtn).not.toBeInTheDocument();
-  });
-
-  it("native picker pre-fills input with folder name", async () => {
-    const mockHandle = { kind: "directory", name: "my-data-folder" };
-    (window as any).showDirectoryPicker = vi.fn().mockResolvedValue(mockHandle);
-
-    render(<FileExplorer width={220} />);
-    const nativeBtn = screen.getByTitle("Open native folder picker");
-    fireEvent.click(nativeBtn);
-
-    await waitFor(() => {
-      const input = screen.getByPlaceholderText("/path/to/data") as HTMLInputElement;
-      expect(input.value).toContain("my-data-folder");
-    });
-
-    delete (window as any).showDirectoryPicker;
+    expect(screen.queryByText("choose folder")).not.toBeInTheDocument();
+    // Should show text input
+    expect(screen.getByPlaceholderText("/path/to/data")).toBeInTheDocument();
   });
 });

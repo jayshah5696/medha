@@ -205,115 +205,127 @@ function ResultTable({
   // identical column sizing. Each column gets minmax(120px, 1fr).
   const colCount = table.getAllColumns().length;
   const gridColumns = `repeat(${colCount}, minmax(120px, 1fr))`;
+  // Minimum width so columns expand beyond the viewport for horizontal scroll
+  const minWidth = colCount * 120;
 
   return (
     <div style={containerStyle}>
 
-      {/* Sticky header — outside the scroll container so it never scrolls away */}
-      <div
-        role="table"
-        style={{
-          fontSize: 'var(--font-size-md)',
-          fontFamily: "var(--font-mono)",
-        }}
-      >
-        <div role="rowgroup">
-          {table.getHeaderGroups().map((hg) => (
-            <div
-              key={hg.id}
-              role="row"
-              style={{
-                display: "grid",
-                gridTemplateColumns: gridColumns,
-                borderBottom: "1px solid var(--border-strong)",
-                background: "var(--bg-secondary)",
-              }}
-            >
-              {hg.headers.map((header) => (
-                <div
-                  key={header.id}
-                  role="columnheader"
-                  style={{
-                    padding: "6px 14px",
-                    textAlign: "left",
-                    color: "var(--text-dimmed)",
-                    fontWeight: 500,
-                    fontSize: 'var(--font-size-base)',
-                    whiteSpace: "nowrap",
-                    textTransform: "uppercase",
-                    letterSpacing: "0.06em",
-                    fontFamily: "var(--font-ui)",
-                    height: ROW_HEIGHT,
-                    lineHeight: `${ROW_HEIGHT}px`,
-                    overflow: "hidden",
-                    textOverflow: "ellipsis",
-                  }}
-                >
-                  {flexRender(
-                    header.column.columnDef.header,
-                    header.getContext()
-                  )}
-                </div>
-              ))}
-            </div>
-          ))}
-        </div>
-      </div>
+      {/* Outer scroll container: horizontal scroll shared by header + body */}
+      <div style={{ flex: 1, overflowX: "auto", overflowY: "hidden", display: "flex", flexDirection: "column", minHeight: 0 }}>
 
-      {/* Scrollable virtualized body */}
-      <div
-        ref={scrollContainerRef}
-        data-testid="virtual-scroll-container"
-        style={{ flex: 1, overflow: "auto" }}
-      >
+        {/* Sticky header — inside the horizontal scroll container so it scrolls horizontally with the body */}
         <div
-          role="rowgroup"
+          role="table"
           style={{
-            height: rowVirtualizer.getTotalSize(),
-            position: "relative",
             fontSize: 'var(--font-size-md)',
             fontFamily: "var(--font-mono)",
+            position: "sticky",
+            top: 0,
+            zIndex: 1,
+            minWidth,
           }}
         >
-          {rowVirtualizer.getVirtualItems().map((virtualRow) => {
-            const row = rows[virtualRow.index];
-            return (
+          <div role="rowgroup">
+            {table.getHeaderGroups().map((hg) => (
               <div
-                key={row.id}
+                key={hg.id}
                 role="row"
                 style={{
-                  position: "absolute",
-                  top: 0,
-                  left: 0,
-                  width: "100%",
-                  height: ROW_HEIGHT,
-                  transform: `translateY(${virtualRow.start}px)`,
                   display: "grid",
                   gridTemplateColumns: gridColumns,
-                  background: virtualRow.index % 2 === 0 ? "var(--bg-primary)" : "var(--bg-row-alt)",
+                  borderBottom: "1px solid var(--border-strong)",
+                  background: "var(--bg-secondary)",
                 }}
               >
-                {row.getVisibleCells().map((cell) => (
+                {hg.headers.map((header) => (
                   <div
-                    key={cell.id}
-                    role="cell"
+                    key={header.id}
+                    role="columnheader"
                     style={{
-                      padding: "0 10px",
+                      padding: "6px 14px",
+                      textAlign: "left",
+                      color: "var(--text-dimmed)",
+                      fontWeight: 500,
+                      fontSize: 'var(--font-size-base)',
                       whiteSpace: "nowrap",
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
+                      textTransform: "uppercase",
+                      letterSpacing: "0.06em",
+                      fontFamily: "var(--font-ui)",
                       height: ROW_HEIGHT,
                       lineHeight: `${ROW_HEIGHT}px`,
-                      color: "var(--text-primary)",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
                     }}
                   >
-                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                    {flexRender(
+                      header.column.columnDef.header,
+                      header.getContext()
+                    )}
                   </div>
                 ))}
               </div>
-            );
-          })}
+            ))}
+          </div>
         </div>
+
+        {/* Scrollable virtualized body — only vertical scroll here */}
+        <div
+          ref={scrollContainerRef}
+          data-testid="virtual-scroll-container"
+          style={{ flex: 1, overflowY: "auto", overflowX: "hidden" }}
+        >
+          <div
+            role="rowgroup"
+            style={{
+              height: rowVirtualizer.getTotalSize(),
+              position: "relative",
+              fontSize: 'var(--font-size-md)',
+              fontFamily: "var(--font-mono)",
+              minWidth,
+            }}
+          >
+            {rowVirtualizer.getVirtualItems().map((virtualRow) => {
+              const row = rows[virtualRow.index];
+              return (
+                <div
+                  key={row.id}
+                  role="row"
+                  style={{
+                    position: "absolute",
+                    top: 0,
+                    left: 0,
+                    width: "100%",
+                    height: ROW_HEIGHT,
+                    transform: `translateY(${virtualRow.start}px)`,
+                    display: "grid",
+                    gridTemplateColumns: gridColumns,
+                    background: virtualRow.index % 2 === 0 ? "var(--bg-primary)" : "var(--bg-row-alt)",
+                  }}
+                >
+                  {row.getVisibleCells().map((cell) => (
+                    <div
+                      key={cell.id}
+                      role="cell"
+                      style={{
+                        padding: "0 10px",
+                        whiteSpace: "nowrap",
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        height: ROW_HEIGHT,
+                        lineHeight: `${ROW_HEIGHT}px`,
+                        color: "var(--text-primary)",
+                      }}
+                    >
+                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                    </div>
+                  ))}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
       </div>
 
       {/* Status bar */}

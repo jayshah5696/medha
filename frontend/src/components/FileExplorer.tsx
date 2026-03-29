@@ -188,31 +188,28 @@ export default function FileExplorer({ width, onFilePreview }: FileExplorerProps
   const [historyEntries, setHistoryEntries] = useState<HistoryEntry[]>([]);
   const [fileFilter, setFileFilter] = useState("");
 
-  // Native picker: Electron IPC or File System Access API (Spec §14B)
+  // Detect Electron environment for native folder picker (Spec §14B)
   const isElectron = typeof window !== "undefined" && !!window.electronAPI;
-  const hasNativePicker =
-    isElectron || (typeof window !== "undefined" && "showDirectoryPicker" in window);
 
   const handleNativePicker = async () => {
     try {
-      if (isElectron) {
-        // Electron: native OS folder picker returns full path
-        const selectedPath = await window.electronAPI!.pickDirectory();
-        if (selectedPath) {
-          setInputPath(selectedPath);
-          await configureWorkspace(selectedPath);
-          const updated = await getFiles();
-          setFiles(updated);
-        }
-        return;
+      // Electron: native OS folder picker returns full path
+      const selectedPath = await window.electronAPI!.pickDirectory();
+      if (selectedPath) {
+        setInputPath(selectedPath);
+        setLoading(true);
+        await configureWorkspace(selectedPath);
+        setWorkspacePath(selectedPath);
+        clearActiveFiles();
+        const updated = await getFiles();
+        setFiles(updated);
+        setLastError(null);
+        setFileFilter("");
+        setLoading(false);
       }
-      // Web: File System Access API (hint mode — folder name only)
-      const dirHandle = await (window as any).showDirectoryPicker();
-      if (dirHandle && dirHandle.name) {
-        setInputPath(dirHandle.name);
-      }
-    } catch {
-      // User cancelled the picker or API error — silently ignore
+    } catch (e) {
+      setLoading(false);
+      // User cancelled the picker — silently ignore
     }
   };
 
@@ -248,9 +245,24 @@ export default function FileExplorer({ width, onFilePreview }: FileExplorerProps
     }
   };
 
-  const handleBrowseSelect = (dir: string) => {
+  const handleBrowseSelect = async (dir: string) => {
     setInputPath(dir);
     setBrowseOpen(false);
+    // Auto-configure the selected directory
+    setLoading(true);
+    try {
+      await configureWorkspace(dir);
+      setWorkspacePath(dir);
+      clearActiveFiles();
+      const fileList = await getFiles();
+      setFiles(fileList);
+      setLastError(null);
+      setFileFilter("");
+    } catch (e) {
+      setLastError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setLoading(false);
+    }
   };
 
   // Show the filter input always
@@ -367,71 +379,118 @@ export default function FileExplorer({ width, onFilePreview }: FileExplorerProps
       {/* Workspace config section */}
       <SidebarSection title="workspace">
         <div style={{ padding: "4px 12px 10px" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 0 }}>
-            <span
-              style={{
-                fontSize: 'var(--font-size-md)',
-                color: "var(--text-dimmed)",
-                padding: "7px 6px 7px 8px",
-                background: "var(--bg-tertiary)",
-                border: "1px solid var(--border)",
-                borderRight: "none",
-                borderRadius: 0,
-                fontFamily: "var(--font-mono)",
-                lineHeight: 1,
-              }}
-            >
-              &gt;
-            </span>
-            <input
-              type="text"
-              value={inputPath}
-              onChange={(e) => setInputPath(e.target.value)}
-              placeholder="/path/to/data"
-              onKeyDown={(e) => e.key === "Enter" && handleConfigure()}
-              style={{
-                flex: 1,
-                padding: "7px 8px",
-                fontSize: 'var(--font-size-base)',
-                background: "var(--bg-tertiary)",
-                border: "1px solid var(--border)",
-                borderRadius: 0,
-                color: "var(--text-primary)",
-                outline: "none",
-                fontFamily: "var(--font-mono)",
-                width: "100%",
-                minWidth: 0,
-              }}
-            />
-          </div>
-          <div style={{ display: "flex", gap: 4, marginTop: 6 }}>
+          {workspacePath && files.length > 0 ? (
+            /* Workspace is configured — show current path + Change button */
+            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+              <div
+                style={{
+                  flex: 1,
+                  fontSize: "var(--font-size-base)",
+                  fontFamily: "var(--font-mono)",
+                  color: "var(--text-secondary)",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap",
+                  padding: "7px 8px",
+                  background: "var(--bg-tertiary)",
+                  border: "1px solid var(--border)",
+                }}
+                title={workspacePath}
+              >
+                {workspacePath}
+              </div>
+              <button
+                onClick={() => {
+                  setWorkspacePath("");
+                  setFiles([]);
+                  setInputPath("");
+                }}
+                className="medha-btn"
+                style={{ flexShrink: 0, padding: "6px 10px" }}
+              >
+                change
+              </button>
+            </div>
+          ) : isElectron ? (
+            /* Electron mode — single prominent button for native OS picker */
             <button
-              onClick={handleConfigure}
+              onClick={handleNativePicker}
               disabled={loading}
               className="medha-btn"
-              style={{ flex: 1 }}
+              style={{
+                width: "100%",
+                padding: "10px 12px",
+                fontSize: "var(--font-size-base)",
+                fontWeight: 600,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 8,
+              }}
             >
-              {loading ? "loading..." : "configure"}
+              <FolderOpen size={16} />
+              {loading ? "loading..." : "choose folder"}
             </button>
-            {hasNativePicker && (
-              <button
-                onClick={handleNativePicker}
-                className="medha-btn"
-                title="Open native folder picker"
-                style={{ padding: "4px 8px", flexShrink: 0 }}
-              >
-                <FolderOpen size={14} />
-              </button>
-            )}
-            <button
-              onClick={() => openBrowser(inputPath || "")}
-              className="medha-btn"
-              title="Browse folders"
-              style={{ padding: "4px 8px", flexShrink: 0 }}
-            >
-              <FolderClosed size={14} />
-            </button>
-          </div>
+          ) : (
+            /* Web mode — text input + Open button, Browse below */
+            <>
+              <div style={{ display: "flex", alignItems: "center", gap: 0 }}>
+                <span
+                  style={{
+                    fontSize: "var(--font-size-md)",
+                    color: "var(--text-dimmed)",
+                    padding: "7px 6px 7px 8px",
+                    background: "var(--bg-tertiary)",
+                    border: "1px solid var(--border)",
+                    borderRight: "none",
+                    borderRadius: 0,
+                    fontFamily: "var(--font-mono)",
+                    lineHeight: 1,
+                  }}
+                >
+                  &gt;
+                </span>
+                <input
+                  type="text"
+                  value={inputPath}
+                  onChange={(e) => setInputPath(e.target.value)}
+                  placeholder="/path/to/data"
+                  onKeyDown={(e) => e.key === "Enter" && handleConfigure()}
+                  style={{
+                    flex: 1,
+                    padding: "7px 8px",
+                    fontSize: "var(--font-size-base)",
+                    background: "var(--bg-tertiary)",
+                    border: "1px solid var(--border)",
+                    borderRadius: 0,
+                    color: "var(--text-primary)",
+                    outline: "none",
+                    fontFamily: "var(--font-mono)",
+                    width: "100%",
+                    minWidth: 0,
+                  }}
+                />
+              </div>
+              <div style={{ display: "flex", gap: 4, marginTop: 6 }}>
+                <button
+                  onClick={handleConfigure}
+                  disabled={loading}
+                  className="medha-btn"
+                  style={{ flex: 1 }}
+                >
+                  {loading ? "loading..." : "open"}
+                </button>
+                <button
+                  onClick={() => openBrowser(inputPath || "")}
+                  className="medha-btn"
+                  title="Browse folders on server"
+                  style={{ padding: "4px 10px", flexShrink: 0 }}
+                >
+                  browse...
+                </button>
+              </div>
+            </>
+          )}
         </div>
       </SidebarSection>
 
