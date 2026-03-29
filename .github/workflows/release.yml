@@ -86,15 +86,13 @@ jobs:
           CSC_IDENTITY_AUTO_DISCOVERY: "false"
         run: npx electron-builder --mac --${{ matrix.arch }} --publish never
 
-      - name: Rename DMG with arch suffix
+      - name: Rename DMG to standard name
         run: |
           cd release
-          for f in *.dmg; do
-            base="${f%.dmg}"
-            if [[ ! "$base" =~ "${{ matrix.arch }}" ]]; then
-              mv "$f" "${base}-${{ matrix.arch }}.dmg"
-            fi
-          done
+          VERSION="${GITHUB_REF_NAME#v}"
+          # Force a single, predictable filename per arch
+          DMG=$(ls *.dmg | head -1)
+          mv "$DMG" "Medha-${VERSION}-${{ matrix.arch }}.dmg"
 
       - uses: actions/upload-artifact@v4
         with:
@@ -167,10 +165,12 @@ jobs:
         id: sha
         run: |
           cd artifacts
-          ARM_FILE=$(ls *arm64*.dmg 2>/dev/null | head -1)
-          X64_FILE=$(ls *x64*.dmg 2>/dev/null || ls *.dmg 2>/dev/null | grep -v arm64 | head -1)
-          echo "arm64=$(shasum -a 256 "$ARM_FILE" | awk '{print $1}')" >> "$GITHUB_OUTPUT"
-          echo "x64=$(shasum -a 256 "$X64_FILE" | awk '{print $1}')" >> "$GITHUB_OUTPUT"
+          ls -la *.dmg
+          ARM_SHA=$(shasum -a 256 *arm64.dmg | awk '{print $1}')
+          X64_SHA=$(shasum -a 256 *x64.dmg | awk '{print $1}')
+          echo "arm64=$ARM_SHA" >> "$GITHUB_OUTPUT"
+          echo "x64=$X64_SHA" >> "$GITHUB_OUTPUT"
+          echo "Computed: arm64=$ARM_SHA x64=$X64_SHA"
 
       - name: Extract version
         id: version
