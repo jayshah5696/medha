@@ -176,7 +176,7 @@
 - [ ] `DELETE /api/ai/chat/{id}` — cancel in-flight agent
 - [ ] Human-in-the-loop interrupt + `/resume` endpoint
 - [ ] Arrow IPC format support
-- [ ] Tauri / PyInstaller desktop packaging
+- [ ] Electron / PyInstaller desktop packaging
 
 ---
 

@@ -1,4 +1,3 @@
-import { ChevronDown } from "lucide-react";
 /**
  * ThinkingBlock — collapsible container for agent tool activity steps.
  *
@@ -14,6 +13,7 @@ import { ChevronDown } from "lucide-react";
  */
 
 import { useState, useEffect, useRef } from "react";
+import { ChevronDown } from "lucide-react";
 import ToolStep from "./ToolStep";
 import type { ToolStepData } from "./ToolStep";
 

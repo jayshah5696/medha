@@ -464,12 +464,12 @@ export default function ChatSidebar({ width }: { width: number }) {
                     ...(msg.role === "user"
                       ? {
                           borderLeft: "2px solid var(--accent)",
-                          background: "rgba(0, 216, 255, 0.04)",
+                          background: "var(--accent-bg-subtle)",
                           color: "var(--text-primary)",
                         }
                       : {
                           borderLeft: "2px solid var(--border)",
-                          background: "rgba(255, 255, 255, 0.02)",
+                          background: "var(--surface-overlay)",
                           color: "var(--text-primary)",
                         }),
                   }}
@@ -547,7 +547,7 @@ export default function ChatSidebar({ width }: { width: number }) {
           style={{
             padding: "8px 10px",
             margin: "0 8px 4px",
-            background: "rgba(251, 191, 36, 0.08)",
+            background: "var(--warning-bg)",
             borderLeft: "2px solid var(--warning)",
             fontSize: "var(--font-size-xs)",
             fontFamily: "var(--font-mono)",

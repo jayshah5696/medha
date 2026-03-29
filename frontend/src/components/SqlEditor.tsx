@@ -194,10 +194,10 @@ export default function SqlEditor({
           minWidth: "40px",
         },
         ".cm-activeLine": {
-          backgroundColor: "rgba(0, 216, 255, 0.03)",
+          backgroundColor: "var(--accent-bg-subtle)",
         },
         ".cm-activeLineGutter": {
-          backgroundColor: "rgba(0, 216, 255, 0.05)",
+          backgroundColor: "var(--accent-bg-subtle)",
           color: "var(--text-secondary)",
         },
         ".cm-selectionBackground, ::selection": {
@@ -208,7 +208,7 @@ export default function SqlEditor({
           borderLeftWidth: "1.5px",
         },
         ".cm-matchingBracket": {
-          backgroundColor: "rgba(0, 216, 255, 0.12)",
+          backgroundColor: "var(--accent-bg-strong)",
           outline: "none",
         },
         ".cm-line": {
@@ -260,7 +260,7 @@ export default function SqlEditor({
           fontSize: "var(--font-size-sm)",
         },
         ".cm-error-line": {
-          backgroundColor: "rgba(255, 60, 60, 0.08)",
+          backgroundColor: "var(--error-bg)",
           borderLeft: "2px solid var(--error)",
         },
       },
@@ -466,7 +466,7 @@ export default function SqlEditor({
         <div
           style={{
             padding: "4px 10px",
-            background: "rgba(255, 60, 60, 0.08)",
+            background: "var(--error-bg)",
             borderBottom: "1px solid var(--border)",
             display: "flex",
             alignItems: "center",

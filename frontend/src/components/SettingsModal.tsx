@@ -274,7 +274,7 @@ function ProviderCredentialField({ provider, settings }: CredFieldProps) {
       <div style={{
         fontSize: 'var(--font-size-xs)', color: "var(--warning)", fontFamily: "var(--font-mono)",
         marginBottom: 6, padding: "3px 6px",
-        background: "rgba(245,166,35,0.06)", border: "1px solid rgba(245,166,35,0.15)",
+        background: "var(--warning-bg)", border: "1px solid var(--warning-border)",
       }}>
         <AlertTriangle size={12} style={{ marginRight: 4, verticalAlign: "middle" }} /> {cfg.keyField ? "API key not set — see Keys section." : `${cfg.urlLabel} not configured.`}
       </div>

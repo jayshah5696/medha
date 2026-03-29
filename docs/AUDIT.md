@@ -2,7 +2,7 @@
 Generated: 2026-03-05
 
 ## Summary
-Medha establishes a strong foundation for a local-first DuckDB interface, successfully implementing core querying, local persistence, and LangChain tool integration. However, the current state critically fails on its sandbox isolation guarantees when unconfigured, entirely misses the Tauri/PyInstaller desktop wrapper, and lacks robust error handling for active LLM generation streams. The application is functional for web based MVP usage but falls significantly short of production safety and offline packaging requirements.
+Medha establishes a strong foundation for a local-first DuckDB interface, successfully implementing core querying, local persistence, and LangChain tool integration. However, the current state critically fails on its sandbox isolation guarantees when unconfigured, entirely misses the Electron/PyInstaller desktop wrapper, and lacks robust error handling for active LLM generation streams. The application is functional for web based MVP usage but falls significantly short of production safety and offline packaging requirements.
 
 ## 1. Spec vs Implementation
 | Section | Status | Notes |
@@ -12,7 +12,7 @@ Medha establishes a strong foundation for a local-first DuckDB interface, succes
 | 4E: HITL interrupt | MISSING | `agent.py` does not implement LangGraph human-in-the-loop interrupts or the `/resume` endpoint. |
 | 5E: Cmd+H localStorage | PARTIAL | Cmd+H opens history, but it fetches from a backend API (`~/.medha/history/`) instead of the spec'd `localStorage`. |
 | 5F: @filename parsing | DONE | `ContextPill.tsx` correctly parses `@filename` mentions via regex and adds them to active files. |
-| 6: src-tauri/ directory | MISSING | The Rust Tauri shell and sidecar code is not in the repository. |
+| 6: electron/ directory | MISSING | The Electron shell and main process code is not in the repository. |
 | 7: medha.spec PyInstaller | MISSING | The `medha.spec` build script is absent. |
 | Arrow IPC | MISSING | `format="arrow"` parameter is accepted by `/api/db/query` but ignored; JSON rows are always returned. |
 
@@ -35,7 +35,7 @@ Medha establishes a strong foundation for a local-first DuckDB interface, succes
 
 ## 4. README Accuracy
 1. **Test Badge Discrepancy**: The prompt asks if the badge says 48 tests. The README badge explicitly reads "tests-59 passing" (which correctly sums 41 backend + 18 frontend).
-2. **Roadmap Inaccuracy**: None of the listed roadmap items (Tauri, PyInstaller, File watcher, HITL, Arrow IPC) are built yet, which accurately reflects the codebase.
+2. **Roadmap Inaccuracy**: None of the listed roadmap items (Electron, PyInstaller, File watcher, HITL, Arrow IPC) are built yet, which accurately reflects the codebase.
 3. **Missing Key Binding**: README documents `Cmd+L` for chat sidebar, but this binding is entirely missing from the CodeMirror `keymap` in `SqlEditor.tsx`.
 4. **Architecture Diagram**: Mentions the `File Watcher` and `GET /api/workspace/files` broadcasting events, which is completely missing in implementation.
 
@@ -58,6 +58,6 @@ Medha establishes a strong foundation for a local-first DuckDB interface, succes
 ## Top 5 Priority Fixes
 1. **Patch Unconfigured Path Safety Bypass**: Fix `_check_path_safety` in `db.py` to hard-reject all queries (raise `ValueError`) if `workspace_root` is `None`.
 2. **Handle SSE Disconnects**: Implement `asyncio.CancelledError` handling in the `/api/ai/chat` stream generator to kill LangChain runs when the client closes the chat.
-3. **Add Tauri & PyInstaller Wrappers**: Fulfill the core spec by creating the `src-tauri` directory and PyInstaller sidecar logic to enable desktop packaging.
+3. **Add Electron & PyInstaller Wrappers**: Fulfill the core spec by creating the `electron/` directory and PyInstaller child process logic to enable desktop packaging.
 4. **Wire Cmd+L Shortcut**: Add the missing `Mod-l` key binding in `SqlEditor.tsx` to actually toggle the chat sidebar as documented.
 5. **Implement File Watcher**: Add `watchfiles` to `main.py` lifespan and create the `GET /api/events` SSE endpoint to push schema invalidations to the frontend dynamically.

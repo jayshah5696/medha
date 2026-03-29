@@ -5,7 +5,7 @@
 # मेधा · medha
 
 **Local-first SQL IDE for flat files. Zero setup. AI-native.**
-*Local web app with theming support (Tauri desktop packaging coming soon)*
+*Local web app with theming support (Electron desktop packaging coming soon)*
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python](https://img.shields.io/badge/python-3.11+-blue.svg)](https://python.org)
@@ -273,7 +273,7 @@ medha/
 
 ## Roadmap
 
-- [ ] Tauri desktop app (single `.app` binary)
+- [ ] Electron desktop app (single `.app` binary)
 - [ ] PyInstaller sidecar packaging
 - [ ] File watcher live schema invalidation in UI
 - [ ] Human-in-the-loop confirmation for large table scans

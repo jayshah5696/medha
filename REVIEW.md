@@ -2,18 +2,18 @@
 Generated: 2026-03-05
 
 ## Summary
-Medha is a solid MVP for a local-first SQL IDE. The FastAPI and Vite foundations are well-structured, and the core concept of zero-egress DuckDB execution is implemented effectively. However, the application currently lacks the promised Tauri desktop shell, has a few high-severity security oversights regarding file writing and API key exposure, and misses crucial error handling around LLM network calls. 
+Medha is a solid MVP for a local-first SQL IDE. The FastAPI and Vite foundations are well-structured, and the core concept of zero-egress DuckDB execution is implemented effectively. However, the application currently lacks the promised Electron desktop shell, has a few high-severity security oversights regarding file writing and API key exposure, and misses crucial error handling around LLM network calls. 
 
 ## 1. Spec vs Implementation
 | Section | Status | Notes |
 |---------|--------|-------|
 | 2. Hard Constraints | PARTIAL | 10k row limit and basic path safety implemented. However, absolute LLM isolation relies on user trust (no strict enforcement preventing agent from requesting rows). |
-| 3. Architecture | PARTIAL | `src-tauri` Rust shell is completely missing from the repository. |
+| 3. Architecture | PARTIAL | `electron/` shell is completely missing from the repository. |
 | 4. Backend Spec | DONE | Endpoints, file watcher, and DB managers are implemented as spec'd. |
 | 5. Frontend Spec | PARTIAL | DiffOverlay, ChatSidebar, and editor are present. |
-| 6. Tauri Shell (Rust) | MISSING | No Tauri configuration or Rust sidecar code exists. |
-| 7. Build & Packaging | MISSING | PyInstaller and Tauri build scripts are absent. |
-| 8. MVP Scope | PARTIAL | Phases 1-3 complete. Phase 4 (Desktop/Tauri) not started. |
+| 6. Electron Shell (Node.js) | MISSING | No Electron configuration or main process code exists. |
+| 7. Build & Packaging | MISSING | PyInstaller and electron-builder scripts are absent. |
+| 8. MVP Scope | PARTIAL | Phases 1-3 complete. Phase 4 (Desktop/Electron) not started. |
 | 9/11/12. Agent/Config | DONE | YAML profiles, history, and chat persistence are implemented. |
 
 ## 2. Code Quality Issues
@@ -31,8 +31,8 @@ Medha is a solid MVP for a local-first SQL IDE. The FastAPI and Vite foundations
 4. **Settings Validation**: `POST /api/settings` error paths (e.g., malformed JSON or unwriteable settings file) are untested.
 
 ## 4. README Accuracy
-1. **Tauri/Desktop Claims**: README mentions "single-binary desktop app" and lists Tauri in the roadmap/architecture, but the repo is purely a web app at this stage.
-2. **Build Commands**: `just ci` and `just build` imply a complete build pipeline, but without Tauri, the desktop build instructions will fail.
+1. **Electron/Desktop Claims**: README mentions "single-binary desktop app" and lists Electron in the roadmap/architecture, but the repo is purely a web app at this stage.
+2. **Build Commands**: `just ci` and `just build` imply a complete build pipeline, but without Electron, the desktop build instructions will fail.
 3. **Tests**: The badge says "59 passing", which aligns with the vitest (18) and pytest (41) count, so this is accurate.
 
 ## 5. Security Issues
@@ -51,5 +51,5 @@ Medha is a solid MVP for a local-first SQL IDE. The FastAPI and Vite foundations
 1. **Mask API Keys**: Modify `GET /api/settings` to return masked keys (e.g., `sk-...1234`) and only update keys on `POST` if a new value is provided.
 2. **Fix DuckDB CWD Sandbox**: Set DuckDB's working directory or restrict `COPY` and write operations to prevent users/LLMs from overwriting backend source files.
 3. **Robust Error Handling for LLMs**: Add `try/except` blocks around `litellm.acompletion` and agent calls to gracefully surface quota/network errors to the frontend.
-4. **Implement Tauri Shell**: Build the `src-tauri` directory to fulfill the "desktop app" spec requirement.
+4. **Implement Electron Shell**: Build the `electron/` directory to fulfill the "desktop app" spec requirement.
 5. **Connection Pooling/Thread Safety**: Ensure DuckDB connection access is either strictly serialized or use a connection pool if concurrent queries are expected.

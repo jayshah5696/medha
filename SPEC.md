@@ -1,12 +1,12 @@
 # Medha — Local-First SQL IDE for Flat Files
 **Version:** 0.1 (MVP Spec)
-**Stack:** Vite + React + TypeScript + FastAPI + DuckDB + LangGraph + Tauri
+**Stack:** Vite + React + TypeScript + FastAPI + DuckDB + LangGraph + Electron
 
 ---
 
 ## 1. Product Goal
 
-A local web app for querying Parquet, CSV, and JSON files with native DuckDB performance and AI-first UX. Zero data egress. Zero database server. Tauri desktop packaging coming soon.
+A local web app for querying Parquet, CSV, and JSON files with native DuckDB performance and AI-first UX. Zero data egress. Zero database server. Electron desktop packaging coming soon.
 
 ---
 
@@ -62,35 +62,35 @@ medha/
     vite.config.ts
     tsconfig.json
   
-  src-tauri/        # Tauri 2.x Rust shell
-    src/
-      main.rs        # Tauri app entry, sidecar lifecycle
-      sidecar.rs     # Port negotiation, health check, graceful shutdown
-    tauri.conf.json
-    Cargo.toml
+  electron/          # Electron shell (Node.js)
+    main.js           # Electron main process entry, child process lifecycle
+    preload.js        # Preload script: exposes IPC bridge to renderer
+    child.js          # Port negotiation, health check, graceful shutdown
+    package.json      # electron, electron-builder deps
+    electron-builder.yml
 ```
 
 ### 3B. Process Model
 
 ```
-Tauri (Rust)
-  |-- spawns --> Python sidecar (PyInstaller binary)
+Electron (main process, Node.js)
+  |-- spawns --> Python child process (PyInstaller binary)
   |               |-- FastAPI on dynamic port (18900-18999)
   |               |-- DuckDB in-process
   |               |-- LangGraph agent (lazy init)
   |
-  |-- loads  --> Vite static build (embedded in Tauri bundle)
-                  |-- polls sidecar health before enabling UI
+  |-- loads  --> Vite static build (served via BrowserWindow)
+                  |-- polls child process health before enabling UI
                   |-- all API calls to localhost:{port}
 ```
 
-**Port negotiation:** Tauri picks a free port in range 18900-18999 at startup, writes it to a temp file, passes path as env var `MEDHA_PORT_FILE` to sidecar. Sidecar reads file, binds on that port. Frontend reads port via `window.__MEDHA_PORT__` injected by Tauri before webview load.
+**Port negotiation:** Electron main process picks a free port in range 18900-18999 at startup using Node.js `net.createServer`, writes it to a temp file, passes path as env var `MEDHA_PORT_FILE` to the child process. Child process reads file, binds on that port. Frontend reads port via `window.__MEDHA_PORT__` injected by the preload script through `contextBridge.exposeInMainWorld`.
 
-**Sidecar lifecycle (Rust):**
-1. Spawn sidecar subprocess
+**Child process lifecycle (Electron main process):**
+1. Spawn Python backend as a child process via `child_process.spawn`
 2. Poll `GET /health` with 100ms interval, timeout 10s
-3. Inject port into webview JS context
-4. On Tauri window close: SIGTERM sidecar, wait 2s, SIGKILL if still alive
+3. Send port to renderer via IPC (`ipcMain`/`ipcRenderer`)
+4. On Electron window close: SIGTERM child process, wait 2s, SIGKILL if still alive
 
 ---
 
@@ -276,7 +276,7 @@ Human-in-the-loop: LangGraph interrupt on `execute_query` tool if query touches 
 
 ### 5E. Query History (useQuery.ts)
 
-Persisted to `localStorage` (Tauri: to app data dir via Tauri FS API).
+Persisted to `localStorage` (Electron: to app data dir via Electron's `app.getPath('userData')`).
 Schema: `{ id, sql, timestamp, active_files, row_count, duration_ms, error? }`
 Max 500 entries, LRU eviction.
 Accessible via Cmd+H (history popover in editor toolbar).
@@ -296,30 +296,58 @@ Toast for general errors. Inline decoration for SQL errors.
 
 ---
 
-## 6. Tauri Shell (Rust)
+## 6. Electron Shell (Node.js)
 
-### src-tauri/src/sidecar.rs
+### electron/main.js
 
-```rust
+```javascript
+// Electron main process entry point
+// - Creates BrowserWindow loading Vite build (or dev server in dev mode)
+// - Spawns Python backend as child process
+// - Manages port negotiation via IPC
+// - Handles app lifecycle (ready, window-all-closed, before-quit)
+```
+
+### electron/child.js
+
+```javascript
 // Functions:
-// find_free_port(range: 18900..18999) -> u16
-// write_port_file(port: u16, path: &Path)
-// spawn_sidecar(port_file: &Path) -> Child
-// wait_for_health(port: u16, timeout_secs: u64) -> Result<()>
-// inject_port_to_webview(window: &Window, port: u16)
-// graceful_shutdown(child: &mut Child)
+// findFreePort(range: [18900, 18999]) -> Promise<number>
+// writePortFile(port: number, filePath: string) -> void
+// spawnBackend(portFilePath: string) -> ChildProcess
+// waitForHealth(port: number, timeoutMs: number) -> Promise<void>
+// gracefulShutdown(child: ChildProcess) -> void
 ```
 
-Tauri sidecar config in `tauri.conf.json`:
-```json
-{
-  "bundle": {
-    "externalBin": ["binaries/medha-backend"]
-  }
-}
+### electron/preload.js
+
+```javascript
+// Exposes IPC bridge to renderer via contextBridge.exposeInMainWorld
+// window.__MEDHA_PORT__ set via ipcRenderer.invoke('get-port')
+// window.__MEDHA_ELECTRON__ = true (for environment detection)
 ```
 
-Binary naming convention: `medha-backend-x86_64-apple-darwin`, etc. (Tauri requires platform suffix).
+Electron builder config in `electron-builder.yml`:
+```yaml
+appId: com.medha.app
+productName: Medha
+directories:
+  output: dist-electron
+files:
+  - electron/**/*
+  - frontend/dist/**/*
+extraResources:
+  - from: backend/dist/medha-backend
+    to: medha-backend
+mac:
+  target: [dmg, zip]
+win:
+  target: [nsis, portable]
+linux:
+  target: [AppImage, deb]
+```
+
+Binary naming convention: `medha-backend` (single PyInstaller binary bundled as an extra resource).
 
 ---
 
@@ -345,16 +373,13 @@ make dev
 cd backend && pyinstaller medha.spec
 # Output: backend/dist/medha-backend (single binary)
 
-# 2. Copy binary to Tauri sidecar location
-cp backend/dist/medha-backend src-tauri/binaries/medha-backend-$(rustup show active-toolchain | cut -d- -f2-)
-
-# 3. Build Vite static
+# 2. Build Vite static
 cd frontend && npm run build
-# Output: frontend/dist/ (embedded by Tauri)
+# Output: frontend/dist/ (loaded by Electron BrowserWindow)
 
-# 4. Build Tauri app
-cd src-tauri && cargo tauri build
-# Output: src-tauri/target/release/bundle/
+# 3. Build Electron app with electron-builder
+cd electron && npx electron-builder --config electron-builder.yml
+# Output: electron/dist-electron/ (platform-specific installer)
 ```
 
 ### Makefile
@@ -366,14 +391,13 @@ dev:
 
 build:
 	cd backend && pyinstaller medha.spec
-	cp backend/dist/medha-backend src-tauri/binaries/medha-backend-$$(rustup show active-toolchain | awk '{print $$1}' | cut -d- -f2-)
 	cd frontend && npm run build
-	cd src-tauri && cargo tauri build
+	cd electron && npx electron-builder --config electron-builder.yml
 
 clean:
 	rm -rf backend/dist backend/build
 	rm -rf frontend/dist
-	rm -rf src-tauri/target
+	rm -rf electron/dist-electron
 ```
 
 ---
@@ -400,10 +424,10 @@ Phase 3 (Day 2 morning): AI
 - [ ] Context indicator pill UI
 
 Phase 4 (Day 2 afternoon / stretch): Desktop
-- [ ] Tauri scaffold + sidecar lifecycle (Rust written by Opus)
+- [ ] Electron scaffold + child process lifecycle (main.js, preload.js, child.js)
 - [ ] PyInstaller spec
-- [ ] Port negotiation
-- [ ] Single binary test on macOS
+- [ ] Port negotiation via IPC
+- [ ] electron-builder packaging test on macOS
 
 ---
 
@@ -434,7 +458,7 @@ Opus gets this SPEC.md plus the following instruction:
 Build Medha per this spec. Priority order:
 1. Backend (FastAPI + DuckDB) — fully working first
 2. Frontend (Vite + React + TS) — functional second
-3. Tauri shell (Rust sidecar lifecycle) — you write the Rust, I don't
+3. Electron shell (child process lifecycle) — main.js, preload.js, child.js
 4. AI integration last (requires working backend+frontend)
 
 Use uv for Python deps. Use npm for frontend. Write all Rust.
@@ -695,30 +719,33 @@ On click: call `window.showDirectoryPicker()` (File System Access API, supported
 
 Fallback: if `window.showDirectoryPicker` is not available (Firefox, Safari), hide the Browse button entirely.
 
-### 14C. Tauri Version (Recommended)
+### 14C. Electron Version (Recommended)
 
-In the Tauri desktop build, replace the text input + Browse button with a single "Choose Folder" button that calls:
+In the Electron desktop build, replace the text input + Browse button with a single "Choose Folder" button that calls Electron's native dialog:
 
-```rust
-// Tauri command
-tauri::command
-fn pick_directory() -> Option<String> {
-    tauri::api::dialog::blocking::FileDialogBuilder::new()
-        .pick_folder()
-        .map(|p| p.to_string_lossy().to_string())
-}
+```javascript
+// Electron main process (main.js)
+const { ipcMain, dialog } = require('electron')
+
+ipcMain.handle('pick-directory', async () => {
+  const result = await dialog.showOpenDialog({
+    properties: ['openDirectory']
+  })
+  if (result.canceled) return null
+  return result.filePaths[0]
+})
 ```
 
-Frontend calls via:
+Frontend calls via the preload bridge:
 ```typescript
-import { invoke } from '@tauri-apps/api/tauri'
-const path = await invoke<string>('pick_directory')
+// preload.js exposes: window.electronAPI.pickDirectory()
+const path = await window.electronAPI.pickDirectory()
 // immediately configure workspace with returned path
 ```
 
 This gives true native folder picker with full path returned. Auto-calls `POST /api/workspace/configure` with the result.
 
-### 14D. UX Flow (Tauri)
+### 14D. UX Flow (Electron)
 
 1. User clicks "Choose Folder" (or the folder icon)
 2. Native OS folder picker opens
@@ -732,9 +759,9 @@ This gives true native folder picker with full path returned. Auto-calls `POST /
 At runtime, detect which environment we are in:
 
 ```typescript
-const isTauri = '__TAURI__' in window
-if (isTauri) {
-  // use invoke('pick_directory')
+const isElectron = '__MEDHA_ELECTRON__' in window
+if (isElectron) {
+  // use window.electronAPI.pickDirectory()
 } else if ('showDirectoryPicker' in window) {
   // use File System Access API (hint mode)
 } else {
@@ -793,16 +820,16 @@ if (isTauri) {
 - Pre-fill input with folder name, user completes the path
 - Hide button if showDirectoryPicker not available (Firefox, Safari)
 
-### 16B. Tauri Build
+### 16B. Electron Build
 - Single "Choose Folder" button replaces text input + browse
-- Calls Tauri command pick_directory() -> returns full OS path string
+- Calls Electron IPC `window.electronAPI.pickDirectory()` -> returns full OS path string via `dialog.showOpenDialog`
 - Auto-calls POST /api/workspace/configure with result
 - File list refreshes immediately
 
 ### 16C. Detection
 ```typescript
-const isTauri = '__TAURI__' in window
-if (isTauri) { /* invoke pick_directory */ }
+const isElectron = '__MEDHA_ELECTRON__' in window
+if (isElectron) { /* window.electronAPI.pickDirectory() */ }
 else if ('showDirectoryPicker' in window) { /* hint mode */ }
 else { /* text only */ }
 ```
@@ -825,6 +852,6 @@ else { /* text only */ }
 - Light variant (dark cyan on white) for light backgrounds
 
 ### 17C. Deliverables
-- SVG source (scalable, usable in Tauri app icon)
-- PNG exports: 16px, 32px, 128px, 512px (for Tauri bundle)
+- SVG source (scalable, usable in Electron app icon)
+- PNG exports: 16px, 32px, 128px, 512px (for Electron bundle)
 - Place in docs/brand/

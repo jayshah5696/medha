@@ -20,8 +20,8 @@ frontend/dist/
 .env
 *.env
 
-# Tauri
-src-tauri/target/
+# Electron
+electron/dist-electron/
 # uv venv
 backend/.venv/
 *.venv/

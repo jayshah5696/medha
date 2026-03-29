@@ -124,7 +124,7 @@ function FileTreeItem({
         display: "flex",
         justifyContent: "space-between",
         alignItems: "center",
-        background: isActive ? "rgba(0, 216, 255, 0.1)" : "transparent",
+        background: isActive ? "var(--accent-bg)" : "transparent",
         borderLeft: isActive ? "3px solid var(--accent)" : "3px solid transparent",
         fontFamily: "var(--font-mono)",
         lineHeight: "24px",
@@ -407,7 +407,6 @@ export default function FileExplorer({ width, onFilePreview }: FileExplorerProps
                 style={{ padding: "4px 8px", flexShrink: 0 }}
               >
                 <FolderOpen size={14} />
-               
               </button>
             )}
             <button
@@ -416,8 +415,7 @@ export default function FileExplorer({ width, onFilePreview }: FileExplorerProps
               title="Browse folders"
               style={{ padding: "4px 8px", flexShrink: 0 }}
             >
-               <FolderClosed size={14} />
-             
+              <FolderClosed size={14} />
             </button>
           </div>
         </div>
@@ -519,7 +517,7 @@ export default function FileExplorer({ width, onFilePreview }: FileExplorerProps
                     display: "flex",
                     justifyContent: "space-between",
                     alignItems: "center",
-                    background: isActive ? "rgba(0, 216, 255, 0.1)" : "transparent",
+                    background: isActive ? "var(--accent-bg)" : "transparent",
                     borderLeft: isActive
                       ? "3px solid var(--accent)"
                       : "3px solid transparent",

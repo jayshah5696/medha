@@ -86,10 +86,19 @@
   --border: #1e1e22;
   --border-strong: #2a2a30;
 
+  /* Accent backgrounds */
+  --accent-bg-subtle: rgba(0, 216, 255, 0.04);
+  --accent-bg: rgba(0, 216, 255, 0.1);
+  --accent-bg-strong: rgba(0, 216, 255, 0.12);
+  --surface-overlay: rgba(255, 255, 255, 0.02);
+
   /* Semantic */
   --success: #6bff6b;
   --error: #ff6b6b;
   --warning: #F5A623;
+  --error-bg: rgba(255, 60, 60, 0.08);
+  --warning-bg: rgba(251, 191, 36, 0.08);
+  --warning-border: rgba(245, 166, 35, 0.15);
 
   /* Diff */
   --diff-add-bg: #001a00;
@@ -138,9 +147,17 @@
   --border: #d4d6db;
   --border-strong: #b8bcc2;
 
+  --accent-bg-subtle: rgba(0, 144, 168, 0.06);
+  --accent-bg: rgba(0, 144, 168, 0.12);
+  --accent-bg-strong: rgba(0, 144, 168, 0.18);
+  --surface-overlay: rgba(0, 0, 0, 0.02);
+
   --success: #2d8a2d;
   --error: #cc3333;
   --warning: #c88417;
+  --error-bg: rgba(204, 51, 51, 0.08);
+  --warning-bg: rgba(200, 132, 23, 0.08);
+  --warning-border: rgba(200, 132, 23, 0.2);
 
   --diff-add-bg: #d4f5d4;
   --diff-add-text: #1a6b1a;
