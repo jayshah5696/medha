@@ -110,10 +110,26 @@ export interface Toast {
 
 const initialTab = createUntitledTab(1);
 
+function safeGetItem(key: string): string {
+  try {
+    return localStorage.getItem(key) ?? "";
+  } catch {
+    return "";
+  }
+}
+
+function safeSetItem(key: string, value: string): void {
+  try {
+    localStorage.setItem(key, value);
+  } catch {
+    // ignore — localStorage may not be available in test environments
+  }
+}
+
 export const useStore = create<MedhaStore>((set) => ({
-  workspacePath: localStorage.getItem("medha_workspace") || "",
+  workspacePath: safeGetItem("medha_workspace"),
   setWorkspacePath: (path) => {
-    localStorage.setItem("medha_workspace", path);
+    safeSetItem("medha_workspace", path);
     set({ workspacePath: path });
   },
 

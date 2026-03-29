@@ -3,7 +3,7 @@
  * and serves as a local proxy so the frontend needs zero URL changes.
  */
 
-import { app, BrowserWindow, dialog, session, shell } from "electron";
+import { app, BrowserWindow, dialog, Menu, screen, session, shell } from "electron";
 import * as path from "path";
 import * as http from "http";
 import * as url from "url";
@@ -118,12 +118,205 @@ function startProxy(proxyPort: number, apiPort: number): Promise<void> {
   });
 }
 
+// --- Window state persistence ---
+
+interface WindowState {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  isMaximized: boolean;
+}
+
+function getWindowStatePath(): string {
+  return path.join(app.getPath("userData"), "window-state.json");
+}
+
+function loadWindowState(): WindowState | null {
+  try {
+    const data = fs.readFileSync(getWindowStatePath(), "utf-8");
+    const state = JSON.parse(data) as WindowState;
+
+    // Validate the parsed object has the expected shape and types
+    if (
+      typeof state.x !== "number" ||
+      typeof state.y !== "number" ||
+      typeof state.width !== "number" ||
+      typeof state.height !== "number" ||
+      !Number.isFinite(state.x) ||
+      !Number.isFinite(state.y) ||
+      !Number.isFinite(state.width) ||
+      !Number.isFinite(state.height)
+    ) {
+      return null;
+    }
+
+    // Ensure the saved position is visible on at least one current display
+    const displays = screen.getAllDisplays();
+    const isVisible = displays.some((display) => {
+      const bounds = display.bounds;
+      // Check that at least a 100x100 region of the window overlaps a display
+      return (
+        state.x + state.width > bounds.x + 100 &&
+        state.x < bounds.x + bounds.width - 100 &&
+        state.y + state.height > bounds.y + 100 &&
+        state.y < bounds.y + bounds.height - 100
+      );
+    });
+
+    if (!isVisible) {
+      // Position is off-screen (e.g. monitor unplugged), keep size but reset position
+      return { ...state, x: undefined as unknown as number, y: undefined as unknown as number };
+    }
+
+    return state;
+  } catch {
+    // File doesn't exist, is corrupt, or unreadable — use defaults
+    return null;
+  }
+}
+
+let saveStateTimeout: ReturnType<typeof setTimeout> | null = null;
+
+function saveWindowState(win: BrowserWindow): void {
+  // Debounce: wait 500ms after last resize/move event
+  if (saveStateTimeout) clearTimeout(saveStateTimeout);
+  saveStateTimeout = setTimeout(() => {
+    if (win.isDestroyed()) return;
+
+    const isMaximized = win.isMaximized();
+    const bounds = isMaximized ? (win as BrowserWindow & { _lastNormalBounds?: Electron.Rectangle })._lastNormalBounds || win.getNormalBounds() : win.getBounds();
+
+    const state: WindowState = {
+      x: bounds.x,
+      y: bounds.y,
+      width: bounds.width,
+      height: bounds.height,
+      isMaximized,
+    };
+
+    try {
+      fs.writeFileSync(getWindowStatePath(), JSON.stringify(state, null, 2));
+    } catch {
+      // Silently ignore write errors (disk full, permissions, etc.)
+    }
+  }, 500);
+}
+
+// --- macOS application menu ---
+
+function buildAppMenu(): void {
+  const isMac = process.platform === "darwin";
+
+  const template: Electron.MenuItemConstructorOptions[] = [];
+
+  if (isMac) {
+    template.push({
+      label: app.name,
+      submenu: [
+        { role: "about" },
+        { type: "separator" },
+        { role: "services" },
+        { type: "separator" },
+        { role: "hide" },
+        { role: "hideOthers" },
+        { role: "unhide" },
+        { type: "separator" },
+        { role: "quit" },
+      ],
+    });
+  }
+
+  template.push({
+    label: "File",
+    submenu: [
+      {
+        label: "New Tab",
+        accelerator: "CmdOrCtrl+T",
+        click: () => {
+          mainWindow?.webContents.send("menu-new-tab");
+        },
+      },
+      {
+        label: "Close Tab",
+        accelerator: "CmdOrCtrl+W",
+        click: () => {
+          mainWindow?.webContents.send("menu-close-tab");
+        },
+      },
+      { type: "separator" },
+      isMac ? { role: "close" } : { role: "quit" },
+    ],
+  });
+
+  template.push({
+    label: "Edit",
+    submenu: [
+      { role: "undo" },
+      { role: "redo" },
+      { type: "separator" },
+      { role: "cut" },
+      { role: "copy" },
+      { role: "paste" },
+      { role: "selectAll" },
+    ],
+  });
+
+  template.push({
+    label: "View",
+    submenu: [
+      { role: "reload" },
+      { role: "forceReload" },
+      { role: "toggleDevTools" },
+      { type: "separator" },
+      { role: "resetZoom" },
+      { role: "zoomIn" },
+      { role: "zoomOut" },
+      { type: "separator" },
+      { role: "togglefullscreen" },
+    ],
+  });
+
+  template.push({
+    label: "Window",
+    submenu: [
+      { role: "minimize" },
+      { role: "zoom" },
+      ...(isMac
+        ? [
+            { type: "separator" as const },
+            { role: "front" as const },
+            { type: "separator" as const },
+            { role: "window" as const },
+          ]
+        : [{ role: "close" as const }]),
+    ],
+  });
+
+  template.push({
+    label: "Help",
+    role: "help",
+    submenu: [
+      {
+        label: "Learn More",
+        click: () => {
+          shell.openExternal("https://github.com/jshah/medha");
+        },
+      },
+    ],
+  });
+
+  const menu = Menu.buildFromTemplate(template);
+  Menu.setApplicationMenu(menu);
+}
+
 function createWindow(): BrowserWindow {
   const preloadPath = path.join(__dirname, "preload.js");
+  const savedState = loadWindowState();
 
-  const win = new BrowserWindow({
-    width: 1400,
-    height: 900,
+  const winOptions: Electron.BrowserWindowConstructorOptions = {
+    width: savedState?.width ?? 1400,
+    height: savedState?.height ?? 900,
     minWidth: 900,
     minHeight: 600,
     titleBarStyle: process.platform === "darwin" ? "hiddenInset" : "default",
@@ -136,7 +329,25 @@ function createWindow(): BrowserWindow {
       nodeIntegration: false,
       sandbox: true,
     },
-  });
+  };
+
+  // Only set position if we have valid saved coordinates
+  if (savedState && typeof savedState.x === "number" && typeof savedState.y === "number") {
+    winOptions.x = savedState.x;
+    winOptions.y = savedState.y;
+  }
+
+  const win = new BrowserWindow(winOptions);
+
+  if (savedState?.isMaximized) {
+    win.maximize();
+  }
+
+  // Persist window state on resize, move, maximize, and unmaximize
+  win.on("resize", () => saveWindowState(win));
+  win.on("move", () => saveWindowState(win));
+  win.on("maximize", () => saveWindowState(win));
+  win.on("unmaximize", () => saveWindowState(win));
 
   // Show when ready to prevent white flash
   win.once("ready-to-show", () => {
@@ -225,6 +436,7 @@ function setupCSP(): void {
 async function bootstrap(): Promise<void> {
   registerIpcHandlers();
   setupCSP();
+  buildAppMenu();
 
   if (isDev) {
     // Dev mode: backend is managed externally, just create window
