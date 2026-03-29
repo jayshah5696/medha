@@ -90,9 +90,14 @@ async def health():
     return {"ok": True}
 
 
-if __name__ == "__main__":
+def run_server() -> None:
+    """Start the uvicorn server. Used by __main__.py and direct execution."""
     import os
     import uvicorn
 
     port = int(os.environ.get("MEDHA_PORT", "18900"))
     uvicorn.run("app.main:app", host="127.0.0.1", port=port)
+
+
+if __name__ == "__main__":
+    run_server()

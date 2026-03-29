@@ -12,6 +12,21 @@ import { findFreePort } from "./port";
 import { spawnBackend, waitForHealth, shutdownBackend } from "./sidecar";
 import { registerIpcHandlers, setPort } from "./ipc-handlers";
 
+const MIME_TYPES: Record<string, string> = {
+  ".html": "text/html",
+  ".js": "text/javascript",
+  ".css": "text/css",
+  ".json": "application/json",
+  ".png": "image/png",
+  ".jpg": "image/jpeg",
+  ".svg": "image/svg+xml",
+  ".ico": "image/x-icon",
+  ".woff": "font/woff",
+  ".woff2": "font/woff2",
+  ".ttf": "font/ttf",
+  ".map": "application/json",
+};
+
 const isDev = process.env.ELECTRON_DEV === "1";
 let mainWindow: BrowserWindow | null = null;
 let backendPort: number = 18900;
@@ -73,41 +88,27 @@ function startProxy(proxyPort: number, apiPort: number): Promise<void> {
         return;
       }
 
-      // Serve static files from frontend/dist
-      let filePath = path.join(frontendDist, pathname === "/" ? "index.html" : pathname);
-
-      // SPA fallback: if file doesn't exist, serve index.html
-      if (!fs.existsSync(filePath)) {
-        filePath = path.join(frontendDist, "index.html");
-      }
-
+      // Serve static files, with SPA fallback to index.html
+      const filePath = path.join(frontendDist, pathname === "/" ? "index.html" : pathname);
       const ext = path.extname(filePath).toLowerCase();
-      const mimeTypes: Record<string, string> = {
-        ".html": "text/html",
-        ".js": "text/javascript",
-        ".css": "text/css",
-        ".json": "application/json",
-        ".png": "image/png",
-        ".jpg": "image/jpeg",
-        ".svg": "image/svg+xml",
-        ".ico": "image/x-icon",
-        ".woff": "font/woff",
-        ".woff2": "font/woff2",
-        ".ttf": "font/ttf",
-        ".map": "application/json",
-      };
+      const contentType = MIME_TYPES[ext] || "application/octet-stream";
 
-      const contentType = mimeTypes[ext] || "application/octet-stream";
-
-      // Stream files instead of blocking with readFileSync
       const stream = fs.createReadStream(filePath);
       stream.on("open", () => {
         res.writeHead(200, { "Content-Type": contentType });
         stream.pipe(res);
       });
       stream.on("error", () => {
-        res.writeHead(404);
-        res.end("Not found");
+        // SPA fallback: serve index.html for unrecognized paths
+        const fallback = fs.createReadStream(path.join(frontendDist, "index.html"));
+        fallback.on("open", () => {
+          res.writeHead(200, { "Content-Type": "text/html" });
+          fallback.pipe(res);
+        });
+        fallback.on("error", () => {
+          res.writeHead(404);
+          res.end("Not found");
+        });
       });
     });
 
@@ -119,8 +120,8 @@ function startProxy(proxyPort: number, apiPort: number): Promise<void> {
 // --- Window state persistence ---
 
 interface WindowState {
-  x: number;
-  y: number;
+  x?: number;
+  y?: number;
   width: number;
   height: number;
   isMaximized: boolean;
@@ -137,34 +138,30 @@ function loadWindowState(): WindowState | null {
 
     // Validate the parsed object has the expected shape and types
     if (
-      typeof state.x !== "number" ||
-      typeof state.y !== "number" ||
       typeof state.width !== "number" ||
       typeof state.height !== "number" ||
-      !Number.isFinite(state.x) ||
-      !Number.isFinite(state.y) ||
       !Number.isFinite(state.width) ||
       !Number.isFinite(state.height)
     ) {
       return null;
     }
 
-    // Ensure the saved position is visible on at least one current display
-    const displays = screen.getAllDisplays();
-    const isVisible = displays.some((display) => {
-      const bounds = display.bounds;
-      // Check that at least a 100x100 region of the window overlaps a display
-      return (
-        state.x + state.width > bounds.x + 100 &&
-        state.x < bounds.x + bounds.width - 100 &&
-        state.y + state.height > bounds.y + 100 &&
-        state.y < bounds.y + bounds.height - 100
-      );
-    });
-
-    if (!isVisible) {
-      // Position is off-screen (e.g. monitor unplugged), keep size but reset position
-      return { ...state, x: undefined as unknown as number, y: undefined as unknown as number };
+    // If position was saved, verify it's visible on at least one display
+    if (state.x != null && state.y != null) {
+      const { x, y } = state;
+      const displays = screen.getAllDisplays();
+      const isVisible = displays.some((display) => {
+        const b = display.bounds;
+        return (
+          x + state.width > b.x + 100 &&
+          x < b.x + b.width - 100 &&
+          y + state.height > b.y + 100 &&
+          y < b.y + b.height - 100
+        );
+      });
+      if (!isVisible) {
+        return { ...state, x: undefined, y: undefined };
+      }
     }
 
     return state;
@@ -183,7 +180,7 @@ function saveWindowState(win: BrowserWindow): void {
     if (win.isDestroyed()) return;
 
     const isMaximized = win.isMaximized();
-    const bounds = isMaximized ? (win as BrowserWindow & { _lastNormalBounds?: Electron.Rectangle })._lastNormalBounds || win.getNormalBounds() : win.getBounds();
+    const bounds = isMaximized ? win.getNormalBounds() : win.getBounds();
 
     const state: WindowState = {
       x: bounds.x,

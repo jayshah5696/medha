@@ -188,28 +188,32 @@ export default function FileExplorer({ width, onFilePreview }: FileExplorerProps
   const [historyEntries, setHistoryEntries] = useState<HistoryEntry[]>([]);
   const [fileFilter, setFileFilter] = useState("");
 
-  // Detect Electron environment for native folder picker (Spec §14B)
-  const isElectron = typeof window !== "undefined" && !!window.electronAPI;
+  const isElectron = !!window.electronAPI;
+
+  const setupWorkspace = async (path: string) => {
+    setInputPath(path);
+    setLoading(true);
+    try {
+      await configureWorkspace(path);
+      setWorkspacePath(path);
+      clearActiveFiles();
+      const fileList = await getFiles();
+      setFiles(fileList);
+      setLastError(null);
+      setFileFilter("");
+    } catch (e) {
+      setLastError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleNativePicker = async () => {
     try {
-      // Electron: native OS folder picker returns full path
       const selectedPath = await window.electronAPI!.pickDirectory();
-      if (selectedPath) {
-        setInputPath(selectedPath);
-        setLoading(true);
-        await configureWorkspace(selectedPath);
-        setWorkspacePath(selectedPath);
-        clearActiveFiles();
-        const updated = await getFiles();
-        setFiles(updated);
-        setLastError(null);
-        setFileFilter("");
-        setLoading(false);
-      }
-    } catch (e) {
-      setLoading(false);
-      // User cancelled the picker — silently ignore
+      if (selectedPath) await setupWorkspace(selectedPath);
+    } catch {
+      // User cancelled the picker
     }
   };
 
@@ -246,23 +250,8 @@ export default function FileExplorer({ width, onFilePreview }: FileExplorerProps
   };
 
   const handleBrowseSelect = async (dir: string) => {
-    setInputPath(dir);
     setBrowseOpen(false);
-    // Auto-configure the selected directory
-    setLoading(true);
-    try {
-      await configureWorkspace(dir);
-      setWorkspacePath(dir);
-      clearActiveFiles();
-      const fileList = await getFiles();
-      setFiles(fileList);
-      setLastError(null);
-      setFileFilter("");
-    } catch (e) {
-      setLastError(e instanceof Error ? e.message : String(e));
-    } finally {
-      setLoading(false);
-    }
+    await setupWorkspace(dir);
   };
 
   // Show the filter input always
@@ -330,20 +319,7 @@ export default function FileExplorer({ width, onFilePreview }: FileExplorerProps
 
   const handleConfigure = async () => {
     if (!inputPath.trim()) return;
-    setLoading(true);
-    try {
-      await configureWorkspace(inputPath.trim());
-      setWorkspacePath(inputPath.trim());
-      clearActiveFiles();
-      const fileList = await getFiles();
-      setFiles(fileList);
-      setLastError(null);
-      setFileFilter("");
-    } catch (e) {
-      setLastError(e instanceof Error ? e.message : String(e));
-    } finally {
-      setLoading(false);
-    }
+    await setupWorkspace(inputPath.trim());
   };
 
   const handleHistoryClick = async (entry: HistoryEntry) => {

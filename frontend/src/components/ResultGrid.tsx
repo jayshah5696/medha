@@ -201,12 +201,11 @@ function ResultTable({
     ? { height, overflow: "hidden", background: "var(--bg-primary)", display: "flex", flexDirection: "column" }
     : { maxHeight: "40vh", overflow: "hidden", background: "var(--bg-primary)", display: "flex", flexDirection: "column" };
 
-  // Build a CSS grid-template-columns value so header and body share
-  // identical column sizing. Each column gets minmax(120px, 1fr).
   const colCount = table.getAllColumns().length;
-  const gridColumns = `repeat(${colCount}, minmax(120px, 1fr))`;
-  // Minimum width so columns expand beyond the viewport for horizontal scroll
-  const minWidth = colCount * 120;
+  const { gridColumns, minWidth } = useMemo(() => ({
+    gridColumns: `repeat(${colCount}, minmax(120px, 1fr))`,
+    minWidth: colCount * 120,
+  }), [colCount]);
 
   return (
     <div style={containerStyle}>
