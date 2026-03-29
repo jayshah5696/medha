@@ -81,14 +81,9 @@ jobs:
 
       - name: Build DMG
         env:
-          # Skip code signing when no certificate is configured
-          CSC_IDENTITY_AUTO_DISCOVERY: ${{ secrets.MAC_CERTIFICATE_P12_BASE64 != '' }}
-          CSC_LINK: ${{ secrets.MAC_CERTIFICATE_P12_BASE64 }}
-          CSC_KEY_PASSWORD: ${{ secrets.MAC_CERTIFICATE_PASSWORD }}
-          # Notarization (only when Apple credentials are set)
-          APPLE_ID: ${{ secrets.APPLE_ID }}
-          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
-          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          # When no signing cert is configured, disable auto-discovery
+          # to prevent electron-builder from failing on empty CSC_LINK
+          CSC_IDENTITY_AUTO_DISCOVERY: "false"
         run: npx electron-builder --mac --${{ matrix.arch }} --publish never
 
       - name: Rename DMG with arch suffix
