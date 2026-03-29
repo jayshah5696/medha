@@ -12,7 +12,7 @@ let backendProcess: ChildProcess | null = null;
 let logStream: fs.WriteStream | null = null;
 
 function getLogPath(): string {
-  const logDir = path.join(app.getPath("logs"));
+  const logDir = app.getPath("logs");
   if (!fs.existsSync(logDir)) fs.mkdirSync(logDir, { recursive: true });
   return path.join(logDir, "backend.log");
 }
@@ -22,18 +22,25 @@ export function getBackendLogPath(): string {
 }
 
 function getSidecarPath(): string {
-  // Packaged app: sidecar is in extraResources
   if (app.isPackaged) {
-    return path.join(process.resourcesPath, "sidecar", "medha-backend");
+    const binary = process.platform === "win32" ? "medha-backend.exe" : "medha-backend";
+    return path.join(process.resourcesPath, "sidecar", binary);
   }
-  // Dev mode with built binary
   return path.join(__dirname, "..", "backend", "dist", "medha-backend");
 }
 
 export function spawnBackend(port: number, isDev: boolean): ChildProcess {
+  // Close any existing log stream before creating a new one (crash-restart path)
+  if (logStream) {
+    logStream.end();
+    logStream = null;
+  }
+
   const logPath = getLogPath();
   logStream = fs.createWriteStream(logPath, { flags: "a" });
-  logStream.write(`\n--- Backend starting at ${new Date().toISOString()} on port ${port} ---\n`);
+  logStream.write(
+    `\n--- Backend starting at ${new Date().toISOString()} on port ${port} ---\n`
+  );
 
   const env = {
     ...process.env,
@@ -43,15 +50,22 @@ export function spawnBackend(port: number, isDev: boolean): ChildProcess {
   let child: ChildProcess;
 
   if (isDev) {
-    // Dev mode: run uvicorn directly via uv
     const backendDir = path.join(__dirname, "..", "backend");
     child = spawn(
       "uv",
-      ["run", "uvicorn", "app.main:app", "--host", "127.0.0.1", "--port", String(port), "--reload"],
+      [
+        "run",
+        "uvicorn",
+        "app.main:app",
+        "--host",
+        "127.0.0.1",
+        "--port",
+        String(port),
+        "--reload",
+      ],
       { cwd: backendDir, env, stdio: ["ignore", "pipe", "pipe"] }
     );
   } else {
-    // Production: run PyInstaller binary
     const binaryPath = getSidecarPath();
     child = spawn(binaryPath, [], { env, stdio: ["ignore", "pipe", "pipe"] });
   }
@@ -78,10 +92,12 @@ export function waitForHealth(
 ): Promise<void> {
   const startTime = Date.now();
 
-  return new Promise((resolve, reject) => {
+  return new Promise<void>((resolve, reject) => {
     function poll() {
       if (Date.now() - startTime > timeoutMs) {
-        reject(new Error(`Backend health check timed out after ${timeoutMs}ms`));
+        reject(
+          new Error(`Backend health check timed out after ${timeoutMs}ms`)
+        );
         return;
       }
 
@@ -98,7 +114,7 @@ export function waitForHealth(
               return;
             }
           } catch {
-            // not ready yet
+            // response not valid JSON yet
           }
           setTimeout(poll, 200);
         });
@@ -119,11 +135,16 @@ export function waitForHealth(
 }
 
 export async function shutdownBackend(): Promise<void> {
-  if (!backendProcess || backendProcess.killed) return;
+  if (!backendProcess || backendProcess.killed) {
+    cleanupLog();
+    return;
+  }
 
-  return new Promise<void>((resolve) => {
-    const child = backendProcess!;
+  const child = backendProcess;
 
+  // On Windows, SIGTERM is not supported — kill() sends taskkill immediately.
+  // On Unix, send SIGTERM for graceful shutdown, then SIGKILL after timeout.
+  await new Promise<void>((resolve) => {
     const forceKillTimer = setTimeout(() => {
       if (!child.killed) {
         child.kill("SIGKILL");
@@ -137,14 +158,18 @@ export async function shutdownBackend(): Promise<void> {
     });
 
     child.kill("SIGTERM");
-  }).then(() => {
-    logStream?.write(`--- Backend stopped at ${new Date().toISOString()} ---\n`);
-    logStream?.end();
-    logStream = null;
-    backendProcess = null;
   });
+
+  cleanupLog();
+  backendProcess = null;
 }
 
-export function getBackendProcess(): ChildProcess | null {
-  return backendProcess;
+function cleanupLog(): void {
+  if (logStream) {
+    logStream.write(
+      `--- Backend stopped at ${new Date().toISOString()} ---\n`
+    );
+    logStream.end();
+    logStream = null;
+  }
 }

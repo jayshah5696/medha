@@ -249,6 +249,7 @@ function App() {
     <div style={{ display: "flex", flexDirection: "column", height: "100vh", width: "100%" }}>
       {/* Header bar */}
       <div
+        className="app-header"
         style={{
           height: "var(--header-height)",
           minHeight: "var(--header-height)",
@@ -257,6 +258,7 @@ function App() {
           display: "flex",
           alignItems: "center",
           padding: "0 14px",
+          paddingLeft: typeof window !== "undefined" && window.electronAPI ? 80 : 14,
           gap: 12,
         }}
       >

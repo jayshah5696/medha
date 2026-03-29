@@ -18,7 +18,10 @@ contextBridge.exposeInMainWorld("electronAPI", {
     return ipcRenderer.invoke("get-platform");
   },
 
-  showSaveDialog: (options: { defaultPath?: string; filters?: Array<{ name: string; extensions: string[] }> }): Promise<string | null> => {
+  showSaveDialog: (options: {
+    defaultPath?: string;
+    filters?: Array<{ name: string; extensions: string[] }>;
+  }): Promise<string | null> => {
     return ipcRenderer.invoke("show-save-dialog", options);
   },
 
@@ -30,14 +33,15 @@ contextBridge.exposeInMainWorld("electronAPI", {
     return ipcRenderer.invoke("get-log-path");
   },
 
+  // Use ipcRenderer.once to prevent listener accumulation on hot-reload
   onBackendReady: (callback: (port: number) => void): void => {
-    ipcRenderer.on("backend-ready", (_event, data: { port: number }) => {
+    ipcRenderer.once("backend-ready", (_event, data: { port: number }) => {
       callback(data.port);
     });
   },
 
   onBackendError: (callback: (error: string) => void): void => {
-    ipcRenderer.on("backend-error", (_event, data: { error: string }) => {
+    ipcRenderer.once("backend-error", (_event, data: { error: string }) => {
       callback(data.error);
     });
   },

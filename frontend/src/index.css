@@ -238,6 +238,17 @@ body {
   outline-offset: -1px;
 }
 
+/* Electron: make the header bar draggable for frameless window */
+.app-header {
+  -webkit-app-region: drag;
+}
+.app-header button,
+.app-header input,
+.app-header select,
+.app-header a {
+  -webkit-app-region: no-drag;
+}
+
 /* Placeholder color */
 ::placeholder {
   color: var(--text-dimmed);
