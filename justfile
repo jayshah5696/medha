@@ -116,3 +116,15 @@ pack-mac: build-desktop
 clean-desktop:
     rm -rf electron/dist
     rm -rf release
+
+# Bump version across all files, commit, and tag
+release version:
+    bash scripts/bump-version.sh {{version}}
+    @echo "Push with: git push origin main --tags"
+
+# Build sidecar + desktop app + sign (full local release build)
+build-release: build-frontend
+    cd backend && uv run pyinstaller medha.spec
+    just build-electron
+    npx electron-builder --mac --dir
+    bash scripts/sign-app.sh release/mac-arm64/Medha.app

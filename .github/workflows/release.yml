@@ -1,0 +1,203 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+env:
+  PYTHON_VERSION: "3.13"
+  NODE_VERSION: "20"
+
+jobs:
+  # Build the PyInstaller sidecar binary (macOS only for now)
+  build-sidecar:
+    strategy:
+      matrix:
+        include:
+          - os: macos-14
+            arch: arm64
+          - os: macos-13
+            arch: x64
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+
+      - name: Set up Python
+        run: uv python install ${{ env.PYTHON_VERSION }}
+
+      - name: Install dependencies
+        run: cd backend && uv sync --all-groups
+
+      - name: Build sidecar
+        run: cd backend && uv run pyinstaller medha.spec
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sidecar-${{ matrix.arch }}
+          path: backend/dist/medha-backend/
+
+  # Build the Electron desktop app
+  build-desktop:
+    needs: build-sidecar
+    strategy:
+      matrix:
+        include:
+          - os: macos-14
+            arch: arm64
+          - os: macos-13
+            arch: x64
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Download sidecar
+        uses: actions/download-artifact@v4
+        with:
+          name: sidecar-${{ matrix.arch }}
+          path: backend/dist/medha-backend/
+
+      - name: Make sidecar executable
+        run: chmod +x backend/dist/medha-backend/medha-backend
+
+      - name: Build frontend
+        run: cd frontend && npm ci && npm run build
+
+      - name: Install Electron deps
+        run: npm ci
+
+      - name: Compile Electron TypeScript
+        run: npx tsc -p electron/tsconfig.json
+
+      - name: Build DMG
+        env:
+          # Code signing (set these secrets when you have an Apple Developer account)
+          CSC_LINK: ${{ secrets.MAC_CERTIFICATE_P12_BASE64 }}
+          CSC_KEY_PASSWORD: ${{ secrets.MAC_CERTIFICATE_PASSWORD }}
+          # Notarization
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: npx electron-builder --mac --${{ matrix.arch }}
+
+      - name: Rename DMG with arch suffix
+        run: |
+          cd release
+          for f in *.dmg; do
+            base="${f%.dmg}"
+            if [[ ! "$base" =~ "${{ matrix.arch }}" ]]; then
+              mv "$f" "${base}-${{ matrix.arch }}.dmg"
+            fi
+          done
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dmg-${{ matrix.arch }}
+          path: release/*.dmg
+
+  # Run tests before publishing
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+
+      - name: Set up Python
+        run: uv python install ${{ env.PYTHON_VERSION }}
+
+      - name: Backend tests
+        run: cd backend && uv sync && uv run pytest tests/ -v --tb=short
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Frontend tests
+        run: cd frontend && npm ci && NODE_ENV=development npx vitest run
+
+  # Create GitHub Release with DMG artifacts
+  publish:
+    needs: [build-desktop, test]
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - name: Extract version
+        id: version
+        run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: dmg-*
+          merge-multiple: true
+          path: artifacts/
+
+      - name: List artifacts
+        run: ls -la artifacts/
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: artifacts/*.dmg
+          generate_release_notes: true
+          draft: false
+          prerelease: ${{ contains(github.ref_name, '-') }}
+
+  # Auto-update Homebrew tap
+  update-homebrew:
+    needs: publish
+    runs-on: macos-latest
+    if: ${{ !contains(github.ref_name, '-') }}
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: dmg-*
+          merge-multiple: true
+          path: artifacts/
+
+      - name: Compute SHA256
+        id: sha
+        run: |
+          cd artifacts
+          ARM_FILE=$(ls *arm64*.dmg 2>/dev/null | head -1)
+          X64_FILE=$(ls *x64*.dmg 2>/dev/null || ls *.dmg 2>/dev/null | grep -v arm64 | head -1)
+          echo "arm64=$(shasum -a 256 "$ARM_FILE" | awk '{print $1}')" >> "$GITHUB_OUTPUT"
+          echo "x64=$(shasum -a 256 "$X64_FILE" | awk '{print $1}')" >> "$GITHUB_OUTPUT"
+
+      - name: Extract version
+        id: version
+        run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/checkout@v4
+        with:
+          repository: jayshah5696/homebrew-medha
+          token: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+          path: tap
+
+      - name: Update cask formula
+        run: |
+          cd tap
+          sed -i '' 's/version ".*"/version "${{ steps.version.outputs.version }}"/' Casks/medha.rb
+          sed -i '' 's/arm:   ".*"/arm:   "${{ steps.sha.outputs.arm64 }}"/' Casks/medha.rb
+          sed -i '' 's/intel: ".*"/intel: "${{ steps.sha.outputs.x64 }}"/' Casks/medha.rb
+
+      - name: Commit and push
+        run: |
+          cd tap
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add Casks/medha.rb
+          git diff --cached --quiet || git commit -m "Update Medha to ${{ steps.version.outputs.version }}"
+          git push
