@@ -22,11 +22,14 @@ export function getBackendLogPath(): string {
 }
 
 function getSidecarPath(): string {
+  // PyInstaller --onedir produces a directory with the binary inside it:
+  //   sidecar/medha-backend/medha-backend (Unix)
+  //   sidecar/medha-backend/medha-backend.exe (Windows)
+  const binary = process.platform === "win32" ? "medha-backend.exe" : "medha-backend";
   if (app.isPackaged) {
-    const binary = process.platform === "win32" ? "medha-backend.exe" : "medha-backend";
-    return path.join(process.resourcesPath, "sidecar", binary);
+    return path.join(process.resourcesPath, "sidecar", "medha-backend", binary);
   }
-  return path.join(__dirname, "..", "backend", "dist", "medha-backend");
+  return path.join(__dirname, "..", "backend", "dist", "medha-backend", binary);
 }
 
 export function spawnBackend(port: number, isDev: boolean): ChildProcess {

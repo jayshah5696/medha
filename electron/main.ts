@@ -37,12 +37,10 @@ function startProxy(proxyPort: number, apiPort: number): Promise<void> {
       // Proxy /api and /health to the Python backend
       if (pathname.startsWith("/api/") || pathname === "/health") {
         const proxyReq = http.request(
+          `http://127.0.0.1:${apiPort}${req.url}`,
           {
-            hostname: "127.0.0.1",
-            port: apiPort,
-            path: req.url,
             method: req.method,
-            headers: req.headers,
+            headers: { ...req.headers, host: `127.0.0.1:${apiPort}` },
           },
           (proxyRes) => {
             res.writeHead(proxyRes.statusCode || 200, proxyRes.headers);
@@ -67,7 +65,7 @@ function startProxy(proxyPort: number, apiPort: number): Promise<void> {
         });
 
         // Clean up upstream connection when client disconnects (prevents SSE leaks)
-        req.on("close", () => {
+        req.on("aborted", () => {
           proxyReq.destroy();
         });
 

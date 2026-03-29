@@ -260,3 +260,118 @@ describe("ChatSidebar @-mention autocomplete", () => {
     expect(screen.queryByTestId("mention-popover")).not.toBeInTheDocument();
   });
 });
+
+describe("ChatSidebar SSE parsing robustness", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    window.HTMLElement.prototype.scrollIntoView = vi.fn();
+    (useStore as any).mockReturnValue({ ...defaultStoreValues });
+    global.fetch = vi.fn().mockResolvedValue({
+      json: vi.fn().mockResolvedValue({ model_chat: "mock", agent_profile: "mock" }),
+    });
+  });
+
+  function makeStream(chunks: string[]) {
+    const encoder = new TextEncoder();
+    let index = 0;
+    return new ReadableStream({
+      pull(controller) {
+        if (index < chunks.length) {
+          controller.enqueue(encoder.encode(chunks[index]));
+          index++;
+        } else {
+          controller.close();
+        }
+      },
+    });
+  }
+
+  function mockFetchWithStream(stream: ReadableStream) {
+    global.fetch = vi
+      .fn()
+      .mockResolvedValueOnce({
+        json: vi.fn().mockResolvedValue({ model_chat: "mock", agent_profile: "mock" }),
+      })
+      .mockResolvedValueOnce({ ok: true, body: stream });
+  }
+
+  async function sendMessage() {
+    render(<ChatSidebar width={300} />);
+    const input = screen.getByPlaceholderText("ask...");
+    fireEvent.change(input, { target: { value: "hello" } });
+    fireEvent.keyDown(input, { key: "Enter", code: "Enter" });
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    });
+  }
+
+  it("should handle JSON payload split across two chunks", async () => {
+    const stream = makeStream([
+      'data: {"type":"token","conte',
+      'nt":"split-works"}\n\n',
+    ]);
+    mockFetchWithStream(stream);
+    await sendMessage();
+
+    const md = screen.getByTestId("mock-markdown");
+    expect(md.textContent).toContain("split-works");
+  });
+
+  it("should handle multiple SSE events in a single chunk", async () => {
+    const stream = makeStream([
+      'data: {"type":"token","content":"hello"}\n\ndata: {"type":"token","content":" world"}\n\n',
+    ]);
+    mockFetchWithStream(stream);
+    await sendMessage();
+
+    const md = screen.getByTestId("mock-markdown");
+    expect(md.textContent).toContain("hello world");
+  });
+
+  it("should skip non-data lines (comments, event:, empty lines)", async () => {
+    const stream = makeStream([
+      ': this is a comment\nevent: message\nid: 123\n\ndata: {"type":"token","content":"visible"}\n\n',
+    ]);
+    mockFetchWithStream(stream);
+    await sendMessage();
+
+    const md = screen.getByTestId("mock-markdown");
+    expect(md.textContent).toContain("visible");
+  });
+
+  it("should handle data: without space after colon", async () => {
+    const stream = makeStream([
+      'data:{"type":"token","content":"no-space"}\n\n',
+    ]);
+    mockFetchWithStream(stream);
+    await sendMessage();
+
+    const md = screen.getByTestId("mock-markdown");
+    expect(md.textContent).toContain("no-space");
+  });
+
+  it("should handle a data line split across three chunks", async () => {
+    const stream = makeStream([
+      'data: {"type":',
+      '"token","con',
+      'tent":"three-way"}\n\n',
+    ]);
+    mockFetchWithStream(stream);
+    await sendMessage();
+
+    const md = screen.getByTestId("mock-markdown");
+    expect(md.textContent).toContain("three-way");
+  });
+
+  it("should handle remaining buffer data after stream ends", async () => {
+    // Stream ends without trailing newline — data is in the buffer
+    const stream = makeStream([
+      'data: {"type":"token","content":"trailing"}',
+    ]);
+    mockFetchWithStream(stream);
+    await sendMessage();
+
+    const md = screen.getByTestId("mock-markdown");
+    expect(md.textContent).toContain("trailing");
+  });
+});

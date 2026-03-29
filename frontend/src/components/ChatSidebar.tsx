@@ -158,21 +158,16 @@ export default function ChatSidebar({ width }: { width: number }) {
       const decoder = new TextDecoder();
       let buffer = "";
 
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
+      const processLine = (line: string) => {
+        // Skip empty lines (SSE event separators) and non-data lines
+        // (e.g. "event:", "id:", "retry:", or comments starting with ":")
+        if (!line.startsWith("data:")) return;
+        // Handle both "data: payload" and "data:payload" (SSE spec allows both)
+        const jsonStr = line.startsWith("data: ") ? line.slice(6) : line.slice(5);
+        if (!jsonStr.trim()) return;
 
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split("\n");
-        buffer = lines.pop() || "";
-
-        for (const line of lines) {
-          if (!line.startsWith("data: ")) continue;
-          const jsonStr = line.slice(6).trim();
-          if (!jsonStr) continue;
-
-          try {
-            const event = JSON.parse(jsonStr);
+        try {
+          const event = JSON.parse(jsonStr);
 
             if (event.type === "token") {
               assistantContent += event.content;
@@ -254,7 +249,25 @@ export default function ChatSidebar({ width }: { width: number }) {
           } catch {
             // skip malformed JSON
           }
+      };
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop() || "";
+
+        for (const line of lines) {
+          processLine(line);
         }
+      }
+
+      // Flush any remaining data in the decoder and buffer
+      buffer += decoder.decode();
+      if (buffer.trim()) {
+        processLine(buffer);
       }
     } catch (e) {
       setMessages((prev) => [

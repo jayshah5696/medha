@@ -345,7 +345,7 @@ function App() {
         <div
           style={{
             padding: "8px 14px",
-            background: "rgba(255, 180, 0, 0.1)",
+            background: "var(--warning-bg)",
             borderBottom: "1px solid var(--border)",
             display: "flex",
             alignItems: "center",
