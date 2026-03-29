@@ -1,7 +1,7 @@
 # Electron Desktop Shell — Implementation Plan
 
 **Replaces:** Tauri (Rust) shell from SPEC.md sections 6, 14C, 16B
-**Status:** Not started
+**Status:** Phase 1-3 implemented (scaffold, sidecar, IPC + frontend integration)
 
 ---
 

@@ -1,0 +1,40 @@
+appId: com.medha.app
+productName: Medha
+copyright: Copyright 2026
+
+directories:
+  output: release
+  buildResources: build
+
+files:
+  - electron/dist/**/*
+
+extraResources:
+  - from: frontend/dist
+    to: frontend-dist
+  - from: backend/dist/medha-backend
+    to: sidecar/medha-backend
+    filter:
+      - "**/*"
+
+mac:
+  category: public.app-category.developer-tools
+  target:
+    - target: dmg
+      arch:
+        - arm64
+        - x64
+  hardenedRuntime: true
+  entitlements: build/entitlements.mac.plist
+  entitlementsInherit: build/entitlements.mac.plist
+
+win:
+  target: nsis
+
+linux:
+  target: AppImage
+  category: Development
+
+asar: true
+asarUnpack:
+  - "**/*.node"

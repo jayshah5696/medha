@@ -21,7 +21,9 @@ frontend/dist/
 *.env
 
 # Electron
-electron/dist-electron/
+electron/dist/
+release/
+node_modules/
 # uv venv
 backend/.venv/
 *.venv/

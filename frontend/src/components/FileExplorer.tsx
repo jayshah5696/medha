@@ -188,11 +188,25 @@ export default function FileExplorer({ width, onFilePreview }: FileExplorerProps
   const [historyEntries, setHistoryEntries] = useState<HistoryEntry[]>([]);
   const [fileFilter, setFileFilter] = useState("");
 
-  // File System Access API detection (Spec §14B)
-  const hasNativePicker = typeof window !== "undefined" && "showDirectoryPicker" in window;
+  // Native picker: Electron IPC or File System Access API (Spec §14B)
+  const isElectron = typeof window !== "undefined" && !!window.electronAPI;
+  const hasNativePicker =
+    isElectron || (typeof window !== "undefined" && "showDirectoryPicker" in window);
 
   const handleNativePicker = async () => {
     try {
+      if (isElectron) {
+        // Electron: native OS folder picker returns full path
+        const selectedPath = await window.electronAPI!.pickDirectory();
+        if (selectedPath) {
+          setInputPath(selectedPath);
+          await configureWorkspace(selectedPath);
+          const updated = await getFiles();
+          setFiles(updated);
+        }
+        return;
+      }
+      // Web: File System Access API (hint mode — folder name only)
       const dirHandle = await (window as any).showDirectoryPicker();
       if (dirHandle && dirHandle.name) {
         setInputPath(dirHandle.name);

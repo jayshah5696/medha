@@ -82,3 +82,37 @@ test-frontend:
 test-all:
     just test
     just test-frontend
+
+# Compile Electron main process TypeScript
+build-electron:
+    cd electron && npx tsc -p tsconfig.json
+
+# Run Electron in dev mode (backend + frontend must be running via `just dev`)
+electron-dev: build-electron
+    ELECTRON_DEV=1 npx electron electron/dist/main.js
+
+# Run full desktop dev stack (backend + frontend + electron)
+dev-desktop: build-electron
+    #!/usr/bin/env bash
+    set -euo pipefail
+    lsof -ti:18900,5173 | xargs kill -9 2>/dev/null || true
+    trap 'kill 0' EXIT
+    (cd backend && uv run uvicorn app.main:app --port 18900 --reload) &
+    while ! nc -z localhost 18900 2>/dev/null; do sleep 0.1; done
+    (cd frontend && NODE_ENV=development npm run dev) &
+    while ! nc -z localhost 5173 2>/dev/null; do sleep 0.1; done
+    ELECTRON_DEV=1 npx electron electron/dist/main.js &
+    wait
+
+# Build everything for desktop packaging
+build-desktop: build-frontend build-electron
+    npx electron-builder
+
+# Package macOS DMG
+pack-mac: build-desktop
+    npx electron-builder --mac
+
+# Clean desktop build artifacts
+clean-desktop:
+    rm -rf electron/dist
+    rm -rf release

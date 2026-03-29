@@ -1,0 +1,20 @@
+{
+  "name": "medha",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Local-first SQL IDE for flat files",
+  "main": "electron/dist/main.js",
+  "scripts": {
+    "electron:build": "cd electron && npx tsc -p tsconfig.json",
+    "electron:dev": "ELECTRON_DEV=1 npx electron electron/dist/main.js",
+    "electron:pack": "npx electron-builder --dir",
+    "electron:dist": "npx electron-builder"
+  },
+  "devDependencies": {
+    "electron": "^35.0.0",
+    "electron-builder": "^26.0.0",
+    "typescript": "^5.9.0"
+  },
+  "author": "",
+  "license": "MIT"
+}
