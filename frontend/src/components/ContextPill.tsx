@@ -65,6 +65,7 @@ export default function ContextPill({ inputText }: ContextPillProps) {
           schema: {basename}
           <button
             onClick={() => removeActiveFile(name)}
+            aria-label={`Remove ${basename}`}
             style={{
               background: "none",
               border: "none",
