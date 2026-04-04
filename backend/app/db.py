@@ -1,6 +1,7 @@
 """DuckDB connection manager with path safety, SQL safety, and auto-LIMIT."""
 
 import asyncio
+from contextlib import suppress
 import io
 import re
 import time
@@ -19,6 +20,11 @@ workspace_root: Path | None = None
 active_queries: dict[str, asyncio.Task] = {}
 
 MAX_ROWS = 10000
+QUERY_TIMEOUT_SECONDS = 30.0
+
+
+class QueryTimeoutError(TimeoutError):
+    """Raised when a DuckDB query exceeds the configured timeout."""
 
 # Serialize all DuckDB access through a single lock.
 # DuckDB's Python binding is not safe for concurrent access from multiple
@@ -42,6 +48,11 @@ def reset_db_lock() -> None:
     """Reset the lock (for tests that create new event loops)."""
     global _db_lock
     _db_lock = None
+
+
+def _interrupt_query() -> None:
+    """Interrupt the current DuckDB query on the shared connection."""
+    conn.interrupt()
 
 
 # --- SQL safety: block dangerous DuckDB operations ---
@@ -184,7 +195,7 @@ async def async_execute(
     """
     _check_sql_safety(sql)
     async with _get_db_lock():
-        return await asyncio.to_thread(_execute_sync, sql, params, offset, limit)
+        return await _run_with_timeout(_execute_sync, sql, params, offset, limit)
 
 
 def _execute_sync_arrow(sql: str, params: list | None = None) -> bytes:
@@ -227,4 +238,27 @@ async def async_execute_arrow(
     """Run a DuckDB query and return Arrow IPC stream bytes."""
     _check_sql_safety(sql)
     async with _get_db_lock():
-        return await asyncio.to_thread(_execute_sync_arrow, sql, params)
+        return await _run_with_timeout(_execute_sync_arrow, sql, params)
+
+
+async def _run_with_timeout(func, *args):
+    """Run a blocking DuckDB call in a thread with timeout and interrupt support."""
+    worker = asyncio.create_task(asyncio.to_thread(func, *args))
+
+    try:
+        return await asyncio.wait_for(
+            asyncio.shield(worker),
+            timeout=QUERY_TIMEOUT_SECONDS,
+        )
+    except asyncio.TimeoutError as exc:
+        _interrupt_query()
+        with suppress(Exception, asyncio.CancelledError):
+            await asyncio.wait_for(asyncio.shield(worker), timeout=1.0)
+        raise QueryTimeoutError(
+            f"Query timed out after {QUERY_TIMEOUT_SECONDS} seconds."
+        ) from exc
+    except asyncio.CancelledError:
+        _interrupt_query()
+        with suppress(Exception, asyncio.CancelledError):
+            await asyncio.wait_for(asyncio.shield(worker), timeout=1.0)
+        raise

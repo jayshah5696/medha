@@ -5,6 +5,7 @@
 #
 # Updates:
 #   - package.json (Electron/root)
+#   - package-lock.json (kept in sync via npm)
 #   - backend/pyproject.toml (Python backend)
 #
 # Then commits and creates a git tag (v0.2.0).
@@ -42,16 +43,16 @@ fi
 
 echo "Bumping to v$VERSION..."
 
-# 1. Root package.json (Electron reads this)
-sed -i '' "s/\"version\": \"[^\"]*\"/\"version\": \"$VERSION\"/" package.json
-echo "  Updated package.json"
+# 1. Root package.json + package-lock.json
+npm version "$VERSION" --no-git-tag-version --allow-same-version
+echo "  Updated package.json and package-lock.json"
 
 # 2. Backend pyproject.toml
 sed -i '' "s/^version = \"[^\"]*\"/version = \"$VERSION\"/" backend/pyproject.toml
 echo "  Updated backend/pyproject.toml"
 
 # 3. Commit and tag
-git add package.json backend/pyproject.toml
+git add package.json package-lock.json backend/pyproject.toml
 git commit -m "Release v$VERSION"
 git tag -a "v$VERSION" -m "Release v$VERSION"
 

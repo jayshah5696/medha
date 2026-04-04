@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import ResultGrid from "./ResultGrid";
 
 // ── jsdom layout mocking for @tanstack/react-virtual ──────────────
@@ -89,6 +89,54 @@ describe("ResultGrid", () => {
     expect(screen.getByText("Alice")).toBeInTheDocument();
     expect(screen.getByText("Bob")).toBeInTheDocument();
     expect(screen.getByText("85.5")).toBeInTheDocument();
+  });
+
+  it("sorts rows when a column header is clicked", async () => {
+    render(<ResultGrid result={baseResult} isQuerying={false} height={400} />);
+
+    fireEvent.click(screen.getByRole("button", { name: /sort by score/i }));
+
+    await waitFor(() => {
+      const rows = screen.getAllByRole("row");
+      expect(rows[1]).toHaveTextContent("Alice");
+      expect(rows[2]).toHaveTextContent("Bob");
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /sort by score/i }));
+
+    await waitFor(() => {
+      const rows = screen.getAllByRole("row");
+      expect(rows[1]).toHaveTextContent("Bob");
+      expect(rows[2]).toHaveTextContent("Alice");
+    });
+  });
+
+  it("filters rows with the column filter input", async () => {
+    render(<ResultGrid result={baseResult} isQuerying={false} height={400} />);
+
+    fireEvent.change(screen.getByPlaceholderText("filter name"), {
+      target: { value: "Bob" },
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText("Bob")).toBeInTheDocument();
+      expect(screen.queryByText("Alice")).not.toBeInTheDocument();
+    });
+  });
+
+  it("copies cell values to the clipboard when clicked", async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.assign(navigator, {
+      clipboard: { writeText },
+    });
+
+    render(<ResultGrid result={baseResult} isQuerying={false} height={400} />);
+
+    fireEvent.click(screen.getByRole("button", { name: /copy value alice/i }));
+
+    await waitFor(() => {
+      expect(writeText).toHaveBeenCalledWith("Alice");
+    });
   });
 
   it("shows truncation badge when truncated=true", () => {

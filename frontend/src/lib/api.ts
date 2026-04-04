@@ -104,6 +104,7 @@ export async function runQuery(
   format: string = "json",
   offset: number = 0,
   limit?: number,
+  signal?: AbortSignal,
 ): Promise<QueryResult> {
   const payload: Record<string, unknown> = { query, query_id: queryId, format, offset };
   if (limit !== undefined) payload.limit = limit;
@@ -111,6 +112,7 @@ export async function runQuery(
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
+    signal,
   });
 }
 

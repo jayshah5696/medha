@@ -8,7 +8,7 @@ import ChatSidebar from "./components/ChatSidebar";
 import DiffOverlay from "./components/DiffOverlay";
 import SettingsModal from "./components/SettingsModal";
 import { useStore } from "./store";
-import { runQuery, getFiles, openEventStream } from "./lib/api";
+import { cancelQuery, runQuery, getFiles, openEventStream } from "./lib/api";
 import "./index.css";
 
 const BANNER_DISMISSED_KEY = "medha_key_banner_dismissed";
@@ -41,6 +41,7 @@ function App() {
 
   const [showSettings, setShowSettings] = useState(false);
   const [showKeyBanner, setShowKeyBanner] = useState(false);
+  const activeQueryRef = useRef<{ id: string; controller: AbortController } | null>(null);
 
   // Theme toggle
   const [theme, setTheme] = useState<"dark" | "light">(() => {
@@ -208,20 +209,50 @@ function App() {
     async (query: string) => {
       setIsQuerying(true);
       setLastError(null);
+      const qid = crypto.randomUUID();
+      const controller = new AbortController();
+      activeQueryRef.current = { id: qid, controller };
+
       try {
-        const qid = crypto.randomUUID();
-        const result = await runQuery(query, qid, "json", 0, PAGE_SIZE);
+        const result = await runQuery(query, qid, "json", 0, PAGE_SIZE, controller.signal) as { error?: string } & typeof queryResult;
+        if (result.error) {
+          setLastError(result.error);
+          return;
+        }
         setQueryResult(result);
         bumpHistoryVersion(); // BUG-4: trigger sidebar history refresh
       } catch (e) {
+        if (e instanceof DOMException && e.name === "AbortError") {
+          return;
+        }
         setLastError(e instanceof Error ? e.message : String(e));
         setQueryResult(null);
       } finally {
+        if (activeQueryRef.current?.id === qid) {
+          activeQueryRef.current = null;
+        }
         setIsQuerying(false);
       }
     },
     [setIsQuerying, setLastError, setQueryResult, bumpHistoryVersion]
   );
+
+  const handleCancelQuery = useCallback(async () => {
+    const activeQuery = activeQueryRef.current;
+    if (!activeQuery) return;
+
+    activeQuery.controller.abort();
+    activeQueryRef.current = null;
+
+    try {
+      await cancelQuery(activeQuery.id);
+    } catch {
+      // Ignore race between local abort and backend completion.
+    }
+
+    setIsQuerying(false);
+    setLastError("Query cancelled");
+  }, [setIsQuerying, setLastError]);
 
   const handleLoadMore = useCallback(async () => {
     if (!queryResult?.has_more || isLoadingMore) return;
@@ -434,6 +465,7 @@ function App() {
         >
           <SqlEditor
             onExecute={handleExecute}
+            onCancel={handleCancelQuery}
             onCmdK={handleCmdK}
             queryError={lastError}
             onDismissError={() => setLastError(null)}

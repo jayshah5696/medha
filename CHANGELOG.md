@@ -4,6 +4,20 @@ All notable changes to Medha will be documented in this file.
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-04-04
+
+### Added
+- Schema-aware SQL autocomplete driven by active workspace file schemas
+- SQL formatting from the editor toolbar and keyboard flow
+- Query cancel action wired through frontend aborts and backend DuckDB interruption
+- Interactive result-grid sorting, column filtering, and click-to-copy cell values
+- Release-setup regression tests covering Electron packaging recipes and version bumps
+
+### Changed
+- Query timeout handling now interrupts DuckDB at the application layer and returns HTTP 408 on timeout
+- Desktop build recipes now rebuild the PyInstaller sidecar, avoid accidental publish/sign discovery, and support repeatable local packaging
+- Version bumping now keeps `package-lock.json` in sync through `npm version`
+
 ## [0.1.0] - 2026-03-28
 
 ### Added

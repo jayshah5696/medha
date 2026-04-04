@@ -3,8 +3,12 @@ import { useVirtualizer } from "@tanstack/react-virtual";
 import {
   useReactTable,
   getCoreRowModel,
+  getFilteredRowModel,
+  getSortedRowModel,
   flexRender,
   createColumnHelper,
+  type ColumnFiltersState,
+  type SortingState,
 } from "@tanstack/react-table";
 import type { QueryResult } from "../lib/api";
 import { useStore } from "../store";
@@ -19,6 +23,12 @@ interface ResultGridProps {
 
 function formatRowCount(n: number): string {
   return n.toLocaleString();
+}
+
+function serializeCellValue(value: unknown): string {
+  if (value === null) return "null";
+  if (typeof value === "object") return JSON.stringify(value);
+  return String(value);
 }
 
 export default function ResultGrid({ result, isQuerying, height, onLoadMore, isLoadingMore }: ResultGridProps) {
@@ -98,37 +108,7 @@ export default function ResultGrid({ result, isQuerying, height, onLoadMore, isL
     );
   }
 
-  // BUG-13: Memoize column definitions so TanStack Table doesn't
-  // rebuild the entire table model on every render.
-  const columns = useMemo(() => {
-    const helper = createColumnHelper<unknown[]>();
-    return result.columns.map((col, idx) =>
-      helper.accessor((row) => row[idx], {
-        id: col,
-        header: col,
-        cell: (info) => {
-          const val = info.getValue();
-          if (val === null) return <span style={{ color: "var(--text-dimmed)", fontStyle: "italic" }}>null</span>;
-          if (typeof val === "object") {
-            const json = JSON.stringify(val);
-            const display = json.length > 120 ? json.slice(0, 120) + "\u2026" : json;
-            return (
-              <span
-                style={{ color: "var(--text-secondary)", fontSize: "var(--font-size-xs)" }}
-                title={json}
-              >
-                {display}
-              </span>
-            );
-          }
-          if (typeof val === "boolean") return String(val);
-          return String(val);
-        },
-      })
-    );
-  }, [result.columns]);
-
-  return <ResultTable result={result} columns={columns} height={height} onLoadMore={onLoadMore} isLoadingMore={isLoadingMore} />;
+  return <ResultTable result={result} height={height} onLoadMore={onLoadMore} isLoadingMore={isLoadingMore} />;
 }
 
 // Fixed row height in pixels — must match CSS var(--row-height)
@@ -136,20 +116,117 @@ const ROW_HEIGHT = 34;
 
 function ResultTable({
   result,
-  columns,
   height,
   onLoadMore,
   isLoadingMore,
 }: {
   result: QueryResult;
-  columns: ReturnType<ReturnType<typeof createColumnHelper<unknown[]>>["accessor"]>[];
   height?: number;
   onLoadMore?: () => void;
   isLoadingMore?: boolean;
 }) {
   const editorContent = useStore((s) => s.editorContent);
+  const addToast = useStore((s) => s.addToast);
   const [exporting, setExporting] = useState<string | null>(null);
+  const [sorting, setSorting] = useState<SortingState>([]);
+  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+
+  const copyCellValue = useCallback(async (value: unknown) => {
+    if (!navigator.clipboard?.writeText) {
+      return;
+    }
+
+    const serialized = serializeCellValue(value);
+    await navigator.clipboard.writeText(serialized);
+    addToast(`Copied ${serialized.slice(0, 32)}`);
+  }, [addToast]);
+
+  const columns = useMemo(() => {
+    const helper = createColumnHelper<unknown[]>();
+    return result.columns.map((col, idx) =>
+      helper.accessor((row) => row[idx], {
+        id: col,
+        sortDescFirst: false,
+        header: ({ column }) => {
+          const sortState = column.getIsSorted();
+          const sortSuffix = sortState === "asc" ? " ↑" : sortState === "desc" ? " ↓" : "";
+
+          return (
+            <div style={{ display: "flex", flexDirection: "column", gap: 4, padding: "6px 0" }}>
+              <button
+                type="button"
+                onClick={column.getToggleSortingHandler()}
+                aria-label={`Sort by ${col}`}
+                style={{
+                  background: "none",
+                  border: "none",
+                  color: "inherit",
+                  cursor: "pointer",
+                  font: "inherit",
+                  padding: 0,
+                  textAlign: "left",
+                  textTransform: "uppercase",
+                  letterSpacing: "0.06em",
+                }}
+              >
+                {col}{sortSuffix}
+              </button>
+              <input
+                value={(column.getFilterValue() as string) ?? ""}
+                onChange={(event) => column.setFilterValue(event.target.value)}
+                placeholder={`filter ${col}`}
+                style={{
+                  width: "100%",
+                  background: "var(--bg-primary)",
+                  border: "1px solid var(--border)",
+                  color: "var(--text-primary)",
+                  fontSize: "var(--font-size-xs)",
+                  fontFamily: "var(--font-mono)",
+                  padding: "4px 6px",
+                }}
+              />
+            </div>
+          );
+        },
+        cell: (info) => {
+          const val = info.getValue();
+          const serialized = serializeCellValue(val);
+          const display = serialized.length > 120 ? `${serialized.slice(0, 120)}\u2026` : serialized;
+          const isObject = typeof val === "object" && val !== null;
+
+          return (
+            <button
+              type="button"
+              onClick={() => {
+                void copyCellValue(val);
+              }}
+              aria-label={`Copy value ${display}`}
+              style={{
+                width: "100%",
+                height: "100%",
+                background: "none",
+                border: "none",
+                color: val === null ? "var(--text-dimmed)" : isObject ? "var(--text-secondary)" : "inherit",
+                cursor: "pointer",
+                font: "inherit",
+                fontStyle: val === null ? "italic" : "normal",
+                padding: 0,
+                textAlign: "left",
+              }}
+              title={serialized}
+            >
+              {display}
+            </button>
+          );
+        },
+        filterFn: (row, columnId, filterValue) => {
+          const current = serializeCellValue(row.getValue(columnId)).toLowerCase();
+          return current.includes(String(filterValue).toLowerCase());
+        },
+      })
+    );
+  }, [copyCellValue, result.columns]);
 
   const handleExport = async (format: "csv" | "parquet") => {
     setExporting(format);
@@ -165,7 +242,15 @@ function ResultTable({
   const table = useReactTable({
     data: result.rows,
     columns,
+    state: {
+      sorting,
+      columnFilters,
+    },
+    onSortingChange: setSorting,
+    onColumnFiltersChange: setColumnFilters,
     getCoreRowModel: getCoreRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+    getFilteredRowModel: getFilteredRowModel(),
   });
 
   const { rows } = table.getRowModel();
@@ -247,14 +332,8 @@ function ResultTable({
                       color: "var(--text-dimmed)",
                       fontWeight: 500,
                       fontSize: 'var(--font-size-base)',
-                      whiteSpace: "nowrap",
-                      textTransform: "uppercase",
-                      letterSpacing: "0.06em",
                       fontFamily: "var(--font-ui)",
-                      height: ROW_HEIGHT,
-                      lineHeight: `${ROW_HEIGHT}px`,
                       overflow: "hidden",
-                      textOverflow: "ellipsis",
                     }}
                   >
                     {flexRender(
@@ -308,9 +387,7 @@ function ResultTable({
                       role="cell"
                       style={{
                         padding: "0 10px",
-                        whiteSpace: "nowrap",
                         overflow: "hidden",
-                        textOverflow: "ellipsis",
                         height: ROW_HEIGHT,
                         lineHeight: `${ROW_HEIGHT}px`,
                         color: "var(--text-primary)",

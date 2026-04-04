@@ -9,6 +9,7 @@ default:
 
 # Install all dependencies (backend + frontend)
 install:
+    npm install
     cd backend && uv sync
     cd frontend && NODE_ENV=development npm install
 
@@ -83,6 +84,10 @@ test-all:
     just test
     just test-frontend
 
+# Build Python sidecar binary for Electron packaging
+build-sidecar:
+    cd backend && uv run pyinstaller -y medha.spec
+
 # Compile Electron main process TypeScript
 build-electron:
     cd electron && npx tsc -p tsconfig.json
@@ -105,15 +110,16 @@ dev-desktop: build-electron
     wait
 
 # Build everything for desktop packaging
-build-desktop: build-frontend build-electron
-    npx electron-builder
+build-desktop: build-sidecar build-frontend build-electron
+    CSC_IDENTITY_AUTO_DISCOVERY=false npx electron-builder --publish never
 
 # Package macOS DMG
-pack-mac: build-desktop
-    npx electron-builder --mac
+pack-mac: build-sidecar build-frontend build-electron
+    CSC_IDENTITY_AUTO_DISCOVERY=false npx electron-builder --mac --publish never
 
 # Clean desktop build artifacts
 clean-desktop:
+    rm -rf backend/dist backend/build
     rm -rf electron/dist
     rm -rf release
 
@@ -123,8 +129,6 @@ release version:
     @echo "Push with: git push origin main --tags"
 
 # Build sidecar + desktop app + sign (full local release build)
-build-release: build-frontend
-    cd backend && uv run pyinstaller medha.spec
-    just build-electron
-    npx electron-builder --mac --dir
+build-release: build-sidecar build-frontend build-electron
+    CSC_IDENTITY_AUTO_DISCOVERY=false npx electron-builder --mac --dir --publish never
     bash scripts/sign-app.sh release/mac-arm64/Medha.app
