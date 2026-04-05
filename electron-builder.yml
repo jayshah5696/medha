@@ -39,7 +39,7 @@ linux:
   target: AppImage
   category: Development
 
-afterPack: ./scripts/afterPack.js
+afterSign: ./scripts/afterSign.js
 
 asar: true
 asarUnpack:
