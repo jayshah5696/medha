@@ -113,6 +113,8 @@ export default function ResultGrid({ result, isQuerying, height, onLoadMore, isL
 
 // Fixed row height in pixels — must match CSS var(--row-height)
 const ROW_HEIGHT = 34;
+const DEFAULT_COL_WIDTH = 180;
+const MIN_COL_WIDTH = 60;
 
 function ResultTable({
   result,
@@ -127,10 +129,89 @@ function ResultTable({
 }) {
   const editorContent = useStore((s) => s.editorContent);
   const addToast = useStore((s) => s.addToast);
+  const selectedRowIndex = useStore((s) => s.selectedRowIndex);
+  const setSelectedRowIndex = useStore((s) => s.setSelectedRowIndex);
+  const setDetailOpen = useStore((s) => s.setDetailOpen);
+  const isChatOpen = useStore((s) => s.isChatOpen);
+  const toggleChatSidebar = useStore((s) => s.toggleChatSidebar);
   const [exporting, setExporting] = useState<string | null>(null);
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+
+  // ── Resizable columns state ──────────────────────────────────────
+  // First column is the # index column (narrow), rest are data columns
+  const INDEX_COL_WIDTH = 50;
+  const [columnWidths, setColumnWidths] = useState<number[]>(() =>
+    [INDEX_COL_WIDTH, ...result.columns.map(() => DEFAULT_COL_WIDTH)]
+  );
+
+  // Reset column widths when columns change
+  useEffect(() => {
+    setColumnWidths([INDEX_COL_WIDTH, ...result.columns.map(() => DEFAULT_COL_WIDTH)]);
+  }, [result.columns]);
+
+  const resizingRef = useRef<{
+    colIndex: number;
+    startX: number;
+    startWidth: number;
+  } | null>(null);
+
+  const handleResizeStart = useCallback(
+    (colIndex: number) => (e: React.MouseEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      resizingRef.current = {
+        colIndex,
+        startX: e.clientX,
+        startWidth: columnWidths[colIndex],
+      };
+
+      const onMove = (ev: MouseEvent) => {
+        if (!resizingRef.current) return;
+        const delta = ev.clientX - resizingRef.current.startX;
+        const newWidth = Math.max(MIN_COL_WIDTH, resizingRef.current.startWidth + delta);
+        setColumnWidths((prev) => {
+          const next = [...prev];
+          next[resizingRef.current!.colIndex] = newWidth;
+          return next;
+        });
+      };
+
+      const onUp = () => {
+        resizingRef.current = null;
+        document.removeEventListener("mousemove", onMove);
+        document.removeEventListener("mouseup", onUp);
+        document.body.style.cursor = "";
+        document.body.style.userSelect = "";
+      };
+
+      document.addEventListener("mousemove", onMove);
+      document.addEventListener("mouseup", onUp);
+      document.body.style.cursor = "col-resize";
+      document.body.style.userSelect = "none";
+    },
+    [columnWidths]
+  );
+
+  // ── Row selection ────────────────────────────────────────────────
+  const handleRowClick = useCallback(
+    (dataIndex: number) => {
+      if (selectedRowIndex === dataIndex) {
+        // Clicking same row deselects
+        setSelectedRowIndex(null);
+        setDetailOpen(false);
+      } else {
+        setSelectedRowIndex(dataIndex);
+        setDetailOpen(true);
+        // Open right sidebar if it's closed
+        if (!isChatOpen) {
+          toggleChatSidebar();
+        }
+      }
+    },
+    [selectedRowIndex, isChatOpen, setSelectedRowIndex, setDetailOpen, toggleChatSidebar]
+  );
 
   const copyCellValue = useCallback(async (value: unknown) => {
     if (!navigator.clipboard?.writeText) {
@@ -144,7 +225,37 @@ function ResultTable({
 
   const columns = useMemo(() => {
     const helper = createColumnHelper<unknown[]>();
-    return result.columns.map((col, idx) =>
+
+    // Row index column (# column)
+    const indexCol = helper.display({
+      id: "__row_index",
+      header: () => (
+        <div style={{ padding: "6px 0", textAlign: "center" }}>
+          <span
+            style={{
+              textTransform: "uppercase",
+              letterSpacing: "0.06em",
+              color: "var(--text-dimmed)",
+            }}
+          >
+            #
+          </span>
+        </div>
+      ),
+      cell: (info) => (
+        <span
+          style={{
+            color: "var(--text-dimmed)",
+            fontSize: "var(--font-size-xs)",
+            userSelect: "none",
+          }}
+        >
+          {info.row.index + 1}
+        </span>
+      ),
+    });
+
+    const dataCols = result.columns.map((col, idx) =>
       helper.accessor((row) => row[idx], {
         id: col,
         sortDescFirst: false,
@@ -196,28 +307,27 @@ function ResultTable({
           const isObject = typeof val === "object" && val !== null;
 
           return (
-            <button
-              type="button"
-              onClick={() => {
+            <span
+              onDoubleClick={(e) => {
+                e.stopPropagation();
                 void copyCellValue(val);
               }}
               aria-label={`Copy value ${display}`}
               style={{
                 width: "100%",
                 height: "100%",
-                background: "none",
-                border: "none",
+                display: "inline-block",
                 color: val === null ? "var(--text-dimmed)" : isObject ? "var(--text-secondary)" : "inherit",
-                cursor: "pointer",
-                font: "inherit",
                 fontStyle: val === null ? "italic" : "normal",
-                padding: 0,
-                textAlign: "left",
+                cursor: "default",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
               }}
               title={serialized}
             >
               {display}
-            </button>
+            </span>
           );
         },
         filterFn: (row, columnId, filterValue) => {
@@ -226,6 +336,8 @@ function ResultTable({
         },
       })
     );
+
+    return [indexCol, ...dataCols];
   }, [copyCellValue, result.columns]);
 
   const handleExport = async (format: "csv" | "parquet") => {
@@ -286,11 +398,15 @@ function ResultTable({
     ? { height, overflow: "hidden", background: "var(--bg-primary)", display: "flex", flexDirection: "column" }
     : { maxHeight: "40vh", overflow: "hidden", background: "var(--bg-primary)", display: "flex", flexDirection: "column" };
 
-  const colCount = table.getAllColumns().length;
-  const { gridColumns, minWidth } = useMemo(() => ({
-    gridColumns: `repeat(${colCount}, minmax(120px, 1fr))`,
-    minWidth: colCount * 120,
-  }), [colCount]);
+  // Build grid-template-columns from resizable widths
+  const gridColumns = useMemo(
+    () => columnWidths.map((w) => `${w}px`).join(" "),
+    [columnWidths]
+  );
+  const minWidth = useMemo(
+    () => columnWidths.reduce((sum, w) => sum + w, 0),
+    [columnWidths]
+  );
 
   return (
     <div style={containerStyle}>
@@ -322,7 +438,7 @@ function ResultTable({
                   background: "var(--bg-secondary)",
                 }}
               >
-                {hg.headers.map((header) => (
+                {hg.headers.map((header, headerIdx) => (
                   <div
                     key={header.id}
                     role="columnheader"
@@ -334,12 +450,34 @@ function ResultTable({
                       fontSize: 'var(--font-size-base)',
                       fontFamily: "var(--font-ui)",
                       overflow: "hidden",
+                      position: "relative",
                     }}
                   >
                     {flexRender(
                       header.column.columnDef.header,
                       header.getContext()
                     )}
+                    {/* Resize handle */}
+                    <div
+                      onMouseDown={handleResizeStart(headerIdx)}
+                      data-testid={`resize-handle-${headerIdx}`}
+                      style={{
+                        position: "absolute",
+                        right: 0,
+                        top: 0,
+                        bottom: 0,
+                        width: 5,
+                        cursor: "col-resize",
+                        zIndex: 2,
+                        background: "transparent",
+                      }}
+                      onMouseOver={(e) => {
+                        (e.currentTarget as HTMLElement).style.background = "var(--accent-dimmed)";
+                      }}
+                      onMouseOut={(e) => {
+                        (e.currentTarget as HTMLElement).style.background = "transparent";
+                      }}
+                    />
                   </div>
                 ))}
               </div>
@@ -365,10 +503,15 @@ function ResultTable({
           >
             {rowVirtualizer.getVirtualItems().map((virtualRow) => {
               const row = rows[virtualRow.index];
+              const dataIndex = row.index;
+              const isSelected = selectedRowIndex === dataIndex;
+
               return (
                 <div
                   key={row.id}
                   role="row"
+                  data-testid={`result-row-${dataIndex}`}
+                  onClick={() => handleRowClick(dataIndex)}
                   style={{
                     position: "absolute",
                     top: 0,
@@ -378,7 +521,25 @@ function ResultTable({
                     transform: `translateY(${virtualRow.start}px)`,
                     display: "grid",
                     gridTemplateColumns: gridColumns,
-                    background: virtualRow.index % 2 === 0 ? "var(--bg-primary)" : "var(--bg-row-alt)",
+                    background: isSelected
+                      ? "var(--accent-bg)"
+                      : virtualRow.index % 2 === 0
+                        ? "var(--bg-primary)"
+                        : "var(--bg-row-alt)",
+                    cursor: "pointer",
+                    borderLeft: isSelected ? "2px solid var(--accent)" : "2px solid transparent",
+                    transition: "background 0.1s",
+                  }}
+                  onMouseOver={(e) => {
+                    if (!isSelected) {
+                      (e.currentTarget as HTMLElement).style.background = "var(--accent-bg-subtle)";
+                    }
+                  }}
+                  onMouseOut={(e) => {
+                    if (!isSelected) {
+                      (e.currentTarget as HTMLElement).style.background =
+                        virtualRow.index % 2 === 0 ? "var(--bg-primary)" : "var(--bg-row-alt)";
+                    }
                   }}
                 >
                   {row.getVisibleCells().map((cell) => (
@@ -391,6 +552,8 @@ function ResultTable({
                         height: ROW_HEIGHT,
                         lineHeight: `${ROW_HEIGHT}px`,
                         color: "var(--text-primary)",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap",
                       }}
                     >
                       {flexRender(cell.column.columnDef.cell, cell.getContext())}

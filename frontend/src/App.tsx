@@ -4,7 +4,7 @@ import { Sun, Moon, Settings } from "lucide-react";
 import FileExplorer from "./components/FileExplorer";
 import SqlEditor from "./components/SqlEditor";
 import ResultGrid from "./components/ResultGrid";
-import ChatSidebar from "./components/ChatSidebar";
+import RightSidebar from "./components/RightSidebar";
 import DiffOverlay from "./components/DiffOverlay";
 import SettingsModal from "./components/SettingsModal";
 import { useStore } from "./store";
@@ -528,7 +528,7 @@ function App() {
                 }}
               />
             </div>
-            <ChatSidebar width={rightWidth} />
+            <RightSidebar width={rightWidth} queryResult={queryResult} />
           </>
         )}
       </div>

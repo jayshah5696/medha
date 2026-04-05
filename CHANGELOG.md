@@ -4,9 +4,24 @@ All notable changes to Medha will be documented in this file.
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-04-05
+
 ### Added
+- **Resizable columns** — drag column borders to resize any column in the results grid
+- **Record Detail sidebar** — click any row to view its full record in a right-sidebar tab with two view modes:
+  - **Table view**: key-value pairs with type badges, per-field copy, and field search
+  - **JSON view**: collapsible syntax-highlighted tree with auto-detection of JSON inside text columns
+- **Row index column** — `#` column showing 1-based row numbers for easy reference
+- **Row selection** — single-click selects a row (cyan highlight + left border accent), click again to deselect
+- **Right sidebar tabs** — Assistant and Detail tabs in the right sidebar for consistent layout
+- **Row navigation** — ◀ ▶ buttons in the detail panel to move between records without clicking
+- **Copy full record** — "Copy JSON" button to copy the entire selected record to clipboard
 - AI-assisted query repair from the SQL error banner, reusing the existing diff review flow before any SQL is applied
 - Backend and frontend regression coverage for inline error-context prompting and the auto-open repair diff path
+
+### Changed
+- Cell copy is now double-click (single-click selects the row instead)
+- Record detail view lives inside the right sidebar as a tab, keeping the layout consistent with the Assistant panel
 
 ## [0.2.0] - 2026-04-04
 

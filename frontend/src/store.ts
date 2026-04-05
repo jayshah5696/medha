@@ -100,6 +100,13 @@ interface MedhaStore {
   toasts: Toast[];
   addToast: (message: string) => void;
   removeToast: (id: string) => void;
+
+  // Record detail sidebar
+  selectedRowIndex: number | null;
+  setSelectedRowIndex: (idx: number | null) => void;
+  isDetailOpen: boolean;
+  toggleDetailSidebar: () => void;
+  setDetailOpen: (open: boolean) => void;
 }
 
 export interface Toast {
@@ -315,4 +322,11 @@ export const useStore = create<MedhaStore>((set) => ({
     set((state) => ({
       toasts: state.toasts.filter((t) => t.id !== id),
     })),
+
+  // Record detail sidebar
+  selectedRowIndex: null,
+  setSelectedRowIndex: (idx) => set({ selectedRowIndex: idx }),
+  isDetailOpen: false,
+  toggleDetailSidebar: () => set((state) => ({ isDetailOpen: !state.isDetailOpen })),
+  setDetailOpen: (open) => set({ isDetailOpen: open }),
 }));
