@@ -36,6 +36,7 @@ Your data never leaves your machine.
 |---------|-------------|
 | **Native DuckDB** | Reads Parquet, CSV, JSON, JSONL directly. No import step. |
 | **Cmd+K inline edit** | Select SQL, describe a change, see a red/green diff, accept or reject. |
+| **AI query repair** | Fix failed SQL directly from the error banner and review the suggested diff before applying it. |
 | **Cmd+L chat agent** | Conversational data exploration with tool-calling agent. |
 | **Multi-tab SQL editor** | Multiple editor tabs with save/close/rename (Cmd+T, Cmd+W, Cmd+S). |
 | **Virtualized result grid** | 10k+ rows with row virtualization, infinite scroll, horizontal sync. |

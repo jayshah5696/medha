@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import DiffMatchPatch from "diff-match-patch";
 import { format } from "sql-formatter";
 import { inlineEdit } from "../lib/api";
@@ -8,6 +8,8 @@ import type { EditorView } from "@codemirror/view";
 interface DiffOverlayProps {
   selectedSql: string;
   editorView: EditorView;
+  initialInstruction?: string;
+  errorMessage?: string;
   onClose: () => void;
 }
 
@@ -53,25 +55,30 @@ function formatSql(sqlStr: string): string {
 export default function DiffOverlay({
   selectedSql,
   editorView,
+  initialInstruction,
+  errorMessage,
   onClose,
 }: DiffOverlayProps) {
   const { activeFiles } = useStore();
-  const [instruction, setInstruction] = useState("");
+  const [instruction, setInstruction] = useState(initialInstruction ?? "");
   const [diffLines, setDiffLines] = useState<DiffLine[] | null>(null);
   const [newSql, setNewSql] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const autoSubmittedRef = useRef(false);
 
-  const handleSubmit = async () => {
-    if (!instruction.trim()) return;
+  const submitInstruction = useCallback(async (instructionText: string) => {
+    if (!instructionText.trim()) return;
     setLoading(true);
     setError(null);
 
     try {
       const result = await inlineEdit(
-        instruction.trim(),
+        instructionText.trim(),
         selectedSql,
-        activeFiles
+        activeFiles,
+        undefined,
+        errorMessage,
       );
 
       const formattedOld = formatSql(selectedSql);
@@ -83,7 +90,19 @@ export default function DiffOverlay({
     } finally {
       setLoading(false);
     }
-  };
+  }, [activeFiles, errorMessage, selectedSql]);
+
+  const handleSubmit = useCallback(() => {
+    void submitInstruction(instruction);
+  }, [instruction, submitInstruction]);
+
+  useEffect(() => {
+    if (!initialInstruction || !errorMessage || autoSubmittedRef.current) {
+      return;
+    }
+    autoSubmittedRef.current = true;
+    void submitInstruction(initialInstruction);
+  }, [errorMessage, initialInstruction, submitInstruction]);
 
   const handleAccept = () => {
     const state = editorView.state;

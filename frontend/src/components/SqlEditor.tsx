@@ -12,6 +12,14 @@ import { buildSqlCompletionOptions } from "../lib/sqlAutocomplete";
 import { useStore } from "../store";
 import TabBar from "./TabBar";
 
+interface InlineEditLaunchOptions {
+  initialInstruction?: string;
+  errorMessage?: string;
+}
+
+const FIX_QUERY_WITH_AI_INSTRUCTION =
+  "Fix this DuckDB SQL error. Make the smallest change needed to resolve it.";
+
 // Error line decoration effect and field
 const setErrorLine = StateEffect.define<number | null>();
 
@@ -42,7 +50,11 @@ const errorLineField = StateField.define<DecorationSet>({
 interface SqlEditorProps {
   initialValue?: string;
   onExecute?: (query: string) => void;
-  onCmdK?: (selectedText: string, view: EditorView) => void;
+  onCmdK?: (
+    selectedText: string,
+    view: EditorView,
+    options?: InlineEditLaunchOptions,
+  ) => void;
   onCancel?: () => void;
   onChange?: (value: string) => void;
   queryError?: string | null;
@@ -208,6 +220,27 @@ export default function SqlEditor({
     setHistoryOpen(true);
     loadHistory();
   }, [loadHistory]);
+
+  const handleFixWithAi = useCallback(() => {
+    if (!queryError) {
+      return;
+    }
+
+    const view = viewRef.current;
+    if (!view) {
+      return;
+    }
+
+    const content = view.state.doc.toString();
+    if (!content.trim()) {
+      return;
+    }
+
+    onCmdKRef.current?.(content, view, {
+      initialInstruction: FIX_QUERY_WITH_AI_INSTRUCTION,
+      errorMessage: queryError,
+    });
+  }, [queryError]);
 
   const handleHistorySelect = useCallback(
     async (entry: HistoryEntry) => {
@@ -581,21 +614,39 @@ export default function SqlEditor({
           >
             {queryError}
           </span>
-          <button
-            onClick={onDismissError}
-            style={{
-              background: "none",
-              border: "none",
-              color: "var(--error)",
-              cursor: "pointer",
-              fontSize: 'var(--font-size-sm)',
-              fontFamily: "var(--font-mono)",
-              padding: "0 4px",
-              flexShrink: 0,
-            }}
-          >
-            x
-          </button>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
+            <button
+              onClick={handleFixWithAi}
+              aria-label="Fix query with AI"
+              style={{
+                background: "transparent",
+                border: "1px solid var(--error)",
+                color: "var(--error)",
+                cursor: "pointer",
+                fontSize: 'var(--font-size-xs)',
+                fontFamily: "var(--font-mono)",
+                padding: "1px 6px",
+                textTransform: "uppercase",
+                letterSpacing: "0.08em",
+              }}
+            >
+              fix with ai
+            </button>
+            <button
+              onClick={onDismissError}
+              style={{
+                background: "none",
+                border: "none",
+                color: "var(--error)",
+                cursor: "pointer",
+                fontSize: 'var(--font-size-sm)',
+                fontFamily: "var(--font-mono)",
+                padding: "0 4px",
+              }}
+            >
+              x
+            </button>
+          </div>
         </div>
       )}
 

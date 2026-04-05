@@ -4,6 +4,10 @@ All notable changes to Medha will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+- AI-assisted query repair from the SQL error banner, reusing the existing diff review flow before any SQL is applied
+- Backend and frontend regression coverage for inline error-context prompting and the auto-open repair diff path
+
 ## [0.2.0] - 2026-04-04
 
 ### Added

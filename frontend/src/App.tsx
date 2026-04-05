@@ -37,6 +37,8 @@ function App() {
   const [diffState, setDiffState] = useState<{
     selectedSql: string;
     editorView: EditorView;
+    initialInstruction?: string;
+    errorMessage?: string;
   } | null>(null);
 
   const [showSettings, setShowSettings] = useState(false);
@@ -270,8 +272,17 @@ function App() {
   }, [queryResult, isLoadingMore, editorContent, setIsLoadingMore, appendQueryRows]);
 
   const handleCmdK = useCallback(
-    (selectedText: string, view: EditorView) => {
-      setDiffState({ selectedSql: selectedText, editorView: view });
+    (
+      selectedText: string,
+      view: EditorView,
+      options?: { initialInstruction?: string; errorMessage?: string },
+    ) => {
+      setDiffState({
+        selectedSql: selectedText,
+        editorView: view,
+        initialInstruction: options?.initialInstruction,
+        errorMessage: options?.errorMessage,
+      });
     },
     []
   );
@@ -557,6 +568,8 @@ function App() {
         <DiffOverlay
           selectedSql={diffState.selectedSql}
           editorView={diffState.editorView}
+          initialInstruction={diffState.initialInstruction}
+          errorMessage={diffState.errorMessage}
           onClose={() => setDiffState(null)}
         />
       )}

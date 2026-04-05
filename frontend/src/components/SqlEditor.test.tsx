@@ -7,6 +7,7 @@ import SqlEditor from "./SqlEditor";
 vi.mock("../lib/api", () => ({
   getHistory: vi.fn().mockResolvedValue([]),
   getHistoryEntry: vi.fn(),
+  getSchema: vi.fn().mockResolvedValue({ filename: "sample.csv", columns: [] }),
   saveQuery: vi.fn(),
 }));
 
@@ -42,5 +43,32 @@ describe("SqlEditor", () => {
     fireEvent.click(screen.getByRole("button", { name: /cancel query/i }));
 
     expect(onCancel).toHaveBeenCalledOnce();
+  });
+
+  it("offers Fix with AI when a query error is present", async () => {
+    const onCmdK = vi.fn();
+
+    render(
+      <SqlEditor
+        initialValue="SELEKT 1;"
+        queryError="Parser Error: syntax error at or near 'SELEKT'"
+        onCmdK={onCmdK}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /fix query with ai/i }));
+
+    await waitFor(() => {
+      expect(onCmdK).toHaveBeenCalledOnce();
+    });
+
+    expect(onCmdK).toHaveBeenCalledWith(
+      "SELEKT 1;",
+      expect.anything(),
+      expect.objectContaining({
+        errorMessage: "Parser Error: syntax error at or near 'SELEKT'",
+        initialInstruction: expect.stringMatching(/fix this duckdb sql error/i),
+      }),
+    );
   });
 });

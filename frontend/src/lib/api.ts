@@ -168,17 +168,23 @@ export async function inlineEdit(
   instruction: string,
   selectedSql: string,
   activeFiles: string[],
-  model?: string
+  model?: string,
+  errorMessage?: string,
 ): Promise<InlineEditResult> {
+  const payload: Record<string, unknown> = {
+    instruction,
+    selected_sql: selectedSql,
+    active_files: activeFiles,
+    model: model || "gpt-4o-mini",
+  };
+  if (errorMessage) {
+    payload.error_message = errorMessage;
+  }
+
   return fetchJSON("/api/ai/inline", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      instruction,
-      selected_sql: selectedSql,
-      active_files: activeFiles,
-      model: model || "gpt-4o-mini",
-    }),
+    body: JSON.stringify(payload),
   });
 }
 
