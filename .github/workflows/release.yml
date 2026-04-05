@@ -187,8 +187,11 @@ jobs:
         run: |
           cd tap
           sed -i '' 's/version ".*"/version "${{ steps.version.outputs.version }}"/' Casks/medha.rb
-          sed -i '' 's/arm:   ".*"/arm:   "${{ steps.sha.outputs.arm64 }}"/' Casks/medha.rb
-          sed -i '' 's/intel: ".*"/intel: "${{ steps.sha.outputs.x64 }}"/' Casks/medha.rb
+          # Only update sha256 line (contains 64-char hex hashes), not the arch line
+          sed -i '' '/sha256/s/arm:   "[0-9a-f]\{64\}"/arm:   "${{ steps.sha.outputs.arm64 }}"/' Casks/medha.rb
+          sed -i '' '/sha256/s/intel: "[0-9a-f]\{64\}"/intel: "${{ steps.sha.outputs.x64 }}"/' Casks/medha.rb
+          echo "Updated cask formula:"
+          cat Casks/medha.rb
 
       - name: Commit and push
         run: |
