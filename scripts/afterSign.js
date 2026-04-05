@@ -1,15 +1,14 @@
 // afterSign hook for electron-builder
 //
-// Problem: electron-builder's ad-hoc signing (with CSC_IDENTITY_AUTO_DISCOVERY=false)
-// signs each binary independently via @electron/osx-sign. Each gets an independent
-// ad-hoc signature with a different CDHash. When macOS App Translocation kicks in
-// (quarantined apps, e.g. Homebrew installs), dyld treats these independent ad-hoc
-// signatures as "different Team IDs" and refuses to load Electron Framework.
+// Problem: electron-builder's ad-hoc signing signs each bundle independently.
+// The PyInstaller sidecar (in Resources/sidecar/) contains ~145 .dylib/.so files
+// that also have independent ad-hoc signatures. Under App Translocation
+// (quarantined apps, e.g. Homebrew installs), dyld treats independently-signed
+// ad-hoc binaries as having "different Team IDs" and refuses to load them.
 //
-// Fix: After electron-builder finishes its signing pass, we re-sign the entire .app
-// bundle in one `codesign --deep --force --sign -` call. This produces a single
-// consistent signing chain where all nested binaries derive from the same root
-// signature, which dyld accepts even under App Translocation.
+// Fix: After electron-builder finishes signing, we re-sign EVERY Mach-O binary
+// in the entire .app bundle with a single consistent `codesign --force --sign -`
+// pass, then re-sign the top-level .app with --deep to seal the bundle.
 
 const { execSync } = require("child_process");
 const path = require("path");
@@ -22,19 +21,31 @@ exports.default = async function afterSign(context) {
     `${context.packager.appInfo.productFilename}.app`
   );
 
-  console.log(`[afterSign] Re-signing ${appPath} with consistent ad-hoc identity…`);
+  console.log(`[afterSign] Re-signing all binaries in ${appPath}…`);
 
   try {
-    // --deep: sign every nested bundle/framework/helper in one pass
-    // --force: replace existing (inconsistent) signatures
-    // "-": ad-hoc identity (no Apple Developer cert required)
+    // Step 1: Find and re-sign every Mach-O binary (dylib, so, executable) individually.
+    // This catches loose binaries in Resources/sidecar/ that --deep doesn't reach.
+    // `find` + `file` + grep for Mach-O to avoid signing non-binary files.
+    const findAndSign = `
+      find "${appPath}" -type f \\( -name "*.dylib" -o -name "*.so" -o -perm +111 \\) | while read -r f; do
+        if file "$f" | grep -q "Mach-O"; then
+          codesign --force --sign - "$f" 2>/dev/null
+        fi
+      done
+    `;
+    execSync(findAndSign, { stdio: "inherit", shell: "/bin/bash" });
+    console.log("[afterSign] All individual binaries re-signed.");
+
+    // Step 2: Re-sign all .framework and .app bundles (bottom-up, inner first)
+    // --deep on the top-level .app re-seals everything into one consistent chain.
     execSync(
       `codesign --deep --force --sign - "${appPath}"`,
       { stdio: "inherit" }
     );
-    console.log("[afterSign] Re-signing complete.");
+    console.log("[afterSign] Top-level bundle re-signed with --deep.");
 
-    // Verify the entire bundle
+    // Step 3: Verify the entire bundle
     execSync(
       `codesign --verify --deep --strict --verbose=2 "${appPath}"`,
       { stdio: "inherit" }
