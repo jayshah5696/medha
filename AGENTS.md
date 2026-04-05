@@ -21,6 +21,7 @@ _Persistent memory: update this table when an agent makes a mistake so future se
 |------|-----------------|--------------------|
 | 2026-03-06 | Agent SSE `query_result` event called `setEditorContent()`, overwriting user's work mid-typing | Store agent results in separate state (`agentLastQuery`), never hijack user-facing editor content from background processes |
 | 2026-03-06 | `asyncio.Lock()` at module level binds to wrong event loop in tests/ASGI | Create locks lazily via getter function (`_get_db_lock()`) with `reset_db_lock()` for test isolation |
+| 2026-04-05 | Ad-hoc signed Electron app crashes on launch when quarantine flag is set (Homebrew installs) — dyld reports "different Team IDs" | Use `afterPack.js` hook with `codesign --deep --force --sign -` to re-sign entire .app bundle consistently before DMG creation |
 
 
 ## meta Design
