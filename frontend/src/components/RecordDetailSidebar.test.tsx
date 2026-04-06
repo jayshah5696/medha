@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import RecordDetailSidebar from "./RecordDetailSidebar";
 import { useStore } from "../store";
 import type { QueryResult } from "../lib/api";
