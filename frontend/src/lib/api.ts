@@ -104,6 +104,7 @@ export async function runQuery(
   format: string = "json",
   offset: number = 0,
   limit?: number,
+  signal?: AbortSignal,
 ): Promise<QueryResult> {
   const payload: Record<string, unknown> = { query, query_id: queryId, format, offset };
   if (limit !== undefined) payload.limit = limit;
@@ -111,6 +112,7 @@ export async function runQuery(
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
+    signal,
   });
 }
 
@@ -166,17 +168,23 @@ export async function inlineEdit(
   instruction: string,
   selectedSql: string,
   activeFiles: string[],
-  model?: string
+  model?: string,
+  errorMessage?: string,
 ): Promise<InlineEditResult> {
+  const payload: Record<string, unknown> = {
+    instruction,
+    selected_sql: selectedSql,
+    active_files: activeFiles,
+    model: model || "gpt-4o-mini",
+  };
+  if (errorMessage) {
+    payload.error_message = errorMessage;
+  }
+
   return fetchJSON("/api/ai/inline", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      instruction,
-      selected_sql: selectedSql,
-      active_files: activeFiles,
-      model: model || "gpt-4o-mini",
-    }),
+    body: JSON.stringify(payload),
   });
 }
 

@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import ResultGrid from "./ResultGrid";
+import { useStore } from "../store";
 
 // ── jsdom layout mocking for @tanstack/react-virtual ──────────────
 // jsdom has no layout engine. The virtualizer measures the scroll
@@ -89,6 +90,54 @@ describe("ResultGrid", () => {
     expect(screen.getByText("Alice")).toBeInTheDocument();
     expect(screen.getByText("Bob")).toBeInTheDocument();
     expect(screen.getByText("85.5")).toBeInTheDocument();
+  });
+
+  it("sorts rows when a column header is clicked", async () => {
+    render(<ResultGrid result={baseResult} isQuerying={false} height={400} />);
+
+    fireEvent.click(screen.getByRole("button", { name: /sort by score/i }));
+
+    await waitFor(() => {
+      const rows = screen.getAllByRole("row");
+      expect(rows[1]).toHaveTextContent("Alice");
+      expect(rows[2]).toHaveTextContent("Bob");
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /sort by score/i }));
+
+    await waitFor(() => {
+      const rows = screen.getAllByRole("row");
+      expect(rows[1]).toHaveTextContent("Bob");
+      expect(rows[2]).toHaveTextContent("Alice");
+    });
+  });
+
+  it("filters rows with the column filter input", async () => {
+    render(<ResultGrid result={baseResult} isQuerying={false} height={400} />);
+
+    fireEvent.change(screen.getByPlaceholderText("filter name"), {
+      target: { value: "Bob" },
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText("Bob")).toBeInTheDocument();
+      expect(screen.queryByText("Alice")).not.toBeInTheDocument();
+    });
+  });
+
+  it("copies cell values to the clipboard when double-clicked", async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.assign(navigator, {
+      clipboard: { writeText },
+    });
+
+    render(<ResultGrid result={baseResult} isQuerying={false} height={400} />);
+
+    fireEvent.doubleClick(screen.getByLabelText(/copy value alice/i));
+
+    await waitFor(() => {
+      expect(writeText).toHaveBeenCalledWith("Alice");
+    });
   });
 
   it("shows truncation badge when truncated=true", () => {
@@ -259,7 +308,7 @@ describe("ResultGrid", () => {
       const firstBodyRow = scrollContainer!.querySelector('[role="row"]') as HTMLElement;
       const bodyCells = firstBodyRow.querySelectorAll('[role="cell"]');
 
-      expect(headerCells.length).toBe(3); // id, name, score
+      expect(headerCells.length).toBe(4); // # + id, name, score
       expect(bodyCells.length).toBe(headerCells.length);
     });
 
@@ -282,6 +331,95 @@ describe("ResultGrid", () => {
       // Full text should be present in the DOM (not truncated to "A...")
       expect(screen.getByText("Alice Wonderland")).toBeInTheDocument();
       expect(screen.getByText("alice@example.com")).toBeInTheDocument();
+    });
+  });
+
+  // ── Row index column tests ───────────────────────────────────────
+
+  describe("row index column", () => {
+    it("renders a # column header", () => {
+      render(<ResultGrid result={baseResult} isQuerying={false} height={400} />);
+      expect(screen.getByText("#")).toBeInTheDocument();
+    });
+
+    it("shows 1-based row numbers in # column", () => {
+      const { container } = render(<ResultGrid result={baseResult} isQuerying={false} height={400} />);
+      // Each row should have a first cell with the row number
+      const scrollContainer = container.querySelector('[data-testid="virtual-scroll-container"]');
+      const rows = scrollContainer!.querySelectorAll('[role="row"]');
+      // First cell of first row should be "1"
+      const firstRowCells = rows[0].querySelectorAll('[role="cell"]');
+      expect(firstRowCells[0].textContent).toBe("1");
+      const secondRowCells = rows[1].querySelectorAll('[role="cell"]');
+      expect(secondRowCells[0].textContent).toBe("2");
+    });
+  });
+
+  // ── Resizable columns tests ──────────────────────────────────────
+
+  describe("resizable columns", () => {
+    it("renders resize handles for each column", () => {
+      render(<ResultGrid result={baseResult} isQuerying={false} height={400} />);
+      expect(screen.getByTestId("resize-handle-0")).toBeInTheDocument();
+      expect(screen.getByTestId("resize-handle-1")).toBeInTheDocument();
+      expect(screen.getByTestId("resize-handle-2")).toBeInTheDocument();
+    });
+
+    it("resize handles have col-resize cursor", () => {
+      render(<ResultGrid result={baseResult} isQuerying={false} height={400} />);
+      const handle = screen.getByTestId("resize-handle-0");
+      expect(handle.style.cursor).toBe("col-resize");
+    });
+
+    it("columns use explicit pixel widths (not repeat/minmax)", () => {
+      const { container } = render(
+        <ResultGrid result={baseResult} isQuerying={false} height={400} />
+      );
+      const headerRow = container.querySelector('[role="row"]') as HTMLElement;
+      expect(headerRow).toBeTruthy();
+      // Should be pixel-based, e.g. "180px 180px 180px", not repeat()
+      const gridCols = headerRow.style.gridTemplateColumns;
+      expect(gridCols).toMatch(/\d+px/);
+      expect(gridCols).not.toContain("repeat");
+    });
+  });
+
+  // ── Row selection tests ──────────────────────────────────────────
+
+  describe("row selection", () => {
+    beforeEach(() => {
+      useStore.setState({ selectedRowIndex: null, isDetailOpen: false });
+    });
+
+    it("clicking a row selects it and opens detail sidebar", () => {
+      render(<ResultGrid result={baseResult} isQuerying={false} height={400} />);
+      const row = screen.getByTestId("result-row-0");
+      fireEvent.click(row);
+
+      expect(useStore.getState().selectedRowIndex).toBe(0);
+      expect(useStore.getState().isDetailOpen).toBe(true);
+    });
+
+    it("selected row has accent background", () => {
+      useStore.setState({ selectedRowIndex: 0, isDetailOpen: true });
+      render(<ResultGrid result={baseResult} isQuerying={false} height={400} />);
+
+      const row = screen.getByTestId("result-row-0");
+      expect(row.style.background).toBe("var(--accent-bg)");
+    });
+
+    it("selected row has accent left border", () => {
+      useStore.setState({ selectedRowIndex: 0, isDetailOpen: true });
+      render(<ResultGrid result={baseResult} isQuerying={false} height={400} />);
+
+      const row = screen.getByTestId("result-row-0");
+      expect(row.style.borderLeft).toBe("2px solid var(--accent)");
+    });
+
+    it("rows are clickable with pointer cursor", () => {
+      render(<ResultGrid result={baseResult} isQuerying={false} height={400} />);
+      const row = screen.getByTestId("result-row-0");
+      expect(row.style.cursor).toBe("pointer");
     });
   });
 });

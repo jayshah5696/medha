@@ -1,5 +1,7 @@
 """Database query endpoint tests."""
 
+import asyncio
+
 from pathlib import Path
 
 import pytest
@@ -337,6 +339,64 @@ async def test_pagination_without_params_uses_defaults(configured_client, tmp_wo
     assert "total_row_count" in data
     assert "has_more" in data
     assert "offset" in data
+
+
+@pytest.mark.asyncio
+async def test_async_execute_interrupts_on_timeout(monkeypatch):
+    """Timed-out queries should interrupt DuckDB before surfacing the error."""
+
+    async def slow_to_thread(func, *args):
+        await asyncio.sleep(0.05)
+        return func(*args)
+
+    interrupted = False
+
+    def mark_interrupt() -> None:
+        nonlocal interrupted
+        interrupted = True
+
+    monkeypatch.setattr(db.asyncio, "to_thread", slow_to_thread)
+    monkeypatch.setattr(db, "QUERY_TIMEOUT_SECONDS", 0.01, raising=False)
+    monkeypatch.setattr(db, "_interrupt_query", mark_interrupt, raising=False)
+    monkeypatch.setattr(db, "_check_sql_safety", lambda sql: None)
+    monkeypatch.setattr(db, "_get_db_lock", lambda: asyncio.Lock())
+
+    with pytest.raises(db.QueryTimeoutError):
+        await db.async_execute("SELECT 1")
+
+    assert interrupted is True
+
+
+@pytest.mark.asyncio
+async def test_async_execute_interrupts_on_cancel(monkeypatch):
+    """Cancelling a running query should interrupt DuckDB before exiting."""
+
+    release = asyncio.Event()
+
+    async def blocking_to_thread(func, *args):
+        await release.wait()
+        return func(*args)
+
+    interrupted = False
+
+    def mark_interrupt() -> None:
+        nonlocal interrupted
+        interrupted = True
+        release.set()
+
+    monkeypatch.setattr(db.asyncio, "to_thread", blocking_to_thread)
+    monkeypatch.setattr(db, "_interrupt_query", mark_interrupt, raising=False)
+    monkeypatch.setattr(db, "_check_sql_safety", lambda sql: None)
+    monkeypatch.setattr(db, "_get_db_lock", lambda: asyncio.Lock())
+
+    task = asyncio.create_task(db.async_execute("SELECT 1"))
+    await asyncio.sleep(0)
+    task.cancel()
+
+    with pytest.raises(asyncio.CancelledError):
+        await task
+
+    assert interrupted is True
 
 
 @pytest.mark.asyncio

@@ -15,7 +15,7 @@ Query Parquet, CSV, and JSON with native DuckDB speed.
 `Cmd+K` to rewrite SQL inline. `Cmd+L` to explore conversationally.
 Your data never leaves your machine.
 
-[**Quickstart**](#quickstart) · [**Desktop App**](#desktop-app) · [**Key bindings**](#key-bindings) · [**Architecture**](#architecture)
+[**Install with Homebrew**](#install-with-homebrew) · [**Run from Source**](#run-from-source) · [**Desktop App**](#desktop-app) · [**Key bindings**](#key-bindings) · [**Architecture**](#architecture)
 
 </div>
 
@@ -36,6 +36,7 @@ Your data never leaves your machine.
 |---------|-------------|
 | **Native DuckDB** | Reads Parquet, CSV, JSON, JSONL directly. No import step. |
 | **Cmd+K inline edit** | Select SQL, describe a change, see a red/green diff, accept or reject. |
+| **AI query repair** | Fix failed SQL directly from the error banner and review the suggested diff before applying it. |
 | **Cmd+L chat agent** | Conversational data exploration with tool-calling agent. |
 | **Multi-tab SQL editor** | Multiple editor tabs with save/close/rename (Cmd+T, Cmd+W, Cmd+S). |
 | **Virtualized result grid** | 10k+ rows with row virtualization, infinite scroll, horizontal sync. |
@@ -49,7 +50,31 @@ Your data never leaves your machine.
 
 ---
 
-## Quickstart
+## Install with Homebrew
+
+For the packaged macOS app, install Medha via the Homebrew cask:
+
+```bash
+brew tap jayshah5696/medha
+brew install --cask medha
+```
+
+Then launch `Medha` from Spotlight, Launchpad, or `/Applications`.
+
+To update later:
+
+```bash
+brew update
+brew upgrade --cask medha
+```
+
+To uninstall:
+
+```bash
+brew uninstall --cask medha
+```
+
+## Run from Source
 
 ### Prerequisites
 
@@ -94,6 +119,13 @@ export OPENAI_API_KEY=sk-...
 ## Desktop App
 
 Medha ships as a standalone Electron app with a bundled Python backend.
+
+### Install the packaged app
+
+```bash
+brew tap jayshah5696/medha
+brew install --cask medha
+```
 
 ### Dev mode (3-in-1)
 

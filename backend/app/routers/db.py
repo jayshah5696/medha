@@ -9,7 +9,7 @@ from fastapi import APIRouter, HTTPException
 from fastapi.responses import FileResponse, Response
 from pydantic import BaseModel
 
-from app.db import async_execute, async_execute_arrow, active_queries, workspace_root, conn, _check_sql_safety, _check_path_safety, _get_db_lock
+from app.db import QueryTimeoutError, async_execute, async_execute_arrow, active_queries, workspace_root, conn, _check_sql_safety, _check_path_safety, _get_db_lock
 from app.routers.history import save_history_entry
 
 router = APIRouter()
@@ -43,6 +43,8 @@ async def run_query(req: QueryRequest):
             )
         except asyncio.CancelledError:
             return {"error": "Query cancelled", "query_id": qid}
+        except QueryTimeoutError as e:
+            raise HTTPException(status_code=408, detail=str(e))
         except Exception as e:
             raise HTTPException(status_code=400, detail=str(e))
         finally:
@@ -80,6 +82,8 @@ async def run_query(req: QueryRequest):
         return result
     except asyncio.CancelledError:
         return {"error": "Query cancelled", "query_id": qid}
+    except QueryTimeoutError as e:
+        raise HTTPException(status_code=408, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
     finally:

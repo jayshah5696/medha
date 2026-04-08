@@ -39,6 +39,8 @@ linux:
   target: AppImage
   category: Development
 
+afterSign: ./scripts/afterSign.js
+
 asar: true
 asarUnpack:
   - "**/*.node"

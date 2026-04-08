@@ -31,6 +31,7 @@ class InlineRequest(BaseModel):
     selected_sql: str
     active_files: list[str] = []
     model: str = "gpt-4o-mini"
+    error_message: str | None = None
 
 
 class ChatRequest(BaseModel):
@@ -90,6 +91,7 @@ async def ai_inline(req: InlineRequest):
         selected_sql=req.selected_sql,
         active_files=req.active_files,
         model=req.model,
+        error_message=req.error_message,
     )
     return {"sql": sql}
 

@@ -1,13 +1,24 @@
 import { useEffect, useRef, useCallback, useState } from "react";
+import { autocompletion, type Completion, type CompletionContext } from "@codemirror/autocomplete";
 import { EditorState, StateField, StateEffect, Prec } from "@codemirror/state";
 import { EditorView, keymap, Decoration, type DecorationSet } from "@codemirror/view";
 import { sql } from "@codemirror/lang-sql";
 import { basicSetup } from "codemirror";
+import { format as formatSql } from "sql-formatter";
 import { Bot, User } from "lucide-react";
-import { getHistory, getHistoryEntry, saveQuery } from "../lib/api";
+import { getHistory, getHistoryEntry, getSchema, saveQuery } from "../lib/api";
 import type { HistoryEntry } from "../lib/api";
+import { buildSqlCompletionOptions } from "../lib/sqlAutocomplete";
 import { useStore } from "../store";
 import TabBar from "./TabBar";
+
+interface InlineEditLaunchOptions {
+  initialInstruction?: string;
+  errorMessage?: string;
+}
+
+const FIX_QUERY_WITH_AI_INSTRUCTION =
+  "Fix this DuckDB SQL error. Make the smallest change needed to resolve it.";
 
 // Error line decoration effect and field
 const setErrorLine = StateEffect.define<number | null>();
@@ -39,7 +50,12 @@ const errorLineField = StateField.define<DecorationSet>({
 interface SqlEditorProps {
   initialValue?: string;
   onExecute?: (query: string) => void;
-  onCmdK?: (selectedText: string, view: EditorView) => void;
+  onCmdK?: (
+    selectedText: string,
+    view: EditorView,
+    options?: InlineEditLaunchOptions,
+  ) => void;
+  onCancel?: () => void;
   onChange?: (value: string) => void;
   queryError?: string | null;
   onDismissError?: () => void;
@@ -49,6 +65,7 @@ export default function SqlEditor({
   initialValue = "SELECT 1;",
   onExecute,
   onCmdK,
+  onCancel,
   onChange,
   queryError,
   onDismissError,
@@ -56,11 +73,15 @@ export default function SqlEditor({
   const containerRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<EditorView | null>(null);
   const isQuerying = useStore((s) => s.isQuerying);
+  const activeFiles = useStore((s) => s.activeFiles);
+  const completionOptionsRef = useRef<Completion[]>([]);
 
   const onExecuteRef = useRef(onExecute);
   onExecuteRef.current = onExecute;
   const onCmdKRef = useRef(onCmdK);
   onCmdKRef.current = onCmdK;
+  const onCancelRef = useRef(onCancel);
+  onCancelRef.current = onCancel;
   const onChangeRef = useRef(onChange);
   onChangeRef.current = onChange;
   // Keep a ref so the keymap closure sees the latest value
@@ -84,6 +105,37 @@ export default function SqlEditor({
     });
   }, []);
 
+  const formatCurrentSql = useCallback(() => {
+    const content = getContent();
+    if (!content.trim()) return;
+    const formatted = formatSql(content, {
+      language: "sql",
+      keywordCase: "upper",
+    });
+    setContent(formatted);
+  }, [getContent, setContent]);
+
+  const completionSource = useCallback((context: CompletionContext) => {
+    const word = context.matchBefore(/[\w./-]*/);
+    if (!context.explicit && (!word || word.from === word.to)) {
+      return null;
+    }
+
+    const query = word?.text.toLowerCase() ?? "";
+    const options = completionOptionsRef.current.filter((option) =>
+      option.label.toLowerCase().includes(query),
+    );
+
+    if (options.length === 0) {
+      return null;
+    }
+
+    return {
+      from: word ? word.from : context.pos,
+      options,
+    };
+  }, []);
+
   // Expose methods via ref
   useEffect(() => {
     (window as unknown as Record<string, unknown>).__medhaEditor = {
@@ -102,6 +154,36 @@ export default function SqlEditor({
       setContent(editorContent);
     }
   }, [editorContent, setContent]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadSchemas() {
+      const schemaEntries = await Promise.all(
+        activeFiles.map(async (file) => {
+          try {
+            const schema = await getSchema(file);
+            return [file, schema.columns] as const;
+          } catch {
+            return [file, []] as const;
+          }
+        }),
+      );
+
+      if (cancelled) return;
+
+      completionOptionsRef.current = buildSqlCompletionOptions(
+        activeFiles,
+        Object.fromEntries(schemaEntries),
+      );
+    }
+
+    void loadSchemas();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [activeFiles]);
 
   // Handle error decoration
   useEffect(() => {
@@ -138,6 +220,27 @@ export default function SqlEditor({
     setHistoryOpen(true);
     loadHistory();
   }, [loadHistory]);
+
+  const handleFixWithAi = useCallback(() => {
+    if (!queryError) {
+      return;
+    }
+
+    const view = viewRef.current;
+    if (!view) {
+      return;
+    }
+
+    const content = view.state.doc.toString();
+    if (!content.trim()) {
+      return;
+    }
+
+    onCmdKRef.current?.(content, view, {
+      initialInstruction: FIX_QUERY_WITH_AI_INSTRUCTION,
+      errorMessage: queryError,
+    });
+  }, [queryError]);
 
   const handleHistorySelect = useCallback(
     async (entry: HistoryEntry) => {
@@ -272,6 +375,7 @@ export default function SqlEditor({
       extensions: [
         basicSetup,
         sql(),
+        autocompletion({ override: [completionSource] }),
         darkTheme,
         errorLineField,
         Prec.highest(
@@ -336,6 +440,14 @@ export default function SqlEditor({
                 return true;
               },
             },
+            {
+              key: "Shift-Alt-f",
+              preventDefault: true,
+              run: () => {
+                formatCurrentSql();
+                return true;
+              },
+            },
           ])
         ),
         EditorView.updateListener.of((update) => {
@@ -393,42 +505,56 @@ export default function SqlEditor({
           sql
         </span>
         <span style={{ display: "flex", alignItems: "center", gap: 0 }}>
-          <span
+          <button
             onClick={openHistory}
             className="medha-toolbar-btn"
             style={{ cursor: "pointer" }}
             title="Open history"
+            aria-label="Open query history"
           >
             ⌘H History
-          </span>
+          </button>
           <span className="medha-toolbar-sep" />
           <span className="medha-toolbar-btn">⌘S Save</span>
+          <span className="medha-toolbar-sep" />
+          <button
+            className="medha-toolbar-btn"
+            style={{ cursor: "pointer" }}
+            onClick={formatCurrentSql}
+            aria-label="Format SQL"
+          >
+            ⇧⌥F Format
+          </button>
           <span className="medha-toolbar-sep" />
           <span className="medha-toolbar-btn">⌘K Edit</span>
           <span className="medha-toolbar-sep" />
           <span className="medha-toolbar-btn">⌘L Chat</span>
           <span className="medha-toolbar-sep" />
           {isQuerying ? (
-            <span
+            <button
               className="medha-toolbar-btn"
               style={{
                 color: "var(--accent)",
                 animation: "medha-pulse 1s ease-in-out infinite",
+                cursor: "pointer",
               }}
+              onClick={() => onCancelRef.current?.()}
+              aria-label="Cancel query"
             >
-              ⌘↵ Running...
-            </span>
+              esc Cancel
+            </button>
           ) : (
-            <span
+            <button
               className="medha-toolbar-btn"
               style={{ cursor: "pointer" }}
               onClick={() => {
                 const content = viewRef.current?.state.doc.toString() || "";
                 if (content) onExecuteRef.current?.(content);
               }}
+              aria-label="Run query"
             >
               ⌘↵ Run
-            </span>
+            </button>
           )}
         </span>
       </div>
@@ -444,6 +570,8 @@ export default function SqlEditor({
           font-size: var(--font-size-base);
           font-family: var(--font-mono);
           padding: 0 10px;
+          background: none;
+          border: none;
           transition: color 0.15s;
           white-space: nowrap;
         }
@@ -486,22 +614,40 @@ export default function SqlEditor({
           >
             {queryError}
           </span>
-          <button
-            onClick={onDismissError}
-            aria-label="Dismiss error"
-            style={{
-              background: "none",
-              border: "none",
-              color: "var(--error)",
-              cursor: "pointer",
-              fontSize: 'var(--font-size-sm)',
-              fontFamily: "var(--font-mono)",
-              padding: "0 4px",
-              flexShrink: 0,
-            }}
-          >
-            x
-          </button>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
+            <button
+              onClick={handleFixWithAi}
+              aria-label="Fix query with AI"
+              style={{
+                background: "transparent",
+                border: "1px solid var(--error)",
+                color: "var(--error)",
+                cursor: "pointer",
+                fontSize: 'var(--font-size-xs)',
+                fontFamily: "var(--font-mono)",
+                padding: "1px 6px",
+                textTransform: "uppercase",
+                letterSpacing: "0.08em",
+              }}
+            >
+              fix with ai
+            </button>
+            <button
+              onClick={onDismissError}
+              aria-label="Dismiss error"
+              style={{
+                background: "none",
+                border: "none",
+                color: "var(--error)",
+                cursor: "pointer",
+                fontSize: 'var(--font-size-sm)',
+                fontFamily: "var(--font-mono)",
+                padding: "0 4px",
+              }}
+            >
+              x
+            </button>
+          </div>
         </div>
       )}
 
