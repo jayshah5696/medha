@@ -1,9 +1,14 @@
 import { render, screen, act, fireEvent } from "@testing-library/react";
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, type MockedFunction } from "vitest";
+import type { ReactElement, ReactNode } from "react";
 import ChatSidebar from "./ChatSidebar";
 import { useStore } from "../store";
+import type { ToolStepData } from "./toolStepUtils";
 
 declare const global: typeof globalThis;
+
+type MockUseStore = MockedFunction<typeof useStore>;
+const mockUseStore = useStore as unknown as MockUseStore;
 
 // Mock the store
 vi.mock("../store", () => ({
@@ -18,17 +23,29 @@ vi.mock("../lib/api", () => ({
 
 // Mock ThinkingBlock so we can easily test if it received props
 vi.mock("./ThinkingBlock", () => ({
-  default: ({ steps, isStreaming }: any) => (
-    <div data-testid="mock-thinking-block" data-steps={steps.length} data-streaming={isStreaming}>
+  default: ({ steps, isStreaming }: { steps: ToolStepData[]; isStreaming: boolean }) => (
+    <div data-testid="mock-thinking-block" data-steps={steps.length} data-streaming={String(isStreaming)}>
       Mock Thinking Block
     </div>
   ),
 }));
 
+interface MarkdownTableProps {
+  children?: ReactNode;
+}
+
+interface MarkdownComponents {
+  table?: (props: MarkdownTableProps) => ReactElement;
+}
+
+interface MarkdownMockProps {
+  children?: ReactNode;
+  components?: MarkdownComponents;
+}
+
 // Mock ReactMarkdown to render children and intercept table elements
 vi.mock("react-markdown", () => ({
-  default: ({ children, components }: any) => {
-    // If components has a table renderer, test it by rendering a fake table
+  default: ({ children, components }: MarkdownMockProps) => {
     if (components?.table) {
       const TableWrapper = components.table;
       return (
@@ -75,12 +92,17 @@ describe("ChatSidebar Tool Steps Interleaving", () => {
     // Mock scrollIntoView
     window.HTMLElement.prototype.scrollIntoView = vi.fn();
 
-    (useStore as any).mockReturnValue({ ...defaultStoreValues });
+    mockUseStore.mockReturnValue({ ...defaultStoreValues });
     
     // Mock the fetch call for settings
     global.fetch = vi.fn().mockResolvedValue({
       json: vi.fn().mockResolvedValue({ model_chat: "mock", agent_profile: "mock" })
     });
+  });
+
+  it("renders with parent-managed width instead of a fixed pixel width", () => {
+    const { container } = render(<ChatSidebar width={300} />);
+    expect((container.firstElementChild as HTMLElement).style.width).toBe("100%");
   });
 
   it("should render thinking block correctly within an assistant message", async () => {
@@ -123,7 +145,7 @@ describe("ChatSidebar Table Overflow", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     window.HTMLElement.prototype.scrollIntoView = vi.fn();
-    (useStore as any).mockReturnValue({ ...defaultStoreValues });
+    mockUseStore.mockReturnValue({ ...defaultStoreValues });
     global.fetch = vi.fn().mockResolvedValue({
       json: vi.fn().mockResolvedValue({ model_chat: "mock", agent_profile: "mock" })
     });
@@ -167,7 +189,7 @@ describe("ChatSidebar @-mention autocomplete", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     window.HTMLElement.prototype.scrollIntoView = vi.fn();
-    (useStore as any).mockReturnValue({ ...defaultStoreValues });
+    mockUseStore.mockReturnValue({ ...defaultStoreValues });
     global.fetch = vi.fn().mockResolvedValue({
       json: vi.fn().mockResolvedValue({ model_chat: "mock", agent_profile: "mock" })
     });
@@ -198,7 +220,7 @@ describe("ChatSidebar @-mention autocomplete", () => {
 
   it("should select a file and add it to active files when clicked", () => {
     const addActiveFile = vi.fn();
-    (useStore as any).mockReturnValue({ ...defaultStoreValues, addActiveFile });
+    mockUseStore.mockReturnValue({ ...defaultStoreValues, addActiveFile });
 
     render(<ChatSidebar width={300} />);
     const input = screen.getByPlaceholderText("ask...");
@@ -213,7 +235,7 @@ describe("ChatSidebar @-mention autocomplete", () => {
 
   it("should close popover and clear @-text after selection", () => {
     const addActiveFile = vi.fn();
-    (useStore as any).mockReturnValue({ ...defaultStoreValues, addActiveFile });
+    mockUseStore.mockReturnValue({ ...defaultStoreValues, addActiveFile });
 
     render(<ChatSidebar width={300} />);
     const input = screen.getByPlaceholderText("ask...");
@@ -229,7 +251,7 @@ describe("ChatSidebar @-mention autocomplete", () => {
 
   it("should navigate options with ArrowDown/ArrowUp and select with Enter", () => {
     const addActiveFile = vi.fn();
-    (useStore as any).mockReturnValue({ ...defaultStoreValues, addActiveFile });
+    mockUseStore.mockReturnValue({ ...defaultStoreValues, addActiveFile });
 
     render(<ChatSidebar width={300} />);
     const input = screen.getByPlaceholderText("ask...");
@@ -265,7 +287,7 @@ describe("ChatSidebar SSE parsing robustness", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     window.HTMLElement.prototype.scrollIntoView = vi.fn();
-    (useStore as any).mockReturnValue({ ...defaultStoreValues });
+    mockUseStore.mockReturnValue({ ...defaultStoreValues });
     global.fetch = vi.fn().mockResolvedValue({
       json: vi.fn().mockResolvedValue({ model_chat: "mock", agent_profile: "mock" }),
     });

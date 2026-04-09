@@ -109,6 +109,21 @@ describe("store", () => {
     expect(useStore.getState().queryResult).toBeNull();
   });
 
+  it("setQueryResult clears stale row selection and detail state", () => {
+    useStore.setState({ selectedRowIndex: 3, isDetailOpen: true });
+
+    useStore.getState().setQueryResult({
+      columns: ["id"],
+      rows: [[1]],
+      truncated: false,
+      row_count: 1,
+      duration_ms: 1,
+    });
+
+    expect(useStore.getState().selectedRowIndex).toBeNull();
+    expect(useStore.getState().isDetailOpen).toBe(false);
+  });
+
   it("isLoadingMore defaults to false", () => {
     expect(useStore.getState().isLoadingMore).toBe(false);
   });

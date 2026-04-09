@@ -26,11 +26,26 @@ export default function RightSidebar({ width, queryResult }: RightSidebarProps) 
         ? "assistant"
         : activeTab;
 
+  const setDetailOpen = useStore((s) => s.setDetailOpen);
+
   const handleTabChange = (tab: RightTab) => {
-    setActiveTab(tab);
+    if (tab === "detail") {
+      if (!queryResult || selectedRowIndex === null || queryResult.rows.length === 0) {
+        return;
+      }
+      setDetailOpen(true);
+      setActiveTab("detail");
+      return;
+    }
+
+    setActiveTab("assistant");
+    // Clear detail state when user explicitly switches to assistant
+    // so the effectiveTab ternary doesn't override them back
+    setDetailOpen(false);
   };
 
   const hasResults = queryResult && queryResult.rows.length > 0;
+  const canShowDetail = Boolean(hasResults && selectedRowIndex !== null);
 
   return (
     <div
@@ -78,6 +93,7 @@ export default function RightSidebar({ width, queryResult }: RightSidebarProps) 
           type="button"
           onClick={() => handleTabChange("detail")}
           data-testid="right-tab-detail"
+          disabled={!canShowDetail}
           style={{
             flex: 1,
             background: effectiveTab === "detail" ? "var(--bg-secondary)" : "var(--bg-primary)",
@@ -85,7 +101,7 @@ export default function RightSidebar({ width, queryResult }: RightSidebarProps) 
             borderBottom: effectiveTab === "detail" ? "2px solid var(--accent)" : "2px solid transparent",
             color: effectiveTab === "detail"
               ? "var(--accent)"
-              : hasResults && selectedRowIndex !== null
+              : canShowDetail
                 ? "var(--text-secondary)"
                 : "var(--text-dimmed)",
             fontSize: "var(--font-size-sm)",
@@ -93,9 +109,9 @@ export default function RightSidebar({ width, queryResult }: RightSidebarProps) 
             fontWeight: 500,
             textTransform: "uppercase",
             letterSpacing: "0.08em",
-            cursor: "pointer",
+            cursor: canShowDetail ? "pointer" : "not-allowed",
             padding: "0 8px",
-            opacity: hasResults ? 1 : 0.5,
+            opacity: canShowDetail ? 1 : 0.5,
           }}
         >
           Detail

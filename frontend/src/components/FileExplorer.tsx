@@ -225,7 +225,7 @@ export default function FileExplorer({ width, onFilePreview }: FileExplorerProps
         .then(setFiles)
         .catch((e) => setLastError(e instanceof Error ? e.message : String(e)));
     }
-  }, []);
+  }, [workspacePath, files.length, setFiles, setLastError]);
 
   // Folder browser state
   const [browseOpen, setBrowseOpen] = useState(false);
@@ -255,7 +255,7 @@ export default function FileExplorer({ width, onFilePreview }: FileExplorerProps
   };
 
   // Show the filter input always
-  const showFilter = true;
+  const showFilter = files.length > 5;
 
   const filteredFiles = useMemo(() => {
     if (!fileFilter.trim()) return files;

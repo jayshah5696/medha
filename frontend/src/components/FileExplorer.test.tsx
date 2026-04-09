@@ -1,6 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 
+const testWindow = window as Window;
+
 // Mock the api module before importing the component
 vi.mock("../lib/api", () => ({
   configureWorkspace: vi.fn().mockResolvedValue({ ok: true, path: "/test" }),
@@ -60,8 +62,9 @@ import FileExplorer from "./FileExplorer";
 describe("FileExplorer", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockStore.files = [];
     // Ensure no Electron API in test environment
-    delete (window as any).electronAPI;
+    delete testWindow.electronAPI;
   });
 
   it("renders workspace input in web mode", () => {
@@ -182,19 +185,42 @@ describe("FileExplorer", () => {
     expect(sidebar.style.width).toBe("300px");
   });
 
+  it("hides the filter input when there are 5 or fewer files", () => {
+    render(<FileExplorer width={220} />);
+    expect(screen.queryByPlaceholderText("filter files...")).not.toBeInTheDocument();
+  });
+
+  it("shows the filter input when there are more than 5 files", () => {
+    mockStore.files = [
+      { name: "a.csv", path: "/a.csv", size_bytes: 1, extension: "csv" },
+      { name: "b.csv", path: "/b.csv", size_bytes: 1, extension: "csv" },
+      { name: "c.csv", path: "/c.csv", size_bytes: 1, extension: "csv" },
+      { name: "d.csv", path: "/d.csv", size_bytes: 1, extension: "csv" },
+      { name: "e.csv", path: "/e.csv", size_bytes: 1, extension: "csv" },
+      { name: "f.csv", path: "/f.csv", size_bytes: 1, extension: "csv" },
+    ];
+
+    render(<FileExplorer width={220} />);
+    expect(screen.getByPlaceholderText("filter files...")).toBeInTheDocument();
+  });
+
   // --- Electron mode tests ---
 
   it("shows choose folder button in Electron mode", () => {
-    (window as any).electronAPI = { pickDirectory: vi.fn() };
+    Object.defineProperty(testWindow, "electronAPI", {
+      configurable: true,
+      writable: true,
+      value: { pickDirectory: vi.fn() } satisfies Pick<ElectronAPI, "pickDirectory">,
+    });
     render(<FileExplorer width={220} />);
     expect(screen.getByText("choose folder")).toBeInTheDocument();
     // Should NOT show text input in Electron mode
     expect(screen.queryByPlaceholderText("/path/to/data")).not.toBeInTheDocument();
-    delete (window as any).electronAPI;
+    delete testWindow.electronAPI;
   });
 
   it("does not show choose folder button in web mode", () => {
-    delete (window as any).electronAPI;
+    delete testWindow.electronAPI;
     render(<FileExplorer width={220} />);
     expect(screen.queryByText("choose folder")).not.toBeInTheDocument();
     // Should show text input

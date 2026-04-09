@@ -132,8 +132,7 @@ function ResultTable({
   const selectedRowIndex = useStore((s) => s.selectedRowIndex);
   const setSelectedRowIndex = useStore((s) => s.setSelectedRowIndex);
   const setDetailOpen = useStore((s) => s.setDetailOpen);
-  const isChatOpen = useStore((s) => s.isChatOpen);
-  const toggleChatSidebar = useStore((s) => s.toggleChatSidebar);
+  const setRightSidebarOpen = useStore((s) => s.setRightSidebarOpen);
   const [exporting, setExporting] = useState<string | null>(null);
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
@@ -145,6 +144,11 @@ function ResultTable({
   const [columnWidths, setColumnWidths] = useState<number[]>(() =>
     [INDEX_COL_WIDTH, ...result.columns.map(() => DEFAULT_COL_WIDTH)]
   );
+  const columnWidthsRef = useRef<number[]>(columnWidths);
+
+  useEffect(() => {
+    columnWidthsRef.current = columnWidths;
+  }, [columnWidths]);
 
   // Reset column widths when columns change
   useEffect(() => {
@@ -164,7 +168,7 @@ function ResultTable({
       resizingRef.current = {
         colIndex,
         startX: e.clientX,
-        startWidth: columnWidths[colIndex],
+        startWidth: columnWidthsRef.current[colIndex],
       };
 
       const onMove = (ev: MouseEvent) => {
@@ -191,7 +195,7 @@ function ResultTable({
       document.body.style.cursor = "col-resize";
       document.body.style.userSelect = "none";
     },
-    [columnWidths]
+    []
   );
 
   // ── Row selection ────────────────────────────────────────────────
@@ -204,13 +208,11 @@ function ResultTable({
       } else {
         setSelectedRowIndex(dataIndex);
         setDetailOpen(true);
-        // Open right sidebar if it's closed
-        if (!isChatOpen) {
-          toggleChatSidebar();
-        }
+        // Ensure right sidebar is open (don't toggle — set explicitly)
+        setRightSidebarOpen(true);
       }
     },
-    [selectedRowIndex, isChatOpen, setSelectedRowIndex, setDetailOpen, toggleChatSidebar]
+    [selectedRowIndex, setSelectedRowIndex, setDetailOpen, setRightSidebarOpen]
   );
 
   const copyCellValue = useCallback(async (value: unknown) => {
@@ -489,7 +491,7 @@ function ResultTable({
         <div
           ref={scrollContainerRef}
           data-testid="virtual-scroll-container"
-          style={{ flex: 1, overflowY: "auto", overflowX: "hidden" }}
+          style={{ flex: 1, overflowY: "auto", overflowX: "hidden", minHeight: 0, minWidth }}
         >
           <div
             role="rowgroup"

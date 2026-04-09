@@ -12,10 +12,10 @@
  *     ● executing query · SELECT...     ←pulse
  */
 
-import { useState, useEffect, useRef } from "react";
+import { useState } from "react";
 import { ChevronDown } from "lucide-react";
 import ToolStep from "./ToolStep";
-import type { ToolStepData } from "./ToolStep";
+import type { ToolStepData } from "./toolStepUtils";
 
 interface ThinkingBlockProps {
   steps: ToolStepData[];
@@ -23,26 +23,14 @@ interface ThinkingBlockProps {
 }
 
 export default function ThinkingBlock({ steps, isStreaming }: ThinkingBlockProps) {
-  const [expanded, setExpanded] = useState(isStreaming);
-  const prevStreaming = useRef(isStreaming);
-
-  // Auto-collapse when streaming transitions from true -> false
-  useEffect(() => {
-    if (prevStreaming.current && !isStreaming) {
-      // Streaming just ended — collapse
-      setExpanded(false);
-    } else if (isStreaming && steps.length > 0) {
-      // Streaming with steps — expand
-      setExpanded(true);
-    }
-    prevStreaming.current = isStreaming;
-  }, [isStreaming, steps.length]);
+  const [manuallyExpanded, setManuallyExpanded] = useState(false);
 
   if (steps.length === 0) return null;
 
   const hasRunning = steps.some((s) => s.status === "running");
   const stepCount = steps.length;
   const label = `${stepCount} step${stepCount !== 1 ? "s" : ""}`;
+  const expanded = isStreaming ? true : manuallyExpanded;
 
   return (
     <div
@@ -54,7 +42,7 @@ export default function ThinkingBlock({ steps, isStreaming }: ThinkingBlockProps
     >
       {/* Header — clickable toggle */}
       <div
-        onClick={() => setExpanded((v) => !v)}
+        onClick={() => setManuallyExpanded((v) => !v)}
         style={{
           display: "flex",
           alignItems: "center",

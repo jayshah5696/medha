@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { render, screen } from "@testing-library/react";
-import ToolStep, { toolVerb, type ToolStepData } from "./ToolStep";
+import ToolStep from "./ToolStep";
+import { toolVerb, type ToolStepData } from "./toolStepUtils";
 
 describe("toolVerb", () => {
   it("maps get_schema to inspecting/inspected", () => {

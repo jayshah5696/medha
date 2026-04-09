@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useMemo } from "react";
+import { useState, useRef, useEffect, useMemo, useCallback } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { ArrowRight } from "lucide-react";
@@ -6,7 +6,7 @@ import { useStore } from "../store";
 import { getChats, getChat } from "../lib/api";
 import type { ChatMessage as ApiChatMessage } from "../lib/api";
 import ContextPill from "./ContextPill";
-import type { ToolStepData } from "./ToolStep";
+import type { ToolStepData } from "./toolStepUtils";
 import ThinkingBlock from "./ThinkingBlock";
 
 interface ChatSettings {
@@ -20,7 +20,8 @@ interface ChatMessage {
   tool_steps?: ToolStepData[];
 }
 
-export default function ChatSidebar({ width }: { width: number }) {
+export default function ChatSidebar(props: { width: number }) {
+  void props.width;
   const { activeFiles, files, addActiveFile, currentThreadId, setThreadId, chatHistory, setChatHistory, setEditorContent, setQueryResult, setLastError, setAgentLastQuery, bumpHistoryVersion } = useStore();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
@@ -62,20 +63,20 @@ export default function ChatSidebar({ width }: { width: number }) {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  const loadThreadList = async () => {
+  const loadThreadList = useCallback(async () => {
     try {
       const threads = await getChats();
       setChatHistory(threads);
     } catch {
       // silently fail
     }
-  };
+  }, [setChatHistory]);
 
   useEffect(() => {
     if (threadsOpen) {
-      loadThreadList();
+      void loadThreadList();
     }
-  }, [threadsOpen]);
+  }, [threadsOpen, loadThreadList]);
 
   const handleLoadThread = async (slug: string) => {
     try {
@@ -300,8 +301,7 @@ export default function ChatSidebar({ width }: { width: number }) {
   return (
     <div
       style={{
-        width: width,
-        minWidth: width,
+        width: "100%",
         background: "var(--bg-secondary)",
         display: "flex",
         flexDirection: "column",

@@ -77,6 +77,7 @@ interface MedhaStore {
 
   isChatOpen: boolean;
   toggleChatSidebar: () => void;
+  setRightSidebarOpen: (open: boolean) => void;
 
   // FEAT-1: resizable result pane height
   resultPaneHeight: number;
@@ -164,7 +165,7 @@ export const useStore = create<MedhaStore>((set) => ({
   clearActiveFiles: () => set({ activeFiles: [] }),
 
   queryResult: null,
-  setQueryResult: (result) => set({ queryResult: result }),
+  setQueryResult: (result) => set({ queryResult: result, selectedRowIndex: null, isDetailOpen: false }),
   appendQueryRows: (result) =>
     set((state) => {
       if (!state.queryResult) return state;
@@ -205,6 +206,7 @@ export const useStore = create<MedhaStore>((set) => ({
 
   isChatOpen: true,
   toggleChatSidebar: () => set((state) => ({ isChatOpen: !state.isChatOpen })),
+  setRightSidebarOpen: (open) => set({ isChatOpen: open }),
 
   resultPaneHeight: 250,
   setResultPaneHeight: (h) => set({ resultPaneHeight: h }),

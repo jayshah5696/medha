@@ -20,3 +20,20 @@
 - Backend: Lock scope was already narrow (per-query), confirmed with concurrency tests.
 
 **Lesson:** In an SSE streaming architecture, never let background processing (agent) overwrite user-facing state (editor content, cursor position). Store agent results separately and let the user pull them in.
+
+### 2026-04-08: UI bugfixes need tests first, especially for stateful panels and resizers
+
+**Problem:** A UI bugfix pass for the results grid/right sidebar was started by changing implementation first and only adding regression tests afterward. That violated the project TDD rule and increased the chance of shipping state-management regressions around row selection, resizable columns, and sidebar/tab state.
+
+**Root causes found:**
+
+1. **Implementation-first debugging** — direct fixes were made while investigating visual bugs, without first locking expected behavior in tests.
+2. **Stateful UI interactions are easy to regress** — result grid scroll state, selected row state, detail tab state, and sidebar open state all interact in subtle ways that are difficult to validate by inspection alone.
+3. **Build/lint/test parity was not checked immediately** — a test run passed earlier, but build-specific TypeScript issues in test files were only caught later when `npm run build` was re-run.
+
+**Fixes applied:**
+- Added regression tests for `ResultGrid`, `RightSidebar`, `RecordDetailSidebar`, `ThinkingBlock`, `FileExplorer`, `ChatSidebar`, and `store`.
+- Refactored code to satisfy lint/build constraints after tests were added.
+- Re-ran `vitest`, `lint`, and `build` until all passed.
+
+**Lesson:** For UI bugfixes, write the failing component/store test first, then implement. Always validate with the full frontend gate (`vitest`, `lint`, and `build`) before pushing, because TS/build issues can slip past isolated test runs.

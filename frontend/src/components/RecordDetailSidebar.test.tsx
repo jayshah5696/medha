@@ -120,6 +120,17 @@ describe("RecordDetailSidebar", () => {
     expect(screen.getByText(/"nested"/)).toBeInTheDocument();
   });
 
+  it("leaves invalid json-like strings as plain text", () => {
+    const invalidJsonResult: QueryResult = {
+      ...baseResult,
+      rows: [[1, "Alice", 85.5, '{"broken": true']],
+    };
+    useStore.setState({ selectedRowIndex: 0 });
+    render(<RecordDetailSidebar result={invalidJsonResult} width={360} />);
+
+    expect(screen.getByText('{"broken": true')).toBeInTheDocument();
+  });
+
   it("switches to JSON view mode", () => {
     useStore.setState({ selectedRowIndex: 0 });
     render(<RecordDetailSidebar result={baseResult} width={360} />);
@@ -198,5 +209,11 @@ describe("RecordDetailSidebar", () => {
     useStore.setState({ selectedRowIndex: 0 });
     render(<RecordDetailSidebar result={baseResult} width={360} />);
     expect(screen.getByTestId("record-detail-sidebar")).toBeInTheDocument();
+  });
+
+  it("uses parent-managed width instead of a fixed pixel width", () => {
+    useStore.setState({ selectedRowIndex: 0 });
+    render(<RecordDetailSidebar result={baseResult} width={360} />);
+    expect(screen.getByTestId("record-detail-sidebar").style.width).toBe("100%");
   });
 });

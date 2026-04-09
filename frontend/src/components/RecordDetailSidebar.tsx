@@ -4,7 +4,20 @@ import type { QueryResult } from "../lib/api";
 
 interface RecordDetailSidebarProps {
   result: QueryResult;
-  width: number;
+  width?: number; // deprecated — parent controls width
+}
+
+function parseJsonLikeString(value: string): unknown | null {
+  const trimmed = value.trim();
+  if (!((trimmed.startsWith("{") && trimmed.endsWith("}")) || (trimmed.startsWith("[") && trimmed.endsWith("]")))) {
+    return null;
+  }
+
+  try {
+    return JSON.parse(value);
+  } catch {
+    return null;
+  }
 }
 
 /* ── JSON Value Renderer ────────────────────────────────────────────── */
@@ -25,15 +38,9 @@ function JsonValue({ value, depth = 0 }: { value: unknown; depth?: number }) {
   }
 
   if (typeof value === "string") {
-    // Try to detect JSON strings and parse them
-    const trimmed = value.trim();
-    if ((trimmed.startsWith("{") && trimmed.endsWith("}")) || (trimmed.startsWith("[") && trimmed.endsWith("]"))) {
-      try {
-        const parsed = JSON.parse(value);
-        return <JsonValue value={parsed} depth={depth} />;
-      } catch {
-        // Not valid JSON, render as string
-      }
+    const parsed = parseJsonLikeString(value);
+    if (parsed !== null) {
+      return <JsonValue value={parsed} depth={depth} />;
     }
     return <span style={{ color: "var(--success)" }}>"{value}"</span>;
   }
@@ -147,19 +154,13 @@ function FieldValue({ value }: { value: unknown }) {
   }
 
   if (typeof value === "string") {
-    // Auto-detect JSON inside strings
-    const trimmed = value.trim();
-    if ((trimmed.startsWith("{") && trimmed.endsWith("}")) || (trimmed.startsWith("[") && trimmed.endsWith("]"))) {
-      try {
-        const parsed = JSON.parse(value);
-        return (
-          <div style={{ marginTop: 4 }}>
-            <JsonValue value={parsed} depth={0} />
-          </div>
-        );
-      } catch {
-        // Not valid JSON
-      }
+    const parsed = parseJsonLikeString(value);
+    if (parsed !== null) {
+      return (
+        <div style={{ marginTop: 4 }}>
+          <JsonValue value={parsed} depth={0} />
+        </div>
+      );
     }
   }
 
@@ -176,7 +177,7 @@ function typeBadge(value: unknown): string {
 
 /* ── Main Component ─────────────────────────────────────────────────── */
 
-export default function RecordDetailSidebar({ result, width }: RecordDetailSidebarProps) {
+export default function RecordDetailSidebar({ result }: RecordDetailSidebarProps) {
   const selectedRowIndex = useStore((s) => s.selectedRowIndex);
   const setSelectedRowIndex = useStore((s) => s.setSelectedRowIndex);
   const setDetailOpen = useStore((s) => s.setDetailOpen);
@@ -245,9 +246,8 @@ export default function RecordDetailSidebar({ result, width }: RecordDetailSideb
     return (
       <div
         style={{
-          width,
+          width: "100%",
           background: "var(--bg-secondary)",
-          borderLeft: "1px solid var(--border)",
           display: "flex",
           flexDirection: "column",
           height: "100%",
@@ -314,9 +314,8 @@ export default function RecordDetailSidebar({ result, width }: RecordDetailSideb
     <div
       data-testid="record-detail-sidebar"
       style={{
-        width,
+        width: "100%",
         background: "var(--bg-secondary)",
-        borderLeft: "1px solid var(--border)",
         display: "flex",
         flexDirection: "column",
         height: "100%",

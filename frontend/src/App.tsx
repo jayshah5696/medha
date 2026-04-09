@@ -602,7 +602,7 @@ function ToastContainer() {
         right: 16,
         zIndex: 2000,
         display: "flex",
-        flexDirection: "column",
+        flexDirection: "column-reverse",
         gap: 6,
         pointerEvents: "none",
       }}

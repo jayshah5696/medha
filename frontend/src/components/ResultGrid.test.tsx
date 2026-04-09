@@ -382,6 +382,38 @@ describe("ResultGrid", () => {
       expect(gridCols).toMatch(/\d+px/);
       expect(gridCols).not.toContain("repeat");
     });
+
+    it("virtual scroll container keeps the grid width and flex height constraints", () => {
+      const { container } = render(
+        <ResultGrid result={baseResult} isQuerying={false} height={400} />
+      );
+
+      const scrollContainer = container.querySelector(
+        '[data-testid="virtual-scroll-container"]'
+      ) as HTMLElement;
+
+      expect(scrollContainer.style.minHeight).toBe("0px");
+      expect(scrollContainer.style.minWidth).toMatch(/px$/);
+    });
+
+    it("uses the latest column width when resizing the same column multiple times", () => {
+      const { container } = render(
+        <ResultGrid result={baseResult} isQuerying={false} height={400} />
+      );
+
+      const handle = screen.getByTestId("resize-handle-1");
+      const headerRow = container.querySelector('[role="row"]') as HTMLElement;
+
+      fireEvent.mouseDown(handle, { clientX: 100 });
+      fireEvent.mouseMove(document, { clientX: 140 });
+      fireEvent.mouseUp(document);
+      expect(headerRow.style.gridTemplateColumns).toContain("220px");
+
+      fireEvent.mouseDown(handle, { clientX: 140 });
+      fireEvent.mouseMove(document, { clientX: 150 });
+      fireEvent.mouseUp(document);
+      expect(headerRow.style.gridTemplateColumns).toContain("230px");
+    });
   });
 
   // ── Row selection tests ──────────────────────────────────────────
@@ -392,12 +424,25 @@ describe("ResultGrid", () => {
     });
 
     it("clicking a row selects it and opens detail sidebar", () => {
+      useStore.setState({ isChatOpen: false });
       render(<ResultGrid result={baseResult} isQuerying={false} height={400} />);
       const row = screen.getByTestId("result-row-0");
       fireEvent.click(row);
 
       expect(useStore.getState().selectedRowIndex).toBe(0);
       expect(useStore.getState().isDetailOpen).toBe(true);
+      expect(useStore.getState().isChatOpen).toBe(true);
+    });
+
+    it("clicking a selected row deselects without closing the right sidebar", () => {
+      useStore.setState({ selectedRowIndex: 0, isDetailOpen: true, isChatOpen: true });
+      render(<ResultGrid result={baseResult} isQuerying={false} height={400} />);
+
+      fireEvent.click(screen.getByTestId("result-row-0"));
+
+      expect(useStore.getState().selectedRowIndex).toBeNull();
+      expect(useStore.getState().isDetailOpen).toBe(false);
+      expect(useStore.getState().isChatOpen).toBe(true);
     });
 
     it("selected row has accent background", () => {

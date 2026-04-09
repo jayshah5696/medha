@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import ThinkingBlock from "./ThinkingBlock";
-import type { ToolStepData } from "./ToolStep";
+import type { ToolStepData } from "./toolStepUtils";
 
 describe("ThinkingBlock", () => {
   const doneSteps: ToolStepData[] = [
@@ -34,6 +34,14 @@ describe("ThinkingBlock", () => {
   it("is collapsed after streaming completes", () => {
     render(<ThinkingBlock steps={doneSteps} isStreaming={false} />);
     // Steps should be hidden by default after completion
+    expect(screen.queryByText(/inspected schema/i)).not.toBeInTheDocument();
+  });
+
+  it("auto-collapses when streaming transitions to complete", () => {
+    const { rerender } = render(<ThinkingBlock steps={runningSteps} isStreaming={true} />);
+    expect(screen.getByText(/executing query/i)).toBeInTheDocument();
+
+    rerender(<ThinkingBlock steps={doneSteps} isStreaming={false} />);
     expect(screen.queryByText(/inspected schema/i)).not.toBeInTheDocument();
   });
 

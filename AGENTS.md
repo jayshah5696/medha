@@ -29,6 +29,7 @@ _Persistent memory: update this table when an agent makes a mistake so future se
 | 2026-03-06 | `asyncio.Lock()` at module level binds to wrong event loop in tests/ASGI | Create locks lazily via getter function (`_get_db_lock()`) with `reset_db_lock()` for test isolation |
 | 2026-04-05 | Ad-hoc signed Electron app crashes on launch when quarantine flag is set (Homebrew installs) — dyld reports "different Team IDs" | Use `afterSign.js` hook (not afterPack — that runs before electron-builder signs) to re-sign every Mach-O binary in the bundle, including PyInstaller sidecar dylibs |
 | 2026-04-05 | CI `sed` to update Homebrew cask SHA256 also matched the `arch` line (`intel: "x64"` → `intel: "<sha256>"`), breaking all installs | Scope `sed` with `/sha256/` line address and `[0-9a-f]{64}` pattern. CI validates the cask formula structure before pushing |
+| 2026-04-08 | Agent fixed frontend UI regressions before creating regression tests, violating mandatory TDD and making it harder to verify stateful UI behavior | For any UI bug or feature, write or update the failing frontend test first (store/component/integration), then implement the fix, then run `vitest`, `lint`, and `build` before pushing |
 
 
 ## meta Design
