@@ -185,29 +185,11 @@ jobs:
 
       - name: Update cask formula
         run: |
-          cd tap
-          sed -i '' 's/version ".*"/version "${{ steps.version.outputs.version }}"/' Casks/medha.rb
-          # Only update sha256 line (contains 64-char hex hashes), not the arch line
-          sed -i '' '/sha256/s/arm:   "[0-9a-f]\{64\}"/arm:   "${{ steps.sha.outputs.arm64 }}"/' Casks/medha.rb
-          sed -i '' '/sha256/s/intel: "[0-9a-f]\{64\}"/intel: "${{ steps.sha.outputs.x64 }}"/' Casks/medha.rb
-          echo "Updated cask formula:"
-          cat Casks/medha.rb
-
-      - name: Validate cask formula
-        run: |
-          cd tap
-          # Ensure arch line is intact (not corrupted with a hash)
-          grep -q 'arch arm: "arm64", intel: "x64"' Casks/medha.rb \
-            || { echo "ERROR: arch line is corrupted"; cat Casks/medha.rb; exit 1; }
-          # Ensure sha256 line has two valid 64-char hex hashes
-          grep -qE 'sha256 arm:   "[0-9a-f]{64}"' Casks/medha.rb \
-            || { echo "ERROR: arm sha256 is missing or malformed"; exit 1; }
-          grep -qE 'intel: "[0-9a-f]{64}"' Casks/medha.rb \
-            || { echo "ERROR: intel sha256 is missing or malformed"; exit 1; }
-          # Ensure version was updated
-          grep -q "version \"${{ steps.version.outputs.version }}\"" Casks/medha.rb \
-            || { echo "ERROR: version not updated"; exit 1; }
-          echo "Cask formula validation passed."
+          bash scripts/update-homebrew-cask.sh \
+            "${{ steps.version.outputs.version }}" \
+            "${{ steps.sha.outputs.arm64 }}" \
+            "${{ steps.sha.outputs.x64 }}" \
+            tap/Casks/medha.rb
 
       - name: Commit and push
         run: |

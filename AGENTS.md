@@ -30,6 +30,7 @@ _Persistent memory: update this table when an agent makes a mistake so future se
 | 2026-04-05 | Ad-hoc signed Electron app crashes on launch when quarantine flag is set (Homebrew installs) — dyld reports "different Team IDs" | Use `afterSign.js` hook (not afterPack — that runs before electron-builder signs) to re-sign every Mach-O binary in the bundle, including PyInstaller sidecar dylibs |
 | 2026-04-05 | CI `sed` to update Homebrew cask SHA256 also matched the `arch` line (`intel: "x64"` → `intel: "<sha256>"`), breaking all installs | Scope `sed` with `/sha256/` line address and `[0-9a-f]{64}` pattern. CI validates the cask formula structure before pushing |
 | 2026-04-08 | Agent fixed frontend UI regressions before creating regression tests, violating mandatory TDD and making it harder to verify stateful UI behavior | For any UI bug or feature, write or update the failing frontend test first (store/component/integration), then implement the fix, then run `vitest`, `lint`, and `build` before pushing |
+| 2026-04-08 | Homebrew release workflow updated `version` and arm SHA but silently left the intel SHA stale because the cask stores `sha256` across two lines and the sed-based replacement only matched the arm line | Never patch the Homebrew cask with ad-hoc sed. Use a dedicated updater script that replaces `version`, `sha256 arm`, and `intel` lines independently, validates exact replacement counts, and is covered by a release regression test before pushing workflow changes |
 
 
 ## meta Design

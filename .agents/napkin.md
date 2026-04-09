@@ -37,3 +37,27 @@
 - Re-ran `vitest`, `lint`, and `build` until all passed.
 
 **Lesson:** For UI bugfixes, write the failing component/store test first, then implement. Always validate with the full frontend gate (`vitest`, `lint`, and `build`) before pushing, because TS/build issues can slip past isolated test runs.
+
+### 2026-04-08: Homebrew cask updater silently preserved stale Intel SHA
+
+**Problem:** The GitHub Actions `update-homebrew` job updated the Homebrew cask to `0.3.1`, but the Intel SHA remained the old `0.2.1` value even though the workflow computed the correct new x64 checksum.
+
+**Root cause found:**
+
+1. **The cask stores SHA256 across two lines** — the formula uses:
+   - `sha256 arm: ... ,`
+   - `intel: ...`
+2. **The workflow used line-targeted `sed` anchored to `/sha256/`** — that address only executes the substitution on the first line containing `sha256`, which means the separate `intel:` line is never modified.
+3. **Validation was too weak** — it only checked that the Intel line had _some_ 64-char hash, not that it matched the newly computed x64 digest.
+
+**Evidence from logs:**
+- Workflow computed `x64=1d1cdc01f9a062e78b4e432b431f4331c43fa2b7869aae321d2329fc77da6370`
+- Immediately after the update step, logged cask still showed Intel SHA `754abd4d5e5b956a1336e56c77cd29d70d96a864d0e7a6f67916df261e584e13`
+- Validation passed anyway because it only required a 64-char hex string.
+
+**Fix applied:**
+- Replaced the workflow's ad-hoc sed logic with `scripts/update-homebrew-cask.sh`
+- Script updates `version`, `sha256 arm`, and `intel` lines independently with exact replacement-count checks
+- Added release regression tests to assert the workflow uses the script and that the script updates both SHA lines correctly while preserving the arch line
+
+**Lesson:** For release automation, validate against the expected computed values — not just format. Multi-line structured files (like Homebrew casks) should be updated with a dedicated script or parser, never fragile one-line sed replacements.
