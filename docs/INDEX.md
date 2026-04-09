@@ -21,5 +21,8 @@
 - **[ADR-005: Meta Config](decisions/ADR-005-meta-config-slug-model.md)** — model_slug and last_workspace in Settings JSON
 - **[ADR-006: Homebrew Cask Update Automation](decisions/ADR-006-homebrew-cask-update-automation.md)** — dedicated updater script + regression tests for release-safe cask updates
 
+## Solutions / Runbooks
+- **[Release Runbook](solutions/release-runbook.md)** — end-to-end tagged release process: verify, version bump, push tag, monitor GitHub release, and verify Homebrew automation
+
 ## Brand Assets
 - **[brand/](brand/)** — Logo variants and brand guidelines

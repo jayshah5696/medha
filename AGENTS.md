@@ -15,10 +15,12 @@
 - Follow the existing workspace and agent routing paradigms
 
 ## Desktop Build & Release
+- **Follow the end-to-end runbook in `docs/solutions/release-runbook.md`** for every tagged release and Homebrew update
 - **Never disable code signing** — always re-sign the full `.app` bundle (including PyInstaller sidecar dylibs) via `scripts/afterSign.js`
 - **Test every build with quarantine flag** before releasing: `xattr -w com.apple.quarantine "0083;..." Medha.app` then launch
 - **PyInstaller sidecar has ~145 loose `.dylib`/`.so` files** — `codesign --deep` only covers `.app`/`.framework` bundles, not loose binaries in `Resources/sidecar/`. The `afterSign.js` hook handles this; do not remove or bypass it
 - After `cp`-ing an `.app` to `/Applications`, always verify it's the new binary (`stat -f "%m"`) — stale copies cause phantom failures
+- Before pushing a release tag, run the documented preflight (`just verify-release`) and after the workflow finishes verify Homebrew with `brew update`, `brew info --cask jayshah5696/medha/medha`, and `brew fetch --cask jayshah5696/medha/medha`
 
 ## Key Learnings
 _Persistent memory: update this table when an agent makes a mistake so future sessions don't repeat it._
