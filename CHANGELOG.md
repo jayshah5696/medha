@@ -4,6 +4,20 @@ All notable changes to Medha will be documented in this file.
 
 ## [Unreleased]
 
+## [0.3.1] - 2026-04-08
+
+### Fixed
+- Results grid no longer renders blank when horizontally scrolling wide result sets
+- Expanding the results pane now preserves visible grid content instead of rendering an empty area
+- Right sidebar/detail tab state is now stable when selecting, deselecting, and re-opening records
+- Repeated column resizing now uses the latest width instead of a stale snapshot
+- Record detail and chat panes now rely on parent-managed sizing, avoiding nested width conflicts
+- File filter input now appears only when the file list is large enough to need it
+
+### Changed
+- Added regression coverage for result grid scrolling, sidebar/detail state, thinking block collapse, file filter visibility, and store reset behavior
+- Frontend verification for this release now passes `vitest`, `lint`, and `build`
+
 ## [0.3.0] - 2026-04-05
 
 ### Added
