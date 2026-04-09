@@ -128,7 +128,23 @@ release version:
     bash scripts/bump-version.sh {{version}}
     @echo "Push with: git push origin main --tags"
 
+# Verify local release automation invariants before tagging/pushing
+verify-release:
+    node --test tests/release-setup.test.mjs
+    cd frontend && NODE_ENV=development npx vitest run
+    cd frontend && npm run lint
+    cd frontend && npm run build
+    cd backend && uv run pytest tests/ -q
+
 # Build sidecar + desktop app + sign (full local release build)
 build-release: build-sidecar build-frontend build-electron
     CSC_IDENTITY_AUTO_DISCOVERY=false npx electron-builder --mac --dir --publish never
     bash scripts/sign-app.sh release/mac-arm64/Medha.app
+
+# Recommended end-to-end release flow:
+# 1) just verify-release
+# 2) just release X.Y.Z
+# 3) git push origin main --tags
+# 4) wait for GitHub Release workflow to finish
+# 5) brew update && brew info --cask jayshah5696/medha/medha
+# 6) brew fetch --cask jayshah5696/medha/medha

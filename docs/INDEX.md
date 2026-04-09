@@ -19,6 +19,7 @@
 - **[ADR-003: Query Result Sync](decisions/ADR-003-query-result-sync.md)** — Module stash + SSE event for agent→editor pipeline
 - **[ADR-004: Backend Folder Browser](decisions/ADR-004-backend-folder-browser.md)** — Server-side browse replaces Web FileSystem API
 - **[ADR-005: Meta Config](decisions/ADR-005-meta-config-slug-model.md)** — model_slug and last_workspace in Settings JSON
+- **[ADR-006: Homebrew Cask Update Automation](decisions/ADR-006-homebrew-cask-update-automation.md)** — dedicated updater script + regression tests for release-safe cask updates
 
 ## Brand Assets
 - **[brand/](brand/)** — Logo variants and brand guidelines

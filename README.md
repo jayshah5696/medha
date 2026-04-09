@@ -144,6 +144,29 @@ npx electron-builder --mac --dir               # package .app
 bash scripts/sign-app.sh release/mac-arm64/Medha.app  # sign for local use
 ```
 
+### Release automation checklist
+
+Use this exact sequence for releases so app artifacts and Homebrew stay in sync:
+
+```bash
+just verify-release
+just release 0.3.2
+git push origin main --tags
+```
+
+Then wait for the GitHub `Release` workflow to finish and verify Homebrew:
+
+```bash
+brew update
+brew info --cask jayshah5696/medha/medha
+brew fetch --cask jayshah5696/medha/medha
+```
+
+Release automation notes:
+- Homebrew cask updates are handled by `scripts/update-homebrew-cask.sh`
+- The updater is regression-tested in `tests/release-setup.test.mjs`
+- Never patch the cask SHA values with ad-hoc `sed`; the cask stores arm and intel SHA values on separate lines
+
 The Electron shell uses a local HTTP proxy so the frontend needs zero URL changes between web and desktop mode.
 
 ---
