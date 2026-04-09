@@ -1,6 +1,6 @@
 [project]
 name = "medha-backend"
-version = "0.3.0"
+version = "0.3.1"
 description = "Medha backend - FastAPI + DuckDB + LangGraph"
 readme = "README.md"
 requires-python = ">=3.11,<3.14"
