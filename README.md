@@ -19,6 +19,28 @@ Your data never leaves your machine.
 
 </div>
 
+<br />
+
+<div align="center">
+  <img src="docs/screenshot.png" alt="Medha App Screenshot" width="800" style="border-radius: 8px;" />
+</div>
+
+<br />
+
+## Video Examples
+
+<details>
+  <summary><b>Example 1: Chatting with Data (Cmd+L)</b></summary>
+  <br/>
+  <video src="docs/app-demo.webm" width="800" controls></video>
+</details>
+
+<details>
+  <summary><b>Example 2: AI Inline Edit (Cmd+K)</b></summary>
+  <br/>
+  <video src="docs/app-demo-2.webm" width="800" controls></video>
+</details>
+
 ---
 
 ## Why Medha
