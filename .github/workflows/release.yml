@@ -179,13 +179,17 @@ jobs:
 
       - uses: actions/checkout@v4
         with:
+          path: medha-src
+
+      - uses: actions/checkout@v4
+        with:
           repository: jayshah5696/homebrew-medha
           token: ${{ secrets.HOMEBREW_TAP_TOKEN }}
           path: tap
 
       - name: Update cask formula
         run: |
-          bash scripts/update-homebrew-cask.sh \
+          bash medha-src/scripts/update-homebrew-cask.sh \
             "${{ steps.version.outputs.version }}" \
             "${{ steps.sha.outputs.arm64 }}" \
             "${{ steps.sha.outputs.x64 }}" \
