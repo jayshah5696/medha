@@ -1,8 +1,9 @@
 """Shared fixtures for Medha backend tests."""
 
+import csv
 from pathlib import Path
 
-import pandas as pd
+import duckdb
 import pytest
 import pytest_asyncio
 import httpx
@@ -13,26 +14,36 @@ from app import db, workspace
 
 @pytest.fixture
 def tmp_workspace(tmp_path: Path) -> Path:
-    """Create a temp workspace with sample data files."""
-    # sample.csv: 5 rows
-    sample_data = {
-        "id": [1, 2, 3, 4, 5],
-        "name": ["Alice", "Bob", "Charlie", "Diana", "Eve"],
-        "score": [85.5, 92.0, 78.3, 95.1, 88.7],
-    }
-    df_sample = pd.DataFrame(sample_data)
-    df_sample.to_csv(tmp_path / "sample.csv", index=False)
+    """Create a temp workspace with sample data files.
 
-    # sample.parquet from same data
-    df_sample.to_parquet(tmp_path / "sample.parquet", index=False)
+    Uses plain csv module and DuckDB COPY for parquet — no pandas/pyarrow.
+    """
+    # sample.csv: 5 rows
+    with open(tmp_path / "sample.csv", "w", newline="") as f:
+        writer = csv.writer(f)
+        writer.writerow(["id", "name", "score"])
+        writer.writerows([
+            [1, "Alice", 85.5],
+            [2, "Bob", 92.0],
+            [3, "Charlie", 78.3],
+            [4, "Diana", 95.1],
+            [5, "Eve", 88.7],
+        ])
+
+    # sample.parquet from same data (use DuckDB to create it — no pyarrow)
+    _conn = duckdb.connect()
+    _conn.execute(
+        f"COPY (SELECT * FROM '{tmp_path}/sample.csv') "
+        f"TO '{tmp_path}/sample.parquet' (FORMAT PARQUET)"
+    )
+    _conn.close()
 
     # large.csv: 10001 rows to test LIMIT enforcement
-    large_data = {
-        "id": list(range(1, 10002)),
-        "value": [i * 1.1 for i in range(1, 10002)],
-    }
-    df_large = pd.DataFrame(large_data)
-    df_large.to_csv(tmp_path / "large.csv", index=False)
+    with open(tmp_path / "large.csv", "w", newline="") as f:
+        writer = csv.writer(f)
+        writer.writerow(["id", "value"])
+        for i in range(1, 10002):
+            writer.writerow([i, round(i * 1.1, 1)])
 
     return tmp_path
 

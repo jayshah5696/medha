@@ -3,11 +3,20 @@
 PyInstaller spec for medha-backend (FastAPI + DuckDB + LangGraph + litellm).
 
 Build with:
-    cd backend && pyinstaller medha.spec
+    cd backend && pyinstaller -y medha.spec
 
 Produces:  dist/medha-backend/  (--onedir mode for fast startup as Electron sidecar)
 
 The binary reads MEDHA_PORT from environment (default 18900).
+
+SIZE OPTIMIZATION (2026-04-16):
+  - Removed pyarrow (200 MB) — Arrow IPC endpoint was dead code
+  - Removed pandas (17 MB) — zero imports in app code
+  - Excluded litellm.proxy (~20 MB) — only SDK is used
+  - Replaced collect_submodules() nuclear option with explicit imports
+  - Enabled strip=True on EXE and COLLECT
+  - Excluded hf_xet, unnecessary transitive deps
+  See docs/plans/app-size-optimization.md for full rationale.
 """
 
 import os
@@ -25,8 +34,9 @@ block_cipher = None
 # ---------------------------------------------------------------------------
 # Hidden imports
 # ---------------------------------------------------------------------------
-# Many of these libraries use lazy imports, entry_points, or importlib that
-# PyInstaller's static analysis cannot detect.
+# Only include modules the app actually uses. Previous spec used
+# collect_submodules() on 8+ packages ("nuclear option") which bundled
+# hundreds of MB of unused code.
 
 hiddenimports = [
     # --- FastAPI / Starlette / Uvicorn ---
@@ -57,30 +67,15 @@ hiddenimports = [
     "multipart",
     "multipart.multipart",
 
-    # --- DuckDB ---
+    # --- DuckDB (single .so, no submodules) ---
     "duckdb",
-
-    # --- PyArrow (has many compiled C++ extensions loaded dynamically) ---
-    "pyarrow",
-    "pyarrow.ipc",
-    "pyarrow.lib",
-    "pyarrow.pandas_compat",
-    "pyarrow.vendored",
-    "pyarrow.vendored.version",
-
-    # --- Pandas ---
-    "pandas",
-    "pandas.io.formats.style",
-    "pandas._libs.tslibs.timedeltas",
-    "pandas._libs.tslibs.nattype",
-    "pandas._libs.tslibs.np_datetime",
 
     # --- watchfiles (Rust-based, needs the compiled extension) ---
     "watchfiles",
     "watchfiles._rust_notify",
     "watchfiles.main",
 
-    # --- litellm (many provider modules loaded dynamically) ---
+    # --- litellm SDK (NOT proxy — only the completion/embedding API) ---
     "litellm",
     "litellm.llms",
     "litellm.llms.openai",
@@ -90,14 +85,10 @@ hiddenimports = [
     "litellm.utils",
     "litellm.cost_calculator",
     "litellm.router",
-    "litellm.proxy",
 
-    # --- LangChain ecosystem ---
+    # --- LangChain core (only what agent.py imports) ---
     "langchain",
     "langchain.agents",
-    "langchain.chains",
-    "langchain.schema",
-    "langchain.tools",
     "langchain_core",
     "langchain_core.callbacks",
     "langchain_core.callbacks.manager",
@@ -107,7 +98,6 @@ hiddenimports = [
     "langchain_core.prompts",
     "langchain_core.runnables",
     "langchain_core.tools",
-    "langchain_community",
 
     # --- langchain-litellm ---
     "langchain_litellm",
@@ -186,18 +176,22 @@ hiddenimports = [
     "app.routers.queries",
 ]
 
-# Collect all submodules for libraries that have deep dynamic import trees.
-# This is the nuclear option but necessary for litellm and langchain which
-# discover providers/modules at runtime via importlib and entry_points.
+# Use collect_submodules only for packages that truly need it:
+# - litellm: discovers providers at runtime via importlib, but we filter proxy
+# - langchain_core: runnables use dynamic dispatch
+# - pydantic: compiled validators loaded dynamically
+# - langgraph: channels/managed loaded dynamically
+#
+# litellm discovers providers at runtime via importlib. We need
+# collect_submodules but we can't fully exclude litellm.proxy because
+# litellm's core logging imports proxy modules transitively.
+# Instead we include the Python stubs but strip the heavy DATA FILES
+# (swagger UI, prisma schemas, experimental assets) below.
 hiddenimports += collect_submodules("litellm")
-hiddenimports += collect_submodules("langchain")
 hiddenimports += collect_submodules("langchain_core")
-hiddenimports += collect_submodules("langchain_community")
 hiddenimports += collect_submodules("langchain_litellm")
 hiddenimports += collect_submodules("langgraph")
 hiddenimports += collect_submodules("pydantic")
-hiddenimports += collect_submodules("pyarrow")
-hiddenimports += collect_submodules("sqlglot")
 
 # De-duplicate
 hiddenimports = list(set(hiddenimports))
@@ -205,9 +199,6 @@ hiddenimports = list(set(hiddenimports))
 # ---------------------------------------------------------------------------
 # Data files
 # ---------------------------------------------------------------------------
-# Many packages ship data files (JSON schemas, default configs, tiktoken
-# encodings, etc.) that must be bundled alongside the Python code.
-
 datas = []
 
 # Agent YAML configs (backend/agents/*.yaml -> agents/)
@@ -215,22 +206,26 @@ datas += [
     ("agents/*.yaml", "agents"),
 ]
 
-# litellm ships model cost maps, provider configs, and proxy templates
-datas += collect_data_files("litellm")
+# litellm ships model cost maps and provider configs.
+# We strip the heavy proxy data files (swagger UI ~1.6 MB, _experimental ~17 MB,
+# guardrails, prisma schemas, logos, etc.) that the SDK never reads.
+_PROXY_STRIP = {"swagger", "_experimental", "guardrails", "example_config_yaml",
+                "public_endpoints", "client", "hooks", "test_prompts"}
+_litellm_data = [
+    (src, dst) for src, dst in collect_data_files("litellm")
+    if not any(part in _PROXY_STRIP for part in Path(src).parts)
+]
+datas += _litellm_data
 
-# langchain and friends ship hub prompts, schema definitions, etc.
+# langchain core
 datas += collect_data_files("langchain")
 datas += collect_data_files("langchain_core")
-datas += collect_data_files("langchain_community")
 datas += collect_data_files("langchain_litellm")
 datas += collect_data_files("langgraph")
 
 # pydantic needs its compiled schema files
 datas += collect_data_files("pydantic")
 datas += collect_data_files("pydantic_core")
-
-# pyarrow needs its shared libraries and data files
-datas += collect_data_files("pyarrow")
 
 # sqlglot ships dialect definitions
 datas += collect_data_files("sqlglot")
@@ -242,7 +237,6 @@ datas += collect_data_files("certifi")
 datas += copy_metadata("litellm")
 datas += copy_metadata("langchain")
 datas += copy_metadata("langchain-core")
-datas += copy_metadata("langchain-community")
 datas += copy_metadata("langchain-litellm")
 datas += copy_metadata("langgraph")
 datas += copy_metadata("fastapi")
@@ -257,8 +251,6 @@ datas += copy_metadata("openai")
 # ---------------------------------------------------------------------------
 # Binary extensions
 # ---------------------------------------------------------------------------
-# DuckDB, pyarrow, and watchfiles ship compiled .so/.dylib/.pyd files.
-# PyInstaller normally picks these up, but we list them explicitly to be safe.
 binaries = []
 
 # ---------------------------------------------------------------------------
@@ -275,7 +267,11 @@ a = Analysis(
     hooksconfig={},
     runtime_hooks=[],
     excludes=[
-        # Exclude heavy packages we definitely don't need
+        # -- Removed dependencies (no longer in pyproject.toml) --
+        "pyarrow",
+        "pandas",
+        "numpy",
+        # -- Heavy packages we definitely don't need --
         "tkinter",
         "matplotlib",
         "scipy",
@@ -288,6 +284,10 @@ a = Analysis(
         "pip",
         "wheel",
         "_pytest",
+        # -- HuggingFace transport (not needed for API-based LLM calls) --
+        "hf_xet",
+        # -- langchain_community (zero imports in app code) --
+        "langchain_community",
     ],
     win_no_prefer_redirects=False,
     win_private_assemblies=False,
@@ -313,7 +313,7 @@ exe = EXE(
     name="medha-backend",
     debug=False,
     bootloader_ignore_signals=False,
-    strip=False,
+    strip=True,   # Strip debug symbols from the executable (~10-30% size reduction)
     upx=True,
     console=True,  # Server process — needs stdout/stderr
     disable_windowed_traceback=False,
@@ -322,19 +322,13 @@ exe = EXE(
 # ---------------------------------------------------------------------------
 # COLLECT (--onedir output)
 # ---------------------------------------------------------------------------
-# Produces dist/medha-backend/ with the exe + all shared libs and data files.
-# This is preferred over --onefile for Electron sidecar use because:
-#   1. No temp-dir extraction on startup (faster cold start)
-#   2. OS can cache shared libraries across runs
-#   3. Easier to debug (files are visible on disk)
-#   4. Code-signing on macOS works better with bundles
 
 coll = COLLECT(
     exe,
     a.binaries,
     a.zipfiles,
     a.datas,
-    strip=False,
+    strip=True,    # Strip debug symbols from all collected binaries
     upx=True,
     upx_exclude=[],
     name="medha-backend",

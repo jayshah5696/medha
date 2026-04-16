@@ -563,7 +563,7 @@ function App() {
           }}
         />
         <span>{workspacePath || "no workspace"}</span>
-        <span style={{ marginLeft: "auto", fontSize: 'var(--font-size-sm)' }}>medha v0.1</span>
+        <span style={{ marginLeft: "auto", fontSize: 'var(--font-size-sm)' }}>medha v{__APP_VERSION__}</span>
       </div>
 
       {/* Cmd+K Diff Overlay */}

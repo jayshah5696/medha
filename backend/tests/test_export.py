@@ -4,7 +4,7 @@ import csv
 import io
 from pathlib import Path
 
-import pyarrow.parquet as pq
+import duckdb
 import pytest
 
 from app import db, workspace
@@ -86,7 +86,7 @@ async def test_export_parquet_returns_200(configured_client, tmp_workspace):
 
 @pytest.mark.asyncio
 async def test_export_parquet_readable(configured_client, tmp_workspace):
-    """Exported parquet file is valid and readable by pyarrow."""
+    """Exported parquet file is valid and readable by DuckDB."""
     resp = await configured_client.post(
         "/api/db/export",
         json={
@@ -95,15 +95,19 @@ async def test_export_parquet_readable(configured_client, tmp_workspace):
         },
     )
     assert resp.status_code == 200
-    # Write response to temp file and read with pyarrow
+    # Write response to temp file and read with DuckDB (no pyarrow needed)
     import tempfile
     with tempfile.NamedTemporaryFile(suffix=".parquet", delete=False) as f:
         f.write(resp.content)
         f.flush()
-        table = pq.read_table(f.name)
-    assert table.num_rows == 5
-    assert "id" in table.column_names
-    assert "name" in table.column_names
+        conn = duckdb.connect()
+        result = conn.execute(f"SELECT * FROM '{f.name}'")
+        columns = [desc[0] for desc in result.description]
+        rows = result.fetchall()
+        conn.close()
+    assert len(rows) == 5
+    assert "id" in columns
+    assert "name" in columns
 
 
 # ────────────────────────────────────────────────────────────────────

@@ -13,8 +13,6 @@ dependencies = [
   "langchain-core>=0.3",
   "watchfiles>=1.0",
   "python-multipart",
-  "pandas>=2.2",
-  "pyarrow>=17",
   "sqlglot",
   "langchain>=1.2.10",
   "langchain-community>=0.4.1",
