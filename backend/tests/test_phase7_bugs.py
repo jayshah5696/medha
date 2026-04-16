@@ -245,9 +245,8 @@ class TestBug2InlineSlugGeneration:
         mock_response.choices = [MagicMock()]
         mock_response.choices[0].message.content = "data-exploration"
 
-        with patch("app.routers.chats.litellm") as mock_litellm, \
+        with patch("litellm.acompletion", new=AsyncMock(return_value=mock_response)), \
              patch("app.routers.chats._get_slug_model", return_value="openai/gpt-4o-mini"):
-            mock_litellm.acompletion = AsyncMock(return_value=mock_response)
             from app.routers.chats import generate_slug_from_message
             slug = await generate_slug_from_message("explore my data")
             assert slug == "data-exploration"
@@ -261,9 +260,8 @@ class TestBug2InlineSlugGeneration:
         async def slow_response(*args, **kwargs):
             await asyncio.sleep(5)
 
-        with patch("app.routers.chats.litellm") as mock_litellm, \
+        with patch("litellm.acompletion", new=slow_response), \
              patch("app.routers.chats._get_slug_model", return_value="openai/gpt-4o-mini"):
-            mock_litellm.acompletion = slow_response
             from app.routers.chats import generate_slug_from_message_with_timeout
             slug = await generate_slug_from_message_with_timeout("anything", timeout=0.1)
             assert slug.startswith("chat-")

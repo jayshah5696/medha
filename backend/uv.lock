@@ -13,7 +13,7 @@ supported-markers = [
 ]
 
 [options]
-exclude-newer = "2026-04-09T03:56:28.185101Z"
+exclude-newer = "2026-04-09T14:26:18.137699Z"
 exclude-newer-span = "P7D"
 
 [[package]]
@@ -1033,7 +1033,7 @@ wheels = [
 
 [[package]]
 name = "medha-backend"
-version = "0.3.1"
+version = "0.4.0"
 source = { virtual = "." }
 dependencies = [
     { name = "duckdb", marker = "sys_platform == 'darwin' or sys_platform == 'linux'" },

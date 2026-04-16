@@ -52,8 +52,6 @@ def generate_slug_fallback() -> str:
     return f"chat-{datetime.now().strftime('%Y%m%d%H%M%S')}"
 
 
-import litellm
-
 
 def _get_slug_model() -> str:
     """Read model_slug from settings. Cheap model for slug generation."""
@@ -70,6 +68,8 @@ async def generate_slug_from_message(message: str, model: str | None = None) -> 
     Falls back to timestamp if LLM call fails."""
     slug_model = model or _get_slug_model()
     try:
+        import litellm  # lazy: only load when generating AI slugs
+
         response = await litellm.acompletion(
             model=slug_model,
             messages=[

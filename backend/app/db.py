@@ -12,6 +12,11 @@ import duckdb
 
 conn: duckdb.DuckDBPyConnection = duckdb.connect()
 
+# Cap DuckDB's buffer pool to prevent unbounded memory growth on large queries.
+# Without this, DuckDB will happily consume all available RAM.
+conn.execute("SET memory_limit = '512MB'")
+conn.execute("SET threads = 4")
+
 workspace_root: Path | None = None
 
 active_queries: dict[str, asyncio.Task] = {}

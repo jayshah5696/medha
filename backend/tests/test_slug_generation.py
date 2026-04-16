@@ -30,14 +30,13 @@ async def test_slug_from_message_uses_model_slug():
     mock_response.choices = [MagicMock()]
     mock_response.choices[0].message.content = "weekly-sales-analysis"
 
-    with patch("app.routers.chats.litellm") as mock_litellm, \
+    with patch("litellm.acompletion", new=AsyncMock(return_value=mock_response)) as mock_acomp, \
          patch("app.routers.chats._get_slug_model", return_value="openai/gpt-4.1-nano"):
-        mock_litellm.acompletion = AsyncMock(return_value=mock_response)
 
         slug = await generate_slug_from_message("Show me weekly sales trends")
 
         # Should have called with the cheap model, not the chat model
-        call_kwargs = mock_litellm.acompletion.call_args
+        call_kwargs = mock_acomp.call_args
         assert call_kwargs.kwargs.get("model") == "openai/gpt-4.1-nano" or \
                call_kwargs[1].get("model") == "openai/gpt-4.1-nano"
 
@@ -49,9 +48,8 @@ async def test_slug_from_message_returns_clean_kebab():
     mock_response.choices = [MagicMock()]
     mock_response.choices[0].message.content = "  Weekly Sales Analysis!  "
 
-    with patch("app.routers.chats.litellm") as mock_litellm, \
+    with patch("litellm.acompletion", new=AsyncMock(return_value=mock_response)), \
          patch("app.routers.chats._get_slug_model", return_value="openai/gpt-4o-mini"):
-        mock_litellm.acompletion = AsyncMock(return_value=mock_response)
 
         slug = await generate_slug_from_message("Show me weekly sales trends")
 
@@ -63,9 +61,8 @@ async def test_slug_from_message_returns_clean_kebab():
 @pytest.mark.asyncio
 async def test_slug_from_message_falls_back_on_error():
     """If LLM call fails, fall back to timestamp slug."""
-    with patch("app.routers.chats.litellm") as mock_litellm, \
+    with patch("litellm.acompletion", new=AsyncMock(side_effect=Exception("API down"))), \
          patch("app.routers.chats._get_slug_model", return_value="openai/gpt-4o-mini"):
-        mock_litellm.acompletion = AsyncMock(side_effect=Exception("API down"))
 
         slug = await generate_slug_from_message("anything")
 
@@ -79,9 +76,8 @@ async def test_slug_from_message_falls_back_on_empty():
     mock_response.choices = [MagicMock()]
     mock_response.choices[0].message.content = "!!"
 
-    with patch("app.routers.chats.litellm") as mock_litellm, \
+    with patch("litellm.acompletion", new=AsyncMock(return_value=mock_response)), \
          patch("app.routers.chats._get_slug_model", return_value="openai/gpt-4o-mini"):
-        mock_litellm.acompletion = AsyncMock(return_value=mock_response)
 
         slug = await generate_slug_from_message("anything")
 

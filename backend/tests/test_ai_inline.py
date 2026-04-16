@@ -39,7 +39,7 @@ async def test_inline_edit_includes_error_context_in_prompt() -> None:
 
 @pytest.mark.asyncio
 async def test_ai_inline_endpoint_passes_error_message(client) -> None:
-    with patch("app.routers.ai.inline_edit", new=AsyncMock(return_value="SELECT 1;")) as mock_inline_edit:
+    with patch("app.ai.inline.inline_edit", new=AsyncMock(return_value="SELECT 1;")) as mock_inline_edit:
         response = await client.post(
             "/api/ai/inline",
             json={
