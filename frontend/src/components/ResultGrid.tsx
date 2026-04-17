@@ -395,7 +395,7 @@ function ResultTable({
     );
 
     return [indexCol, ...dataCols];
-  }, [copyCellValue, result.columns]);
+  }, [copyCellValue, result.columns, result.column_types]);
 
   const handleExport = async (format: "csv" | "parquet") => {
     setExporting(format);

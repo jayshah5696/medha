@@ -77,7 +77,7 @@ test("version bump script uses npm version to keep package-lock in sync", () => 
 test("release workflow uses dedicated homebrew cask updater script", () => {
   assert.match(
     releaseWorkflow,
-    /bash scripts\/update-homebrew-cask\.sh\s+\\\s+"\$\{\{ steps\.version\.outputs\.version \}\}"\s+\\\s+"\$\{\{ steps\.sha\.outputs\.arm64 \}\}"\s+\\\s+"\$\{\{ steps\.sha\.outputs\.x64 \}\}"\s+\\\s+tap\/Casks\/medha\.rb/
+    /bash (?:medha-src\/)?scripts\/update-homebrew-cask\.sh\s+\\\s+"\$\{\{ steps\.version\.outputs\.version \}\}"\s+\\\s+"\$\{\{ steps\.sha\.outputs\.arm64 \}\}"\s+\\\s+"\$\{\{ steps\.sha\.outputs\.x64 \}\}"\s+\\\s+tap\/Casks\/medha\.rb/
   );
 });
 

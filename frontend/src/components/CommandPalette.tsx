@@ -33,10 +33,13 @@ export default function CommandPalette({ actions, onClose }: CommandPaletteProps
     );
   }, [actions, search]);
 
-  // Reset selection when filter changes
-  useEffect(() => {
-    setSelectedIndex(0);
-  }, [filtered.length]);
+  const handleSearchChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      setSearch(e.target.value);
+      setSelectedIndex(0);
+    },
+    [],
+  );
 
   const executeAction = useCallback(
     (action: CommandAction) => {
@@ -134,7 +137,7 @@ export default function CommandPalette({ actions, onClose }: CommandPaletteProps
             type="text"
             placeholder="Search commands..."
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={handleSearchChange}
             onKeyDown={handleKeyDown}
             style={{
               width: "100%",
