@@ -1,13 +1,13 @@
 # Immediate Product Improvements
 
-**Date:** 2026-04-16  
-**Status:** Ready for implementation  
+**Date:** 2026-04-17  
+**Status:** Core features implemented ✅  
 **Priority:** These are P0/P1 table-stakes features every SQL IDE has. Ship ASAP.
 
 ---
 
-## 1. Schema-Aware Autocomplete
-**Priority: P0 | Effort: 1 day | Impact: Biggest UX gap**
+## 1. Schema-Aware Autocomplete ✅
+**Priority: P0 | Effort: 1 day | Impact: Biggest UX gap | Status: DONE (v0.4.0)**
 
 ### Current State
 - CodeMirror `sql()` provides keyword-only highlighting (SELECT, FROM, WHERE...)
@@ -36,8 +36,8 @@
 
 ---
 
-## 2. Column Sorting in Result Grid
-**Priority: P0 | Effort: 4 hours | Impact: Expected by every user**
+## 2. Column Sorting in Result Grid ✅
+**Priority: P0 | Effort: 4 hours | Impact: Expected by every user | Status: DONE (v0.4.0)**
 
 ### Current State
 - TanStack Table is configured but sorting is not enabled
@@ -56,8 +56,8 @@
 
 ---
 
-## 3. Copy to Clipboard
-**Priority: P0 | Effort: 4 hours | Impact: Core workflow**
+## 3. Copy to Clipboard ✅
+**Priority: P0 | Effort: 4 hours | Impact: Core workflow | Status: DONE (v0.4.1)**
 
 ### Current State
 - Only CSV/Parquet file export exists
@@ -78,8 +78,8 @@
 
 ---
 
-## 4. Execute Selected SQL Only
-**Priority: P1 | Effort: 3 hours | Impact: Power user workflow**
+## 4. Execute Selected SQL Only ✅
+**Priority: P1 | Effort: 3 hours | Impact: Power user workflow | Status: DONE (v0.4.1)**
 
 ### Current State
 - Cmd+Enter always executes the entire editor content
@@ -99,8 +99,8 @@
 
 ---
 
-## 5. Command Palette (Cmd+Shift+P)
-**Priority: P1 | Effort: 1 day | Impact: Discoverability + power user feel**
+## 5. Command Palette (Cmd+Shift+P) ✅
+**Priority: P1 | Effort: 1 day | Impact: Discoverability + power user feel | Status: DONE (v0.4.1)**
 
 ### Current State
 - Keyboard shortcuts shown in toolbar text but not searchable
@@ -131,8 +131,8 @@
 
 ---
 
-## 6. Column Type Indicators
-**Priority: P2 | Effort: 2 hours | Impact: Data comprehension**
+## 6. Column Type Indicators ✅
+**Priority: P2 | Effort: 2 hours | Impact: Data comprehension | Status: DONE (v0.4.1)**
 
 ### Current State
 - Column headers show name only

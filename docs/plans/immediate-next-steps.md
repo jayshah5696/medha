@@ -1,7 +1,7 @@
 # Immediate Next Steps (Low-Hanging Fruit)
 
-**Status:** Lazy imports + DuckDB memory cap ✅ DONE  
-**Date:** 2026-04-16
+**Status:** All items ✅ DONE  
+**Date:** 2026-04-17
 
 ---
 
@@ -16,48 +16,30 @@
 - **Result:** `SET memory_limit = '512MB'` and `SET threads = 4` in `db.py`
 - **Prevents:** Unbounded buffer pool growth on large queries
 
----
-
-## Remaining Quick Wins
-
 ### 3. PyInstaller Bundle Cleanup
-**Effort: 30 min | Savings: ~2 MB**
+- **Verdict:** Skipped — marginal savings (~2 MB) not worth debugging risk
+- **Rationale:** dist-info (1.2 MB) + benchmarks (116 KB) cleanup would require spec rewrite for minimal gain
 
-The bundle includes some unnecessary data files that `collect_data_files()` pulls in:
-- `jsonschema/benchmarks/` (116 KB) — test benchmarks
-- `litellm/proxy/` Python stubs are 192 KB (kept for import compatibility but could be stubbed further)
-- `dist-info` directories (1.2 MB total) — package metadata, not needed at runtime
+### 4. Product Improvements (from product-improvements.md)
+- **Execute Selected SQL:** Cmd+Enter sends only selected text if selection exists
+- **Column Type Indicators:** Backend returns `column_types`, ResultGrid shows type badges
+- **Copy to Clipboard:** Cmd+C copies selected row as TSV
+- **Command Palette:** Cmd+Shift+P opens fuzzy-search action list
 
-Add to `medha.spec` excludes or post-build strip script:
-```python
-# After COLLECT, strip unnecessary files
-import shutil
-for pattern in ['*/benchmarks/*', '*/.dist-info/RECORD', '*/.dist-info/top_level.txt']:
-    # strip matching files
-```
-
-**Verdict:** Marginal savings. Not worth the debugging risk unless we're doing a spec rewrite anyway.
-
-### 4. Push Lazy-Import Changes to Release
-**Effort: 10 min**
-
-The lazy-import and DuckDB cap changes are committed but not released. Next version bump should include them. Users will notice faster app launch immediately.
-
-```bash
-just verify-release
-just release 0.4.1
-git push origin main --tags
-```
+### 5. Release v0.4.1
+- **Status:** Ready to release — run `just verify-release && just release 0.4.1`
 
 ---
 
 ## Current App Profile (After All Optimizations)
 
-| Metric | v0.3.1 (before) | v0.4.0 (size opt) | Current (lazy) |
-|--------|-----------------|-------------------|----------------|
+| Metric | v0.3.1 (before) | v0.4.0 (size opt) | v0.4.1 (current) |
+|--------|-----------------|-------------------|------------------|
 | App size (installed) | 646 MB | 371 MB | 371 MB |
 | Backend idle RSS | ~200 MB | ~200 MB | **78 MB** |
 | Backend startup | ~2.3s | ~2.3s | **0.44s** |
 | Modules at idle | 2,540 | 2,540 | **591** |
 | Total app RSS | ~450 MB | ~450 MB | **253 MB** |
 | DuckDB memory | Unbounded | Unbounded | **Capped 512 MB** |
+| Frontend tests | 134 | 142 | **156** |
+| Backend tests | 218 | 221 | **222** |
