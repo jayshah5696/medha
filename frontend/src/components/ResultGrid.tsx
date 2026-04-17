@@ -25,6 +25,27 @@ function formatRowCount(n: number): string {
   return n.toLocaleString();
 }
 
+/** Return a subtle CSS color for a DuckDB type family. */
+function getTypeColor(type: string): string {
+  const t = type.toUpperCase();
+  if (t.includes("INT") || t.includes("FLOAT") || t.includes("DOUBLE") || t.includes("DECIMAL") || t.includes("NUMERIC") || t.includes("HUGEINT") || t.includes("UINTEGER")) {
+    return "var(--type-number, #6b9eff)";
+  }
+  if (t.includes("VARCHAR") || t.includes("TEXT") || t.includes("CHAR") || t.includes("STRING") || t.includes("BLOB")) {
+    return "var(--type-string, #7ec97e)";
+  }
+  if (t.includes("DATE") || t.includes("TIME") || t.includes("TIMESTAMP") || t.includes("INTERVAL")) {
+    return "var(--type-date, #c49bff)";
+  }
+  if (t.includes("BOOL")) {
+    return "var(--type-bool, #ffb86c)";
+  }
+  if (t.includes("[]") || t.includes("LIST") || t.includes("MAP") || t.includes("STRUCT")) {
+    return "var(--type-complex, #ff9eb0)";
+  }
+  return "var(--text-dimmed)";
+}
+
 function serializeCellValue(value: unknown): string {
   if (value === null) return "null";
   if (typeof value === "object") return JSON.stringify(value);
@@ -215,6 +236,22 @@ function ResultTable({
     [selectedRowIndex, setSelectedRowIndex, setDetailOpen, setRightSidebarOpen]
   );
 
+  // ── Cmd+C: copy selected row as TSV ──────────────────────────────
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === "c" && selectedRowIndex !== null) {
+        const row = result.rows[selectedRowIndex];
+        if (!row) return;
+        const tsv = row.map((v) => serializeCellValue(v)).join("\t");
+        navigator.clipboard?.writeText(tsv).then(() => {
+          addToast("Copied row to clipboard");
+        });
+      }
+    };
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [selectedRowIndex, result.rows, addToast]);
+
   const copyCellValue = useCallback(async (value: unknown) => {
     if (!navigator.clipboard?.writeText) {
       return;
@@ -257,6 +294,8 @@ function ResultTable({
       ),
     });
 
+    const columnTypes = result.column_types;
+
     const dataCols = result.columns.map((col, idx) =>
       helper.accessor((row) => row[idx], {
         id: col,
@@ -264,27 +303,43 @@ function ResultTable({
         header: ({ column }) => {
           const sortState = column.getIsSorted();
           const sortSuffix = sortState === "asc" ? " ↑" : sortState === "desc" ? " ↓" : "";
+          const colType = columnTypes?.[idx];
 
           return (
             <div style={{ display: "flex", flexDirection: "column", gap: 4, padding: "6px 0" }}>
-              <button
-                type="button"
-                onClick={column.getToggleSortingHandler()}
-                aria-label={`Sort by ${col}`}
-                style={{
-                  background: "none",
-                  border: "none",
-                  color: "inherit",
-                  cursor: "pointer",
-                  font: "inherit",
-                  padding: 0,
-                  textAlign: "left",
-                  textTransform: "uppercase",
-                  letterSpacing: "0.06em",
-                }}
-              >
-                {col}{sortSuffix}
-              </button>
+              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                <button
+                  type="button"
+                  onClick={column.getToggleSortingHandler()}
+                  aria-label={`Sort by ${col}`}
+                  style={{
+                    background: "none",
+                    border: "none",
+                    color: "inherit",
+                    cursor: "pointer",
+                    font: "inherit",
+                    padding: 0,
+                    textAlign: "left",
+                    textTransform: "uppercase",
+                    letterSpacing: "0.06em",
+                  }}
+                >
+                  {col}{sortSuffix}
+                </button>
+                {colType && (
+                  <span
+                    style={{
+                      fontSize: "var(--font-size-xs)",
+                      color: getTypeColor(colType),
+                      fontFamily: "var(--font-mono)",
+                      opacity: 0.7,
+                      flexShrink: 0,
+                    }}
+                  >
+                    {colType}
+                  </span>
+                )}
+              </div>
               <input
                 value={(column.getFilterValue() as string) ?? ""}
                 onChange={(event) => column.setFilterValue(event.target.value)}

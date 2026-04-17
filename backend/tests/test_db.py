@@ -58,6 +58,24 @@ async def test_query_returns_correct_columns(configured_client, tmp_workspace):
 
 
 @pytest.mark.asyncio
+async def test_query_returns_column_types(configured_client, tmp_workspace):
+    """Query must include column_types with DuckDB type strings."""
+    resp = await configured_client.post(
+        "/api/db/query",
+        json={"query": f"SELECT * FROM '{tmp_workspace}/sample.csv'"},
+    )
+    assert resp.status_code == 200
+    data = resp.json()
+    assert "column_types" in data
+    assert len(data["column_types"]) == len(data["columns"])
+    # DuckDB infers types from CSV — id is BIGINT, name is VARCHAR, score is DOUBLE/BIGINT
+    type_map = dict(zip(data["columns"], data["column_types"]))
+    assert type_map["name"] == "VARCHAR"
+    # id and score should be numeric types
+    assert "INT" in type_map["id"] or "BIGINT" in type_map["id"]
+
+
+@pytest.mark.asyncio
 async def test_query_duration_present(configured_client, tmp_workspace):
     """Response must include duration_ms > 0."""
     resp = await configured_client.post(

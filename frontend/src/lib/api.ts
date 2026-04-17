@@ -14,6 +14,7 @@ export interface SchemaColumn {
 
 export interface QueryResult {
   columns: string[];
+  column_types?: string[];
   rows: unknown[][];
   truncated: boolean;
   row_count: number;

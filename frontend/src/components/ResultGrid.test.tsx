@@ -140,6 +140,25 @@ describe("ResultGrid", () => {
     });
   });
 
+  it("copies selected row as TSV on Cmd+C", async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.assign(navigator, {
+      clipboard: { writeText },
+    });
+
+    render(<ResultGrid result={baseResult} isQuerying={false} height={400} />);
+
+    // Click first row to select it
+    fireEvent.click(screen.getByTestId("result-row-0"));
+
+    // Press Cmd+C (Meta+C)
+    fireEvent.keyDown(document, { key: "c", metaKey: true });
+
+    await waitFor(() => {
+      expect(writeText).toHaveBeenCalledWith("1\tAlice\t85.5");
+    });
+  });
+
   it("shows truncation badge when truncated=true", () => {
     const truncatedResult = { ...baseResult, truncated: true };
     render(<ResultGrid result={truncatedResult} isQuerying={false} height={400} />);
@@ -166,6 +185,24 @@ describe("ResultGrid", () => {
   it("no truncation badge when truncated=false", () => {
     render(<ResultGrid result={baseResult} isQuerying={false} height={400} />);
     expect(screen.queryByText("TRUNCATED")).not.toBeInTheDocument();
+  });
+
+  // ── Column Type Indicators ───────────────────────────────────────
+  it("renders type badges when column_types is present", () => {
+    const typedResult = {
+      ...baseResult,
+      column_types: ["BIGINT", "VARCHAR", "DOUBLE"],
+    };
+    render(<ResultGrid result={typedResult} isQuerying={false} height={400} />);
+    expect(screen.getByText("BIGINT")).toBeInTheDocument();
+    expect(screen.getByText("VARCHAR")).toBeInTheDocument();
+    expect(screen.getByText("DOUBLE")).toBeInTheDocument();
+  });
+
+  it("omits type badges when column_types is absent", () => {
+    render(<ResultGrid result={baseResult} isQuerying={false} height={400} />);
+    expect(screen.queryByText("BIGINT")).not.toBeInTheDocument();
+    expect(screen.queryByText("VARCHAR")).not.toBeInTheDocument();
   });
 
   // FEAT-1: height prop tests

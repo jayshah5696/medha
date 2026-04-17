@@ -45,6 +45,31 @@ describe("SqlEditor", () => {
     expect(onCancel).toHaveBeenCalledOnce();
   });
 
+  it("toolbar Run button shows 'Run Selection' when store has selectedSql", async () => {
+    const onExecute = vi.fn();
+    useStore.setState({ selectedSql: "SELECT 42;" });
+
+    render(<SqlEditor initialValue="SELECT 1;\nSELECT 42;" onExecute={onExecute} />);
+
+    const runBtn = screen.getByRole("button", { name: /run/i });
+    expect(runBtn).toHaveTextContent(/selection/i);
+  });
+
+  it("toolbar Run button sends full content when no selection", async () => {
+    const onExecute = vi.fn();
+    useStore.setState({ selectedSql: null });
+
+    render(<SqlEditor initialValue="SELECT 1;" onExecute={onExecute} />);
+
+    const runBtn = screen.getByRole("button", { name: /run/i });
+    expect(runBtn).toHaveTextContent("⌘↵ Run");
+    fireEvent.click(runBtn);
+
+    await waitFor(() => {
+      expect(onExecute).toHaveBeenCalledWith("SELECT 1;");
+    });
+  });
+
   it("offers Fix with AI when a query error is present", async () => {
     const onCmdK = vi.fn();
 

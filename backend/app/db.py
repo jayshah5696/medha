@@ -165,6 +165,7 @@ def _execute_sync(
         result = conn.execute(paged_sql)
 
     columns = [desc[0] for desc in result.description] if result.description else []
+    column_types = [str(desc[1]) for desc in result.description] if result.description else []
     rows = result.fetchall()
     duration_ms = round((time.perf_counter() - start) * 1000, 2)
 
@@ -174,6 +175,7 @@ def _execute_sync(
 
     return {
         "columns": columns,
+        "column_types": column_types,
         "rows": [list(r) for r in rows],
         "truncated": truncated,
         "row_count": row_count,

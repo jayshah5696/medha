@@ -255,4 +255,17 @@ describe("tab management", () => {
     useStore.getState().setActiveTab(otherTabId);
     expect(useStore.getState().editorContent).toBe("SELECT other;");
   });
+
+  // ── Execute Selected SQL ────────────────────────────────────────
+  it("selectedSql defaults to null", () => {
+    expect(useStore.getState().selectedSql).toBeNull();
+  });
+
+  it("setSelectedSql stores and clears selection", () => {
+    useStore.getState().setSelectedSql("SELECT 42;");
+    expect(useStore.getState().selectedSql).toBe("SELECT 42;");
+
+    useStore.getState().setSelectedSql(null);
+    expect(useStore.getState().selectedSql).toBeNull();
+  });
 });

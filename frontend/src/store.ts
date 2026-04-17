@@ -102,6 +102,10 @@ interface MedhaStore {
   addToast: (message: string) => void;
   removeToast: (id: string) => void;
 
+  // Execute selected SQL
+  selectedSql: string | null;
+  setSelectedSql: (sql: string | null) => void;
+
   // Record detail sidebar
   selectedRowIndex: number | null;
   setSelectedRowIndex: (idx: number | null) => void;
@@ -324,6 +328,10 @@ export const useStore = create<MedhaStore>((set) => ({
     set((state) => ({
       toasts: state.toasts.filter((t) => t.id !== id),
     })),
+
+  // Execute selected SQL
+  selectedSql: null,
+  setSelectedSql: (sql) => set({ selectedSql: sql }),
 
   // Record detail sidebar
   selectedRowIndex: null,

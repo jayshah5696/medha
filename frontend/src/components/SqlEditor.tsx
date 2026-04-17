@@ -74,6 +74,7 @@ export default function SqlEditor({
   const viewRef = useRef<EditorView | null>(null);
   const isQuerying = useStore((s) => s.isQuerying);
   const activeFiles = useStore((s) => s.activeFiles);
+  const selectedSql = useStore((s) => s.selectedSql);
   const completionOptionsRef = useRef<Completion[]>([]);
 
   const onExecuteRef = useRef(onExecute);
@@ -386,7 +387,10 @@ export default function SqlEditor({
               run: (view) => {
                 // Guard: do not re-execute while a query is already running
                 if (isQueryingRef.current) return true;
-                const content = view.state.doc.toString();
+                // If there's a selection, execute only the selected text
+                const { from, to } = view.state.selection.main;
+                const selected = from !== to ? view.state.sliceDoc(from, to).trim() : "";
+                const content = selected || view.state.doc.toString();
                 onExecuteRef.current?.(content);
                 return true;
               },
@@ -459,6 +463,12 @@ export default function SqlEditor({
             store.updateTabContent(store.activeTabId, text);
             store.setEditorContent(text);
             prevContentRef.current = text;
+          }
+          // Track selection changes for "execute selection" feature
+          if (update.selectionSet || update.docChanged) {
+            const { from, to } = update.state.selection.main;
+            const selected = from !== to ? update.state.sliceDoc(from, to).trim() : null;
+            useStore.getState().setSelectedSql(selected || null);
           }
         }),
       ],
@@ -548,12 +558,12 @@ export default function SqlEditor({
               className="medha-toolbar-btn"
               style={{ cursor: "pointer" }}
               onClick={() => {
-                const content = viewRef.current?.state.doc.toString() || "";
+                const content = selectedSql || viewRef.current?.state.doc.toString() || "";
                 if (content) onExecuteRef.current?.(content);
               }}
-              aria-label="Run query"
+              aria-label={selectedSql ? "Run selection" : "Run query"}
             >
-              ⌘↵ Run
+              {selectedSql ? "⌘↵ Run Selection" : "⌘↵ Run"}
             </button>
           )}
         </span>

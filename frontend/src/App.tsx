@@ -1,4 +1,4 @@
-import { useCallback, useState, useEffect, useRef } from "react";
+import { useCallback, useState, useEffect, useRef, useMemo } from "react";
 import type { EditorView } from "@codemirror/view";
 import { Sun, Moon, Settings } from "lucide-react";
 import FileExplorer from "./components/FileExplorer";
@@ -7,6 +7,8 @@ import ResultGrid from "./components/ResultGrid";
 import RightSidebar from "./components/RightSidebar";
 import DiffOverlay from "./components/DiffOverlay";
 import SettingsModal from "./components/SettingsModal";
+import CommandPalette from "./components/CommandPalette";
+import type { CommandAction } from "./components/CommandPalette";
 import { useStore } from "./store";
 import { cancelQuery, runQuery, getFiles, openEventStream } from "./lib/api";
 import "./index.css";
@@ -43,6 +45,7 @@ function App() {
 
   const [showSettings, setShowSettings] = useState(false);
   const [showKeyBanner, setShowKeyBanner] = useState(false);
+  const [showCommandPalette, setShowCommandPalette] = useState(false);
   const activeQueryRef = useRef<{ id: string; controller: AbortController } | null>(null);
 
   // Theme toggle
@@ -151,6 +154,18 @@ function App() {
     },
     [resultPaneHeight, setResultPaneHeight]
   );
+
+  // Cmd+Shift+P: Command Palette
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key === "p") {
+        e.preventDefault();
+        setShowCommandPalette((v) => !v);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
 
   // First-run check: if no LLM is configured, show onboarding banner
   useEffect(() => {
@@ -285,6 +300,87 @@ function App() {
       });
     },
     []
+  );
+
+  // ── Command Palette actions ─────────────────────────────────────
+  const commandActions: CommandAction[] = useMemo(
+    () => [
+      {
+        label: "Run Query",
+        shortcut: "⌘↵",
+        action: () => {
+          const content = useStore.getState().editorContent;
+          if (content) handleExecute(content);
+        },
+        category: "Query",
+      },
+      {
+        label: "Open History",
+        shortcut: "⌘H",
+        action: () => {
+          const editor = (window as unknown as Record<string, unknown>).__medhaEditor as { getView?: () => unknown } | undefined;
+          // Trigger history via keyboard simulation (handled by SqlEditor)
+          window.dispatchEvent(new KeyboardEvent("keydown", { key: "h", metaKey: true }));
+          void editor;
+        },
+        category: "Query",
+      },
+      {
+        label: "Save Query",
+        shortcut: "⌘S",
+        action: () => {
+          window.dispatchEvent(new KeyboardEvent("keydown", { key: "s", metaKey: true }));
+        },
+        category: "File",
+      },
+      {
+        label: "New Tab",
+        shortcut: "⌘T",
+        action: () => useStore.getState().openTab(),
+        category: "File",
+      },
+      {
+        label: "Toggle Chat",
+        shortcut: "⌘L",
+        action: () => useStore.getState().toggleChatSidebar(),
+        category: "View",
+      },
+      {
+        label: "Toggle Theme",
+        shortcut: "",
+        action: () => toggleTheme(),
+        category: "View",
+      },
+      {
+        label: "Open Settings",
+        shortcut: "⌘,",
+        action: () => setShowSettings(true),
+        category: "View",
+      },
+      {
+        label: "Export CSV",
+        shortcut: "",
+        action: () => {
+          const content = useStore.getState().editorContent;
+          if (content) {
+            import("./lib/api").then(({ exportQuery }) => exportQuery(content, "csv"));
+          }
+        },
+        category: "Query",
+      },
+      {
+        label: "Export Parquet",
+        shortcut: "",
+        action: () => {
+          const content = useStore.getState().editorContent;
+          if (content) {
+            import("./lib/api").then(({ exportQuery }) => exportQuery(content, "parquet"));
+          }
+        },
+        category: "Query",
+      },
+    ],
+    [handleExecute, toggleTheme],
   );
 
   return (
@@ -580,6 +676,14 @@ function App() {
       {/* Settings Modal */}
       {showSettings && (
         <SettingsModal onClose={() => setShowSettings(false)} />
+      )}
+
+      {/* Command Palette (Cmd+Shift+P) */}
+      {showCommandPalette && (
+        <CommandPalette
+          actions={commandActions}
+          onClose={() => setShowCommandPalette(false)}
+        />
       )}
 
       {/* Toast notifications (FEAT-8-3) */}
