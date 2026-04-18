@@ -230,7 +230,7 @@ async def update_settings(req: Settings):
 
     await asyncio.to_thread(save_settings, updated)
 
-    # Apply API keys to environment so litellm picks them up immediately
+    # Apply API keys to environment so llm_client picks them up immediately
     key_env_map = {
         updated.openai_api_key: "OPENAI_API_KEY",
         updated.openrouter_api_key: "OPENROUTER_API_KEY",

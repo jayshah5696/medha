@@ -1,6 +1,6 @@
 # -*- mode: python ; coding: utf-8 -*-
 """
-PyInstaller spec for medha-backend (FastAPI + DuckDB + LangGraph + litellm).
+PyInstaller spec for medha-backend (FastAPI + DuckDB + LangGraph).
 
 Build with:
     cd backend && pyinstaller -y medha.spec
@@ -9,10 +9,11 @@ Produces:  dist/medha-backend/  (--onedir mode for fast startup as Electron side
 
 The binary reads MEDHA_PORT from environment (default 18900).
 
-SIZE OPTIMIZATION (2026-04-16):
+SIZE OPTIMIZATION (2026-04-18):
+  - Removed litellm (65 MB) — replaced with ~150 lines of httpx (llm_client.py)
+  - Removed langchain-litellm — replaced with ChatDirectAPI (chat_model.py)
   - Removed pyarrow (200 MB) — Arrow IPC endpoint was dead code
   - Removed pandas (17 MB) — zero imports in app code
-  - Excluded litellm.proxy (~20 MB) — only SDK is used
   - Replaced collect_submodules() nuclear option with explicit imports
   - Enabled strip=True on EXE and COLLECT
   - Excluded hf_xet, unnecessary transitive deps
@@ -75,17 +76,6 @@ hiddenimports = [
     "watchfiles._rust_notify",
     "watchfiles.main",
 
-    # --- litellm SDK (NOT proxy — only the completion/embedding API) ---
-    "litellm",
-    "litellm.llms",
-    "litellm.llms.openai",
-    "litellm.llms.anthropic",
-    "litellm.llms.openai_like",
-    "litellm.main",
-    "litellm.utils",
-    "litellm.cost_calculator",
-    "litellm.router",
-
     # --- LangChain core (only what agent.py imports) ---
     "langchain",
     "langchain.agents",
@@ -98,10 +88,6 @@ hiddenimports = [
     "langchain_core.prompts",
     "langchain_core.runnables",
     "langchain_core.tools",
-
-    # --- langchain-litellm ---
-    "langchain_litellm",
-    "langchain_litellm.chat_models",
 
     # --- LangGraph ---
     "langgraph",
@@ -126,7 +112,7 @@ hiddenimports = [
     # --- dotenv ---
     "dotenv",
 
-    # --- httpx (used by litellm for async HTTP) ---
+    # --- httpx (used by llm_client for async HTTP) ---
     "httpx",
     "httpcore",
     "httpcore._async",
@@ -165,6 +151,8 @@ hiddenimports = [
     "app.ai.agent",
     "app.ai.tools",
     "app.ai.inline",
+    "app.ai.llm_client",
+    "app.ai.chat_model",
     "app.routers",
     "app.routers.workspace",
     "app.routers.db",
@@ -177,19 +165,10 @@ hiddenimports = [
 ]
 
 # Use collect_submodules only for packages that truly need it:
-# - litellm: discovers providers at runtime via importlib, but we filter proxy
 # - langchain_core: runnables use dynamic dispatch
 # - pydantic: compiled validators loaded dynamically
 # - langgraph: channels/managed loaded dynamically
-#
-# litellm discovers providers at runtime via importlib. We need
-# collect_submodules but we can't fully exclude litellm.proxy because
-# litellm's core logging imports proxy modules transitively.
-# Instead we include the Python stubs but strip the heavy DATA FILES
-# (swagger UI, prisma schemas, experimental assets) below.
-hiddenimports += collect_submodules("litellm")
 hiddenimports += collect_submodules("langchain_core")
-hiddenimports += collect_submodules("langchain_litellm")
 hiddenimports += collect_submodules("langgraph")
 hiddenimports += collect_submodules("pydantic")
 
@@ -206,21 +185,9 @@ datas += [
     ("agents/*.yaml", "agents"),
 ]
 
-# litellm ships model cost maps and provider configs.
-# We strip the heavy proxy data files (swagger UI ~1.6 MB, _experimental ~17 MB,
-# guardrails, prisma schemas, logos, etc.) that the SDK never reads.
-_PROXY_STRIP = {"swagger", "_experimental", "guardrails", "example_config_yaml",
-                "public_endpoints", "client", "hooks", "test_prompts"}
-_litellm_data = [
-    (src, dst) for src, dst in collect_data_files("litellm")
-    if not any(part in _PROXY_STRIP for part in Path(src).parts)
-]
-datas += _litellm_data
-
 # langchain core
 datas += collect_data_files("langchain")
 datas += collect_data_files("langchain_core")
-datas += collect_data_files("langchain_litellm")
 datas += collect_data_files("langgraph")
 
 # pydantic needs its compiled schema files
@@ -234,10 +201,8 @@ datas += collect_data_files("sqlglot")
 datas += collect_data_files("certifi")
 
 # Package metadata (needed by importlib.metadata / pkg_resources lookups)
-datas += copy_metadata("litellm")
 datas += copy_metadata("langchain")
 datas += copy_metadata("langchain-core")
-datas += copy_metadata("langchain-litellm")
 datas += copy_metadata("langgraph")
 datas += copy_metadata("fastapi")
 datas += copy_metadata("starlette")
@@ -246,7 +211,7 @@ datas += copy_metadata("pydantic")
 datas += copy_metadata("pydantic-core")
 datas += copy_metadata("httpx")
 datas += copy_metadata("httpcore")
-datas += copy_metadata("openai")
+
 
 # ---------------------------------------------------------------------------
 # Binary extensions
@@ -271,6 +236,12 @@ a = Analysis(
         "pyarrow",
         "pandas",
         "numpy",
+        # -- Removed: litellm replaced with llm_client.py --
+        "litellm",
+        "langchain_litellm",
+        "openai",
+        "tiktoken",
+        "tokenizers",
         # -- Heavy packages we definitely don't need --
         "tkinter",
         "matplotlib",

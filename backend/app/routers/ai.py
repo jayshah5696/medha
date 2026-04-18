@@ -9,8 +9,7 @@ from fastapi import APIRouter, HTTPException, BackgroundTasks
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
-# Lazy-import AI modules to avoid loading litellm/langchain/langgraph at startup.
-# These modules pull in 733+ sub-modules and add ~133 MB RSS + 2s startup time.
+# Lazy-import AI modules to avoid loading langchain/langgraph at startup.
 # They're only needed when the user actually uses AI features (Cmd+K or Cmd+L).
 
 from app.routers.chats import (
@@ -87,7 +86,7 @@ async def _save_thread_background(
 
 @router.post("/api/ai/inline")
 async def ai_inline(req: InlineRequest):
-    from app.ai.inline import inline_edit  # lazy: loads litellm on first use
+    from app.ai.inline import inline_edit  # lazy: loads llm_client on first use
 
     sql = await inline_edit(
         instruction=req.instruction,

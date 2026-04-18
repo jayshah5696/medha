@@ -64,13 +64,13 @@ def _get_slug_model() -> str:
 
 
 async def generate_slug_from_message(message: str, model: str | None = None) -> str:
-    """Try to generate a slug via litellm using the cheap slug model.
+    """Try to generate a slug via LLM using the cheap slug model.
     Falls back to timestamp if LLM call fails."""
     slug_model = model or _get_slug_model()
     try:
-        import litellm  # lazy: only load when generating AI slugs
+        from app.ai.llm_client import acompletion  # lazy: only load on first slug gen
 
-        response = await litellm.acompletion(
+        response = await acompletion(
             model=slug_model,
             messages=[
                 {
@@ -82,7 +82,7 @@ async def generate_slug_from_message(message: str, model: str | None = None) -> 
             max_tokens=20,
             temperature=0,
         )
-        slug = response.choices[0].message.content.strip().lower()
+        slug = response["choices"][0]["message"]["content"].strip().lower()
         # Sanitize: only allow lowercase letters, numbers, hyphens
         slug = re.sub(r"[^a-z0-9-]", "", slug)
         slug = re.sub(r"-+", "-", slug).strip("-")

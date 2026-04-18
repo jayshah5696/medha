@@ -1,15 +1,15 @@
-"""Cmd+K inline SQL editing via litellm."""
+"""Cmd+K inline SQL editing via direct OpenAI-compatible API."""
 
 import asyncio
 
 from fastapi import HTTPException
-from litellm import acompletion
-from litellm.exceptions import (
-    APIConnectionError,
+
+from app.ai.llm_client import (
+    acompletion,
     AuthenticationError,
     RateLimitError,
+    APIConnectionError,
 )
-
 from app.workspace import get_schema
 
 
@@ -119,4 +119,4 @@ async def inline_edit(
             detail=f"LLM error: {str(e)}",
         )
 
-    return response.choices[0].message.content.strip()
+    return response["choices"][0]["message"]["content"].strip()

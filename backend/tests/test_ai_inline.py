@@ -7,16 +7,22 @@ import pytest
 from app.ai.inline import inline_edit
 
 
+def _mock_response(content: str) -> dict:
+    """Build a fake OpenAI-format response dict."""
+    return {
+        "choices": [{"message": {"content": content}, "finish_reason": "stop"}],
+        "model": "test",
+    }
+
+
 @pytest.mark.asyncio
 async def test_inline_edit_includes_error_context_in_prompt() -> None:
-    mock_response = MagicMock()
-    mock_response.choices = [MagicMock()]
-    mock_response.choices[0].message.content = "SELECT 1;"
+    mock_resp = _mock_response("SELECT 1;")
     captured_kwargs: dict = {}
 
     async def fake_acompletion(**kwargs):
         captured_kwargs.update(kwargs)
-        return mock_response
+        return mock_resp
 
     with patch("app.ai.inline.acompletion", side_effect=fake_acompletion), patch(
         "app.ai.inline.get_schema",

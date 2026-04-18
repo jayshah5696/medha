@@ -241,11 +241,12 @@ class TestBug2InlineSlugGeneration:
     @pytest.mark.asyncio
     async def test_generate_slug_inline_success(self):
         """generate_slug_from_message should succeed inline with a short call."""
-        mock_response = MagicMock()
-        mock_response.choices = [MagicMock()]
-        mock_response.choices[0].message.content = "data-exploration"
+        mock_response = {
+            "choices": [{"message": {"content": "data-exploration"}, "finish_reason": "stop"}],
+            "model": "test",
+        }
 
-        with patch("litellm.acompletion", new=AsyncMock(return_value=mock_response)), \
+        with patch("app.ai.llm_client.acompletion", new=AsyncMock(return_value=mock_response)), \
              patch("app.routers.chats._get_slug_model", return_value="openai/gpt-4o-mini"):
             from app.routers.chats import generate_slug_from_message
             slug = await generate_slug_from_message("explore my data")
@@ -260,7 +261,7 @@ class TestBug2InlineSlugGeneration:
         async def slow_response(*args, **kwargs):
             await asyncio.sleep(5)
 
-        with patch("litellm.acompletion", new=slow_response), \
+        with patch("app.ai.llm_client.acompletion", new=slow_response), \
              patch("app.routers.chats._get_slug_model", return_value="openai/gpt-4o-mini"):
             from app.routers.chats import generate_slug_from_message_with_timeout
             slug = await generate_slug_from_message_with_timeout("anything", timeout=0.1)

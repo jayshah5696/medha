@@ -6,7 +6,7 @@ from typing import AsyncGenerator
 
 import yaml
 from langchain.agents import create_agent
-from langchain_litellm import ChatLiteLLM
+from app.ai.chat_model import ChatDirectAPI
 from langchain_core.messages import HumanMessage, AIMessage
 from langgraph.errors import GraphRecursionError
 from app.ai.tools import get_schema, sample_data, execute_query, _pop_last_query_result
@@ -76,14 +76,14 @@ def _build_executor(profile: str = "default", model_override: str | None = None)
 
     Uses LangGraph's create_agent which accepts system_prompt directly
     and returns a compiled StateGraph with astream_events support.
-    We pass a ChatLiteLLM instance so LangGraph doesn't try to
+    We pass a ChatDirectAPI instance so LangGraph doesn't try to
     resolve the model string via init_chat_model (which requires
     provider-specific packages like langchain-openai).
     """
     config = load_agent_config(profile)
     model_name = model_override or config["model"]
 
-    llm = ChatLiteLLM(model=model_name, temperature=config.get("temperature", 0))
+    llm = ChatDirectAPI(model=model_name, temperature=config.get("temperature", 0))
     tools = [get_schema, sample_data, execute_query]
 
     agent = create_agent(
@@ -131,7 +131,7 @@ async def stream_agent_response(
     BUG-11 fix: SSE formatting now belongs to the router layer.
     This function only yields raw dicts like {"type": "token", "content": ...}.
 
-    Uses agent.astream() which yields node-level updates. ChatLiteLLM
+    Uses agent.astream() which yields node-level updates. ChatDirectAPI
     does not support per-token streaming via astream_events, so we
     deliver the full response from each 'model' node output.
     """

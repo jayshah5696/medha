@@ -1,6 +1,6 @@
 """Medha backend: FastAPI + DuckDB + LangGraph."""
 
-# Load .env BEFORE any imports that read os.environ (litellm, langchain, etc.)
+# Load .env BEFORE any imports that read os.environ (llm_client, langchain, etc.)
 from dotenv import load_dotenv
 load_dotenv()  # looks for .env in cwd and parent dirs
 
@@ -21,7 +21,7 @@ from app.routers import queries as queries_router
 
 
 def _apply_api_keys(settings) -> None:
-    """Push saved API keys from settings to os.environ for litellm.
+    """Push saved API keys from settings to os.environ for llm_client.
 
     Only sets non-empty keys — empty strings are skipped so that
     pre-existing values from .env are not clobbered.
@@ -58,8 +58,13 @@ async def lifespan(app: FastAPI):
             pass  # dir was moved/deleted — start with no workspace
 
     yield
-    # Shutdown: stop watcher and close DuckDB
+    # Shutdown: stop watcher, close HTTP client, and close DuckDB
     stop_watcher()
+    try:
+        from app.ai.llm_client import close_client
+        await close_client()
+    except Exception:
+        pass
     from app.db import conn
     conn.close()
 

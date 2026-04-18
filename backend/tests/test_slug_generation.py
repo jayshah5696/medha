@@ -15,6 +15,14 @@ import pytest
 from app.routers.chats import generate_slug_from_message, generate_slug_fallback
 
 
+def _mock_response(content: str) -> dict:
+    """Build a fake OpenAI-format response dict."""
+    return {
+        "choices": [{"message": {"content": content}, "finish_reason": "stop"}],
+        "model": "test",
+    }
+
+
 @pytest.mark.asyncio
 async def test_slug_fallback_format():
     """Fallback slug is chat-{timestamp} format."""
@@ -26,11 +34,9 @@ async def test_slug_fallback_format():
 async def test_slug_from_message_uses_model_slug():
     """generate_slug_from_message should use the model_slug from settings,
     not the expensive chat model."""
-    mock_response = MagicMock()
-    mock_response.choices = [MagicMock()]
-    mock_response.choices[0].message.content = "weekly-sales-analysis"
+    mock_resp = _mock_response("weekly-sales-analysis")
 
-    with patch("litellm.acompletion", new=AsyncMock(return_value=mock_response)) as mock_acomp, \
+    with patch("app.ai.llm_client.acompletion", new=AsyncMock(return_value=mock_resp)) as mock_acomp, \
          patch("app.routers.chats._get_slug_model", return_value="openai/gpt-4.1-nano"):
 
         slug = await generate_slug_from_message("Show me weekly sales trends")
@@ -44,11 +50,9 @@ async def test_slug_from_message_uses_model_slug():
 @pytest.mark.asyncio
 async def test_slug_from_message_returns_clean_kebab():
     """Generated slug should be lowercase kebab-case, no special chars."""
-    mock_response = MagicMock()
-    mock_response.choices = [MagicMock()]
-    mock_response.choices[0].message.content = "  Weekly Sales Analysis!  "
+    mock_resp = _mock_response("  Weekly Sales Analysis!  ")
 
-    with patch("litellm.acompletion", new=AsyncMock(return_value=mock_response)), \
+    with patch("app.ai.llm_client.acompletion", new=AsyncMock(return_value=mock_resp)), \
          patch("app.routers.chats._get_slug_model", return_value="openai/gpt-4o-mini"):
 
         slug = await generate_slug_from_message("Show me weekly sales trends")
@@ -61,7 +65,7 @@ async def test_slug_from_message_returns_clean_kebab():
 @pytest.mark.asyncio
 async def test_slug_from_message_falls_back_on_error():
     """If LLM call fails, fall back to timestamp slug."""
-    with patch("litellm.acompletion", new=AsyncMock(side_effect=Exception("API down"))), \
+    with patch("app.ai.llm_client.acompletion", new=AsyncMock(side_effect=Exception("API down"))), \
          patch("app.routers.chats._get_slug_model", return_value="openai/gpt-4o-mini"):
 
         slug = await generate_slug_from_message("anything")
@@ -72,11 +76,9 @@ async def test_slug_from_message_falls_back_on_error():
 @pytest.mark.asyncio
 async def test_slug_from_message_falls_back_on_empty():
     """If LLM returns empty/garbage, fall back to timestamp slug."""
-    mock_response = MagicMock()
-    mock_response.choices = [MagicMock()]
-    mock_response.choices[0].message.content = "!!"
+    mock_resp = _mock_response("!!")
 
-    with patch("litellm.acompletion", new=AsyncMock(return_value=mock_response)), \
+    with patch("app.ai.llm_client.acompletion", new=AsyncMock(return_value=mock_resp)), \
          patch("app.routers.chats._get_slug_model", return_value="openai/gpt-4o-mini"):
 
         slug = await generate_slug_from_message("anything")
